@@ -49,7 +49,10 @@ export const optionGroupSchema = z.strictObject({
   selection: z.enum(['SINGLE', 'MULTI']),
   required: z.boolean().default(false),
   sort: z.number().int().min(0).max(32767).optional(),
-  translations: nameTranslations.optional(),
+  /** Group translations carry a name only: `{ fi: Puulaji }`. */
+  translations: z.record(z.string().regex(LOCALE_RE, 'locale like "fi" or "sv-FI"'), nonEmpty)
+    .transform((t) => Object.fromEntries(Object.entries(t).map(([k, name]) => [k, { name }])))
+    .optional(),
   options: z.array(optionSchema).min(1, 'an option group needs at least one option'),
 });
 

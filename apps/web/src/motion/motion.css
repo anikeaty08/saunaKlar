@@ -1,0 +1,89 @@
+.scramble {
+  font-variant-ligatures: none;
+}
+
+.flip-text {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.flip-text__visual {
+  display: inline-block;
+}
+
+.flip-char {
+  display: inline-block;
+  overflow: hidden;
+  height: 1.2em;
+  line-height: 1.2;
+  vertical-align: bottom;
+}
+
+.flip-roll {
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+}
+
+.flip-roll > span {
+  display: block;
+  height: 1.2em;
+  white-space: pre;
+}
+
+/* ---- marquee ----------------------------------------------------------------- */
+
+.marquee {
+  overflow: hidden;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.marquee__track {
+  display: inline-flex;
+  will-change: transform;
+}
+
+.marquee__group {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* ---- page transition ------------------------------------------------------------ */
+
+.curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  pointer-events: none;
+  background: var(--ink);
+  color: var(--on-ink);
+  transform: scaleY(0);
+  transform-origin: 50% 0;
+  display: grid;
+  place-items: center;
+}
+
+.curtain__label {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0;
+}
+
+.nav-progress {
+  position: fixed;
+  inset: 0 0 auto;
+  height: 2px;
+  z-index: 950;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+
+.magnetic {
+  display: inline-block;
+}

@@ -20,13 +20,15 @@ import {
 } from './schema.ts';
 import {
   BUDGETS, IMAGE_BUDGET, ROOM_ASSET_ROLES, SAUNA_ASSET_ROLES, allowedExtensions, checkMagic, extOf,
-  formatBytes, galleryRole, kindForRole,
+  formatBytes, GALLERY_ROLE, kindForRole,
 } from './files.ts';
 
 export interface Translation { name: string; description: string | null }
 
 export interface AssetSource {
   role: string;
+  /** Order within the role (gallery images); 0 for every other role. */
+  position: number;
   /** Absolute path of the source file. */
   path: string;
   /** Manifest-relative path as written, for messages. */
@@ -136,6 +138,7 @@ async function parseYamlFile<S extends z.ZodType>(abs: string, rel: string, sche
 
 async function checkAsset(
   diag: Diagnostics, file: string, manifestDir: string, manifestPath: string, role: string, at: string, opts: ValidateOptions,
+  position = 0,
 ): Promise<AssetSource | null> {
   const path = resolve(manifestDir, manifestPath);
   const ext = extOf(path);
@@ -165,7 +168,7 @@ async function checkAsset(
   } else if (kind === 'image' && bytes.byteLength > IMAGE_BUDGET) {
     diag.warn(file, at, `${manifestPath} is ${formatBytes(bytes.byteLength)}; images above ${formatBytes(IMAGE_BUDGET)} slow down the storefront`);
   }
-  return { role, path, manifestPath, ext, byteSize: bytes.byteLength };
+  return { role, position, path, manifestPath, ext, byteSize: bytes.byteLength };
 }
 
 function resolveTranslations(t: Record<string, { name: string; description?: string | undefined }> | undefined): Record<string, Translation> {
@@ -436,7 +439,7 @@ export async function loadCatalog(dirArg: string, opts: ValidateOptions = {}): P
       if (src) sauna.assets.push(src);
     }
     for (const [i, p] of a.gallery.entries()) {
-      const src = await checkAsset(diag, rel, mdir, p, galleryRole(i), `assets.gallery.${i}`, opts);
+      const src = await checkAsset(diag, rel, mdir, p, GALLERY_ROLE, `assets.gallery.${i}`, opts, i);
       if (src) sauna.assets.push(src);
     }
     if (m.status === 'ACTIVE' && !a.model_high && !a.model_low) {

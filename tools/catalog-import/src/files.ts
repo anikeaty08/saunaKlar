@@ -3,7 +3,7 @@ import { extname } from 'node:path';
 
 export const MB = 1024 * 1024;
 
-/** Manifest asset key → DB asset role code. The sauna_model_assets PK is (model, role), so gallery images get numbered roles. */
+/** Manifest asset key → DB asset role code (asset_roles). Gallery images share one role and are ordered by `position`. */
 export const SAUNA_ASSET_ROLES = {
   model_high: 'MODEL_HIGH',
   model_low: 'MODEL_LOW',
@@ -11,7 +11,7 @@ export const SAUNA_ASSET_ROLES = {
   ar_usdz: 'AR_USDZ',
   thumbnail: 'THUMBNAIL',
 } as const;
-export const galleryRole = (i: number): string => `GALLERY_${i + 1}`;
+export const GALLERY_ROLE = 'MODEL_GALLERY';
 export const ROOM_ASSET_ROLES = { scene: 'ROOM_SCENE', thumbnail: 'ROOM_THUMBNAIL' } as const;
 
 /** Size budgets from design assumption A3 (bytes). Images get a soft budget. */
@@ -23,6 +23,8 @@ export const BUDGETS: Record<string, number> = {
   ROOM_SCENE: 12 * MB,
 };
 export const IMAGE_BUDGET = 2 * MB;
+
+const GLB_ROLES = new Set<string>([SAUNA_ASSET_ROLES.model_high, SAUNA_ASSET_ROLES.model_low, SAUNA_ASSET_ROLES.ar_glb, ROOM_ASSET_ROLES.scene]);
 
 export type FileKind = 'glb' | 'usdz' | 'image';
 
@@ -38,7 +40,7 @@ export const CONTENT_TYPES: Record<string, string> = {
 
 export function kindForRole(role: string): FileKind {
   if (role === 'AR_USDZ') return 'usdz';
-  if (role.startsWith('MODEL_') || role === 'AR_GLB' || role === 'ROOM_SCENE') return 'glb';
+  if (GLB_ROLES.has(role)) return 'glb';
   return 'image';
 }
 

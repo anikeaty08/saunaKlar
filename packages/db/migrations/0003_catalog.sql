@@ -214,3 +214,19 @@ CREATE TABLE room_scene_assets (
   CONSTRAINT room_scene_assets_role_fk FOREIGN KEY (asset_role, applies_to) REFERENCES asset_roles (code, applies_to)
 );
 CREATE INDEX room_scene_assets_asset_idx ON room_scene_assets (asset_id);
+
+-- Localised room names and attribute labels (UI locales en, de, fr, it, rm; base text = fallback).
+CREATE TABLE room_scene_translations (
+  room_scene_id uuid NOT NULL REFERENCES room_scenes (id) ON DELETE CASCADE,
+  locale        text NOT NULL CHECK (locale ~ '^[a-z]{2}(-[A-Z]{2})?$'),
+  name          text NOT NULL CHECK (length(btrim(name)) BETWEEN 1 AND 200),
+  description   text CHECK (length(description) <= 2000),
+  PRIMARY KEY (room_scene_id, locale)
+);
+
+CREATE TABLE attribute_definition_translations (
+  attribute_code text NOT NULL REFERENCES attribute_definitions (code) ON DELETE CASCADE,
+  locale         text NOT NULL CHECK (locale ~ '^[a-z]{2}(-[A-Z]{2})?$'),
+  label          text NOT NULL CHECK (length(btrim(label)) BETWEEN 1 AND 200),
+  PRIMARY KEY (attribute_code, locale)
+);
