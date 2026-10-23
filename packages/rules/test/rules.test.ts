@@ -49,6 +49,9 @@ describe('toggle', () => {
   it('drops excluded options', () => {
     expect(toggle(rules, ['cedar', 'salt'], 'spruce', true).selection.sort()).toEqual(['spruce']);
   });
+  it('refuses a conflict that would empty a required group', () => {
+    expect(toggle(rules, ['spruce'], 'salt', true).rejected).toMatch(/choose another wood/);
+  });
   it('refuses to empty a required SINGLE group', () => {
     expect(toggle(rules, ['cedar'], 'cedar', false).rejected).toMatch(/required/);
   });

@@ -191,6 +191,14 @@ export function toggle(rules: ModelRules, current: readonly string[], optionId: 
     for (const x of idx.excludes.get(id) ?? []) if (sel.has(x)) removeWithDependents(idx, sel, x, wanted);
     sel.add(id);
   }
+  // A conflict must never empty a required group the customer already filled.
+  for (const g of rules.groups) {
+    if (!g.required) continue;
+    const had = g.options.find(o => before.has(o.id));
+    if (had && !g.options.some(o => sel.has(o.id))) {
+      return { selection: [...current], added: [], removed: [], rejected: `${label(idx, optionId)} cannot be combined with ${label(idx, had.id)}; choose another ${g.code} first.` };
+    }
+  }
   return diff(before, sel);
 }
 
