@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+/var/
+test-results/
+playwright-report/
+coverage/
+.terraform/
+*.tfstate
+*.tfstate.*
+.DS_Store
+*.log
