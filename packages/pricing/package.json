@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "description": "Pure, integer-only pricing engine shared by the API and the web app."
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "description": "Pure, integer-only pricing engine shared by the API and the web app.",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  }
 }

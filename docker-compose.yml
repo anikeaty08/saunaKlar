@@ -1,0 +1,17 @@
+# Local PostgreSQL 16 for development and tests. The superuser `sauna` runs migrations;
+# the migrations create the API login `sauna_api` and the NOLOGIN roles it switches into.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: sauna
+      POSTGRES_PASSWORD: sauna
+      POSTGRES_DB: sauna
+    ports: ['5432:5432']
+    volumes: ['pgdata:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'sauna']
+      interval: 5s
+      retries: 10
+volumes:
+  pgdata:

@@ -3,7 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "description": "API contract: Zod schemas for every request and response, error codes, host parsing.",
-  "dependencies": { "zod": "^4.1.12" }
+  "dependencies": {
+    "zod": "^4.1.12"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  }
 }
