@@ -7,10 +7,12 @@
 #   /assets/*     → assets bucket (signed cookies/URLs via trusted key group; key WITHOUT Host, G1).
 #                   LOW cookies cover https://{host}/assets/lo/*, FULL cookies https://{host}/assets/*,
 #                   AR files use signed URLs. No URI rewriting: S3 key = URL path without leading "/".
+#   /static/*     → web bucket (hashed SPA bundles, cached 1 year, immutable)
 #   /media/*      → public bucket (catalog thumbnails/galleries, immutable, no Host in key)
 #   /branding/*   → public bucket (tenant logos/favicons under branding/<slug>/)
 #   /favicon.ico  → branding bucket (rewritten to /branding/<slug>/favicon.ico by the function)
-#   default       → web bucket (SPA; the function rewrites routes to /index.html)
+#   default       → web bucket, not cached, Cache-Control: no-cache (index.html; the function
+#                   rewrites SPA routes to /index.html)
 
 locals {
   wildcard = "*.${var.platform_domain}"
@@ -112,6 +114,15 @@ resource "aws_cloudfront_key_group" "assets" {
 # Origin access + policies
 # ---------------------------------------------------------------------------------------------
 
+# AWS managed "CachingDisabled": index.html must never be served stale after a release.
+data "aws_cloudfront_cache_policy" "disabled" {
+  name = "Managed-CachingDisabled"
+}
+
+# ---------------------------------------------------------------------------------------------
+# Cache, origin request and response headers policies
+# ---------------------------------------------------------------------------------------------
+
 resource "aws_cloudfront_origin_access_control" "s3" {
   name                              = "${var.name}-s3"
   description                       = "OAC for the saunaklar S3 origins"
@@ -120,12 +131,35 @@ resource "aws_cloudfront_origin_access_control" "s3" {
   signing_protocol                  = "sigv4"
 }
 
-# Static files: honour origin Cache-Control (hashed files immutable, index.html no-cache).
+# Public media and branding: honour origin Cache-Control (hashed keys are uploaded immutable).
 resource "aws_cloudfront_cache_policy" "static" {
   name        = "${var.name}-static"
   comment     = "S3 static files; no headers, cookies or query strings in the key"
   min_ttl     = 0
   default_ttl = 86400
+  max_ttl     = 31536000
+
+  parameters_in_cache_key_and_forwarded_to_origin {
+    enable_accept_encoding_brotli = true
+    enable_accept_encoding_gzip   = true
+    headers_config {
+      header_behavior = "none"
+    }
+    cookies_config {
+      cookie_behavior = "none"
+    }
+    query_strings_config {
+      query_string_behavior = "none"
+    }
+  }
+}
+
+# /static/* (hashed SPA bundles): cached for a year at the edge whatever the origin says.
+resource "aws_cloudfront_cache_policy" "immutable" {
+  name        = "${var.name}-immutable"
+  comment     = "Hashed SPA bundles; 1 year; no cookies, headers or query strings in the key"
+  min_ttl     = 31536000
+  default_ttl = 31536000
   max_ttl     = 31536000
 
   parameters_in_cache_key_and_forwarded_to_origin {
@@ -226,9 +260,22 @@ resource "aws_cloudfront_origin_request_policy" "api" {
   }
 }
 
-resource "aws_cloudfront_response_headers_policy" "security" {
-  name    = "${var.name}-security"
-  comment = "HSTS preload, CSP, frame-ancestors none, nosniff, referrer policy"
+# Same security headers everywhere; the variants differ only in an enforced Cache-Control:
+#   security : API, assets, media, branding (origin decides caching)
+#   static   : /static/* hashed SPA bundles → public, max-age=1 year, immutable
+#   document : default behaviour (index.html / SPA routes) → no-cache, so releases show at once
+locals {
+  response_header_variants = {
+    security = null
+    static   = "public, max-age=31536000, immutable"
+    document = "no-cache"
+  }
+}
+
+resource "aws_cloudfront_response_headers_policy" "this" {
+  for_each = local.response_header_variants
+  name     = "${var.name}-${each.key}"
+  comment  = "HSTS preload, CSP, frame-ancestors none, nosniff, referrer policy${each.value == null ? "" : "; Cache-Control: ${each.value}"}"
 
   security_headers_config {
     strict_transport_security {
@@ -264,6 +311,14 @@ resource "aws_cloudfront_response_headers_policy" "security" {
       header   = "cross-origin-opener-policy"
       value    = "same-origin"
       override = true
+    }
+    dynamic "items" {
+      for_each = each.value == null ? [] : [each.value]
+      content {
+        header   = "cache-control"
+        value    = items.value
+        override = true
+      }
     }
   }
 
@@ -343,7 +398,7 @@ resource "aws_cloudfront_distribution" "this" {
     compress                   = true
     cache_policy_id            = aws_cloudfront_cache_policy.api.id
     origin_request_policy_id   = aws_cloudfront_origin_request_policy.api.id
-    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.this["security"].id
 
     function_association {
       event_type   = "viewer-request"
@@ -359,13 +414,26 @@ resource "aws_cloudfront_distribution" "this" {
     cached_methods             = ["GET", "HEAD"]
     compress                   = false
     cache_policy_id            = aws_cloudfront_cache_policy.assets.id
-    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.this["security"].id
     trusted_key_groups         = [aws_cloudfront_key_group.assets.id]
 
     function_association {
       event_type   = "viewer-request"
       function_arn = aws_cloudfront_function.tenant_router.arn
     }
+  }
+
+  # Hashed SPA bundles (Vite build.assetsDir = "static"). /assets/* is reserved for 3D files.
+  # Tenant-agnostic, so no tenant-router invocation (saves a function call per bundle file).
+  ordered_cache_behavior {
+    path_pattern               = "/static/*"
+    target_origin_id           = local.origin_ids.web
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD"]
+    cached_methods             = ["GET", "HEAD"]
+    compress                   = true
+    cache_policy_id            = aws_cloudfront_cache_policy.immutable.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.this["static"].id
   }
 
   # Public catalog media (thumbnails, galleries): immutable hashed keys, no Host in the key, so one
@@ -378,7 +446,7 @@ resource "aws_cloudfront_distribution" "this" {
     cached_methods             = ["GET", "HEAD"]
     compress                   = true
     cache_policy_id            = aws_cloudfront_cache_policy.static.id
-    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.this["security"].id
 
     function_association {
       event_type   = "viewer-request"
@@ -394,7 +462,7 @@ resource "aws_cloudfront_distribution" "this" {
     cached_methods             = ["GET", "HEAD"]
     compress                   = true
     cache_policy_id            = aws_cloudfront_cache_policy.static.id
-    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.this["security"].id
 
     function_association {
       event_type   = "viewer-request"
@@ -410,7 +478,7 @@ resource "aws_cloudfront_distribution" "this" {
     cached_methods             = ["GET", "HEAD"]
     compress                   = true
     cache_policy_id            = aws_cloudfront_cache_policy.static.id
-    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.this["security"].id
 
     function_association {
       event_type   = "viewer-request"
@@ -424,8 +492,8 @@ resource "aws_cloudfront_distribution" "this" {
     allowed_methods            = ["GET", "HEAD", "OPTIONS"]
     cached_methods             = ["GET", "HEAD"]
     compress                   = true
-    cache_policy_id            = aws_cloudfront_cache_policy.static.id
-    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+    cache_policy_id            = data.aws_cloudfront_cache_policy.disabled.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.this["document"].id
 
     function_association {
       event_type   = "viewer-request"

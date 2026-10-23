@@ -2,7 +2,7 @@
 // sharp ships native binaries, so it stays external and is provided by a
 // Lambda layer built for linux-arm64 (see infra/README.md).
 import { build } from 'esbuild';
-import { rm } from 'node:fs/promises';
+import { cp, rm } from 'node:fs/promises';
 
 const functions = ['public-catalog', 'customer', 'reseller-admin', 'manufacturer-admin', 'asset-signer', 'worker'];
 const common = {
@@ -23,3 +23,10 @@ await Promise.all([
   ...functions.map(fn => build({ ...common, entryPoints: [`src/functions/${fn}.ts`], outfile: `dist/lambda/${fn}/index.mjs` })),
   build({ ...common, minify: false, entryPoints: ['src/local.ts'], outfile: 'dist/local.js', external: [...common.external, 'esbuild'] }),
 ]);
+// The worker's `{task:'migrate'}` hook resolves migrations relative to its bundle
+// (packages/db MIGRATIONS_DIR = ../migrations/ from dist/lambda/worker/index.mjs). Local-only
+// SQL (local IdP, dev mailbox) is never shipped.
+await cp(new URL('../../packages/db/migrations/', import.meta.url), new URL('./dist/lambda/migrations/', import.meta.url), {
+  recursive: true,
+  filter: src => !/[\\/]migrations[\\/]local([\\/]|$)/.test(src),
+});

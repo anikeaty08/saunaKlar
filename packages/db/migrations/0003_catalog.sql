@@ -164,7 +164,8 @@ CREATE TABLE option_excludes (
 CREATE INDEX option_excludes_b_idx ON option_excludes (sauna_model_id, option_b_id);
 
 -- Preset 3D room environments. preset holds parametric room parameters for scenes without a GLB,
--- e.g. {"floorMaterial":"oak","wallColor":"#efe9df","widthMm":4000,"depthMm":3500,"heightMm":2600}.
+-- shape = roomPresetSchema in @saunaklar/shared: {"widthMm":4000,"depthMm":3500,"heightMm":2600,
+-- "floor":"oak|concrete|tiles|stone|decking","wallColor":"#efe9df","windowWall":"north|east|south|west|none"}.
 CREATE TABLE room_scenes (
   id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   manufacturer_id uuid        NOT NULL REFERENCES manufacturers (id),

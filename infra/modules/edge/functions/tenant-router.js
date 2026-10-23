@@ -9,7 +9,7 @@
 // 2. Copies the host into `x-tenant-host` (API Gateway needs its own Host, so the API reads the
 //    tenant from this header; any client-supplied value is overwritten).
 // 3. Rewrites /favicon.ico and /branding/favicon-*.png to the tenant's branding files.
-// 4. Rewrites SPA routes (no file extension, outside /api, /assets, /media, /branding) to /index.html.
+// 4. Rewrites SPA routes (no file extension, outside /api, /assets, /media, /static, /branding) to /index.html.
 //    Asset and media URIs are never rewritten (S3 key = URL path without the leading slash).
 //
 // Placeholders (__PLATFORM_DOMAIN__, __ADMIN_HOST__, __KVS_ID__) are substituted by Terraform.
@@ -112,6 +112,7 @@ async function handler(event) {
     !uri.startsWith('/api/') &&
     !uri.startsWith('/assets/') &&
     !uri.startsWith('/media/') &&
+    !uri.startsWith('/static/') &&
     !uri.startsWith('/branding/') &&
     !hasExtension(uri)
   ) {

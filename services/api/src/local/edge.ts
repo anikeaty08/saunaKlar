@@ -25,6 +25,10 @@ const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 /** Host as the browser sent it, without the port (policies and tenants are port-agnostic). */
 const hostOf = (c: Context): string => (c.req.header('host') ?? '').toLowerCase().replace(/:\d+$/, '');
 
+/** 200 with `body`, or headers only for HEAD. */
+const ok = (c: Context, body: Uint8Array<ArrayBuffer>, headers: Record<string, string>) =>
+  new Response(c.req.method === 'HEAD' ? null : body, { status: 200, headers });
+
 const text = (c: Context, status: 403 | 404 | 400 | 413, message: string) =>
   c.text(message, status, { 'Cache-Control': 'no-store' });
 
@@ -53,7 +57,7 @@ export function createLocalEdgeApp(deps: Deps, opts: LocalEdgeOptions): Hono {
     }
     const [head, body] = await Promise.all([store.head(key), store.get(key)]);
     if (!head || !body) return text(c, 404, 'Not found');
-    return c.body(c.req.method === 'HEAD' ? null : new Uint8Array(body), 200, {
+    return ok(c, new Uint8Array(body) as Uint8Array<ArrayBuffer>, {
       'Content-Type': head.contentType,
       'Content-Length': String(body.byteLength),
       'Cache-Control': head.cacheControl ?? cacheControl,
@@ -110,7 +114,7 @@ export function createLocalEdgeApp(deps: Deps, opts: LocalEdgeOptions): Hono {
   app.on(['GET', 'HEAD'], '/static/*', async c => {
     const file = await readStatic(webDist, c.req.path);
     if (!file) return text(c, 404, 'Not found');
-    return c.body(c.req.method === 'HEAD' ? null : new Uint8Array(file.body), 200, { 'Content-Type': file.contentType, 'Cache-Control': IMMUTABLE });
+    return ok(c, new Uint8Array(file.body) as Uint8Array<ArrayBuffer>, { 'Content-Type': file.contentType, 'Cache-Control': IMMUTABLE });
   });
 
   app.on(['GET', 'HEAD'], '*', async c => {
@@ -119,7 +123,7 @@ export function createLocalEdgeApp(deps: Deps, opts: LocalEdgeOptions): Hono {
     }
     const file = (c.req.path !== '/' && (await readStatic(webDist, c.req.path))) || (await readStatic(webDist, '/index.html'));
     if (!file) return text(c, 404, 'Not found');
-    return c.body(c.req.method === 'HEAD' ? null : new Uint8Array(file.body), 200, { 'Content-Type': file.contentType, 'Cache-Control': file.cacheControl });
+    return ok(c, new Uint8Array(file.body) as Uint8Array<ArrayBuffer>, { 'Content-Type': file.contentType, 'Cache-Control': file.cacheControl });
   });
 
   app.all('*', c => text(c, 404, 'Not found'));

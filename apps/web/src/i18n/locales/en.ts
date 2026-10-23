@@ -126,7 +126,7 @@ const messages = {
       { title: 'Your data stays here', body: 'Your account belongs to {name} only, stored in the EU, deletable at any time.' },
       { title: 'A price that holds', body: 'When you send a request the price is locked and stays valid for 30 days.' },
     ],
-    stats: { models: 'models', options: 'options', days: 'day price lock' },
+    stats: { models: 'models', seats: 'seats in the largest', days: 'day price lock' },
     ctaTitle: 'Ready when you are.',
     ctaBody: 'Start with a model and change your mind as often as you like. Nothing is sent until you say so.',
     ctaButton: 'Start configuring',

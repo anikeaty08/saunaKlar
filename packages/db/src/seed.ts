@@ -155,13 +155,13 @@ const ATTRIBUTES: { code: string; label: string; unit: string | null; tr: Tr; ge
 const ROOMS = [
   { code: 'garden-deck', name: 'Garden deck', description: 'An open wooden deck in a green garden.',
     tr: { de: ['Gartenterrasse', 'Eine offene Holzterrasse in einem grünen Garten.'], fr: ['Terrasse de jardin', 'Une terrasse en bois ouverte dans un jardin verdoyant.'], it: ['Terrazza in giardino', 'Una terrazza in legno aperta in un giardino verde.'] },
-    preset: { floorMaterial: 'wood-deck', wallColor: '#f3efe6', widthMm: 6000, depthMm: 5000, heightMm: 3000 } },
+    preset: { widthMm: 6000, depthMm: 5000, heightMm: 3000, floor: 'decking', wallColor: '#f3efe6', windowWall: 'none' } },
   { code: 'basement-spa', name: 'Basement spa', description: 'A calm tiled spa room in the basement.',
     tr: { de: ['Wellnesskeller', 'Ein ruhiger, gefliester Wellnessraum im Keller.'], fr: ['Spa au sous-sol', 'Une salle de spa carrelée et calme au sous-sol.'], it: ['Spa nel seminterrato', 'Una tranquilla sala spa piastrellata nel seminterrato.'] },
-    preset: { floorMaterial: 'stone-tiles', wallColor: '#d9d4cc', widthMm: 4000, depthMm: 3500, heightMm: 2500 } },
+    preset: { widthMm: 4000, depthMm: 3500, heightMm: 2500, floor: 'tiles', wallColor: '#d9d4cc', windowWall: 'east' } },
   { code: 'lakeside-terrace', name: 'Lakeside terrace', description: 'A stone terrace by a Nordic lake.',
     tr: { de: ['Seeterrasse', 'Eine Steinterrasse an einem nordischen See.'], fr: ['Terrasse au bord du lac', 'Une terrasse en pierre au bord d’un lac nordique.'], it: ['Terrazza sul lago', 'Una terrazza in pietra sulla riva di un lago nordico.'] },
-    preset: { floorMaterial: 'granite', wallColor: '#e6ebee', widthMm: 7000, depthMm: 6000, heightMm: 3200 } },
+    preset: { widthMm: 7000, depthMm: 6000, heightMm: 3200, floor: 'stone', wallColor: '#e6ebee', windowWall: 'south' } },
 ] as const;
 
 interface ResellerDef {
