@@ -72,7 +72,7 @@ resource "aws_security_group" "proxy" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "proxy_from_clients" {
-  for_each                     = toset(var.proxy_client_security_group_ids)
+  for_each                     = var.proxy_client_security_group_ids
   security_group_id            = aws_security_group.proxy.id
   description                  = "PostgreSQL from Lambda"
   ip_protocol                  = "tcp"
@@ -111,7 +111,7 @@ resource "aws_vpc_security_group_ingress_rule" "db_from_proxy" {
 
 # Direct access for migrations only (worker `migrate` task); DDL should not go through the proxy.
 resource "aws_vpc_security_group_ingress_rule" "db_from_migrator" {
-  for_each                     = toset(var.direct_client_security_group_ids)
+  for_each                     = var.direct_client_security_group_ids
   security_group_id            = aws_security_group.db.id
   description                  = "PostgreSQL from migration runner"
   ip_protocol                  = "tcp"

@@ -43,8 +43,8 @@ module "database" {
   vpc_cidr                         = module.network.vpc_cidr
   database_subnet_ids              = module.network.database_subnet_ids
   private_subnet_ids               = module.network.private_subnet_ids
-  proxy_client_security_group_ids  = [module.network.lambda_security_group_id, module.network.worker_security_group_id]
-  direct_client_security_group_ids = [module.network.worker_security_group_id]
+  proxy_client_security_group_ids  = { lambda = module.network.lambda_security_group_id, worker = module.network.worker_security_group_id }
+  direct_client_security_group_ids = { worker = module.network.worker_security_group_id }
 
   instance_class                      = var.db_instance_class
   multi_az                            = var.db_multi_az

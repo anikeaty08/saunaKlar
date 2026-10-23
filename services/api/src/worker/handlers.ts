@@ -65,9 +65,8 @@ export const requestSubmitted: OutboxHandler = async ctx => {
       reference,
       saunaName: req.sauna_name,
       price,
-      locale,
       requestUrl: brand.origin + paths.customerRequest(req.id),
-    }),
+    }, locale),
   );
   const staffMail = templates.requestSubmittedStaff(brand.brand, {
     reference,
@@ -87,10 +86,9 @@ export const requestStatusChanged: OutboxHandler = async ctx => {
   const req = await loadRequest(ctx.db, requirePayloadUuid(payload, 'requestId', 'request_id'));
   const historyId = payloadString(payload, 'historyId', 'history_id');
   const toStatus = payloadString(payload, 'toStatus', 'to_status', 'status');
-  const { rows } = await ctx.db.query<{ to_status: string; label: string; note: string | null }>(
-    `SELECT h.to_status, rs.label, h.note
+  const { rows } = await ctx.db.query<{ to_status: string; note: string | null }>(
+    `SELECT h.to_status, h.note
        FROM request_status_history h
-       JOIN request_statuses rs ON rs.code = h.to_status
       WHERE h.request_id = $1
         AND ($2::bigint IS NULL OR h.id = $2::bigint)
         AND ($3::text IS NULL OR h.to_status = $3)
@@ -112,10 +110,10 @@ export const requestStatusChanged: OutboxHandler = async ctx => {
     templates.requestStatusChanged(brand.brand, {
       firstName: customer?.firstName ?? null,
       reference: requestReference(req.id),
-      statusLabel: change.label,
+      status: change.to_status,
       note: change.note,
       requestUrl: brand.origin + paths.customerRequest(req.id),
-    }),
+    }, customer?.locale),
   );
 };
 
@@ -149,9 +147,8 @@ export const quoteAdded: OutboxHandler = async ctx => {
       amount: { amountMinor: Number(quote.amount_minor), currency: quote.currency_code.trim() },
       validUntil: quote.valid_until,
       note: quote.note,
-      locale: customer?.locale ?? 'en',
       requestUrl: brand.origin + paths.customerRequest(req.id),
-    }),
+    }, customer?.locale),
   );
 };
 

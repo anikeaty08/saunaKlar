@@ -21,14 +21,14 @@ variable "private_subnet_ids" {
 }
 
 variable "proxy_client_security_group_ids" {
-  description = "Security groups allowed to connect to RDS Proxy."
-  type        = list(string)
+  description = "Static name → security group id allowed to connect to RDS Proxy (map keys must be known at plan time)."
+  type        = map(string)
 }
 
 variable "direct_client_security_group_ids" {
-  description = "Security groups allowed to connect to the instance directly (migrations only)."
-  type        = list(string)
-  default     = []
+  description = "Static name → security group id allowed to connect to the instance directly (migrations only)."
+  type        = map(string)
+  default     = {}
 }
 
 variable "engine_version" {

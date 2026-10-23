@@ -6,7 +6,8 @@ const KNOWN = new Set<string>(ERROR_CODES);
 /** Maps a constraint name to a domain error where a raw constraint error is the expected signal. */
 const CONSTRAINTS: Record<string, ErrorCode> = {
   resellers_slug_key: 'SLUG_TAKEN',
-  configuration_requests_configuration_id_key: 'REQUEST_EXISTS',
+  configuration_requests_configuration_key: 'REQUEST_EXISTS',
+  request_quotes_validity: 'VALIDATION_FAILED',
 };
 
 interface PgError { code?: string; message?: string; constraint?: string; hint?: string; detail?: string }

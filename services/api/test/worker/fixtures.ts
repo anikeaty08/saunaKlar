@@ -4,6 +4,9 @@ import { createTestDatabase } from '@saunaklar/db';
 import type { EdgeTenantStatus, MailMessage } from '../../src/adapters/types.ts';
 import { silentLogger } from '../../src/lib/log.ts';
 import type { WorkerDeps } from '../../src/worker/handler.ts';
+import type { DrainOptions } from '../../src/worker/outbox.ts';
+
+type Deps = WorkerDeps & DrainOptions;
 
 /**
  * Worker DB test harness: a fresh database from the migrations, an owner pool for seeding
@@ -15,7 +18,7 @@ export interface Harness {
   api: pg.Pool;
   mailer: FakeMailer;
   edge: FakeEdge;
-  deps(extra?: Partial<WorkerDeps>): WorkerDeps;
+  deps(extra?: Partial<Deps>): Deps;
   close(): Promise<void>;
 }
 

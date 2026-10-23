@@ -21,16 +21,34 @@ async function one<T>(db: Queryable, sql: string, values: unknown[]): Promise<T>
   return rows[0];
 }
 
-export async function resolveManufacturer(db: Queryable, name?: string): Promise<string> {
-  const { rows } = await db.query<{ id: string; name: string }>('SELECT id, name FROM manufacturers ORDER BY name');
-  if (name) {
-    const m = rows.find((r) => r.name === name || r.id === name);
-    if (!m) throw new Error(`manufacturer "${name}" not found (have: ${rows.map((r) => r.name).join(', ') || 'none'})`);
-    return m.id;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The manufacturer that owns imported saunas and rooms. catalog_admin cannot read `manufacturers`,
+ * so: an explicit `--manufacturer <uuid>` wins; otherwise the owner connection (when available)
+ * looks it up by name or picks the only one; otherwise the manufacturer of the existing catalog.
+ */
+export async function resolveManufacturer(catalogDb: Queryable, owner: Queryable | null, name?: string): Promise<string> {
+  if (name && UUID_RE.test(name)) return name;
+  if (owner) {
+    try {
+      const { rows } = await owner.query<{ id: string; name: string }>('SELECT id, name FROM manufacturers ORDER BY name');
+      if (name) {
+        const m = rows.find((r) => r.name === name);
+        if (!m) throw new Error(`manufacturer "${name}" not found (have: ${rows.map((r) => r.name).join(', ') || 'none'})`);
+        return m.id;
+      }
+      if (rows.length === 1) return rows[0]!.id;
+      if (rows.length === 0) throw new Error('no manufacturer in the database; run the seed first');
+      throw new Error(`several manufacturers exist (${rows.map((r) => r.name).join(', ')}); pass --manufacturer <name or uuid>`);
+    } catch (e) {
+      if ((e as { code?: string }).code !== '42501') throw e; // not "permission denied": a real answer
+    }
   }
-  if (rows.length === 1) return rows[0]!.id;
-  if (rows.length === 0) throw new Error('no manufacturer in the database; run the seed first');
-  throw new Error(`several manufacturers exist (${rows.map((r) => r.name).join(', ')}); pass --manufacturer <name>`);
+  const { rows } = await catalogDb.query<{ manufacturer_id: string }>(
+    'SELECT DISTINCT manufacturer_id FROM sauna_models UNION SELECT DISTINCT manufacturer_id FROM room_scenes');
+  if (rows.length === 1) return rows[0]!.manufacturer_id;
+  throw new Error('cannot determine the manufacturer; pass --manufacturer <uuid>');
 }
 
 export async function applyAttributes(db: Queryable, catalog: Catalog): Promise<void> {

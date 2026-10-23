@@ -17,6 +17,7 @@ locals {
   aliases  = distinct([local.wildcard, var.admin_host])
 
   admin_zone_id = coalesce(var.admin_zone_id, var.zone_id)
+  cert_domains  = distinct([local.wildcard, var.admin_host])
 
   origin_ids = {
     web      = "s3-web"
@@ -41,7 +42,7 @@ locals {
 resource "aws_acm_certificate" "this" {
   provider                  = aws.us_east_1
   domain_name               = local.wildcard
-  subject_alternative_names = var.admin_host == local.wildcard ? [] : [var.admin_host]
+  subject_alternative_names = [for d in local.cert_domains : d if d != local.wildcard]
   validation_method         = "DNS"
   key_algorithm             = "RSA_2048"
 
@@ -50,20 +51,14 @@ resource "aws_acm_certificate" "this" {
   }
 }
 
+# Keyed by the (static) domain names so the plan works before the certificate exists.
 resource "aws_route53_record" "cert_validation" {
-  for_each = {
-    for dvo in aws_acm_certificate.this.domain_validation_options : dvo.domain_name => {
-      name   = dvo.resource_record_name
-      type   = dvo.resource_record_type
-      record = dvo.resource_record_value
-      zone   = dvo.domain_name == var.admin_host ? local.admin_zone_id : var.zone_id
-    }
-  }
+  for_each = toset(local.cert_domains)
 
-  zone_id         = each.value.zone
-  name            = each.value.name
-  type            = each.value.type
-  records         = [each.value.record]
+  zone_id         = each.key == var.admin_host ? local.admin_zone_id : var.zone_id
+  name            = one([for d in aws_acm_certificate.this.domain_validation_options : d.resource_record_name if d.domain_name == each.key])
+  type            = one([for d in aws_acm_certificate.this.domain_validation_options : d.resource_record_type if d.domain_name == each.key])
+  records         = [one([for d in aws_acm_certificate.this.domain_validation_options : d.resource_record_value if d.domain_name == each.key])]
   ttl             = 300
   allow_overwrite = true
 }
