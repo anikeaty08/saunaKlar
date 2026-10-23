@@ -5,26 +5,38 @@ export const MB = 1024 * 1024;
 
 /** Manifest asset key → DB asset role code (asset_roles). Gallery images share one role and are ordered by `position`. */
 export const SAUNA_ASSET_ROLES = {
-  model_high: 'MODEL_HIGH',
-  model_low: 'MODEL_LOW',
-  ar_glb: 'AR_GLB',
-  ar_usdz: 'AR_USDZ',
-  thumbnail: 'THUMBNAIL',
+  model_high: 'MODEL_GLB_HIGH',
+  model_low: 'MODEL_GLB_LOW',
+  ar_glb: 'MODEL_AR_GLB',
+  ar_usdz: 'MODEL_AR_USDZ',
+  thumbnail: 'MODEL_THUMBNAIL',
 } as const;
 export const GALLERY_ROLE = 'MODEL_GALLERY';
-export const ROOM_ASSET_ROLES = { scene: 'ROOM_SCENE', thumbnail: 'ROOM_THUMBNAIL' } as const;
+export const ROOM_ASSET_ROLES = { scene: 'ROOM_GLB_HIGH', scene_low: 'ROOM_GLB_LOW', thumbnail: 'ROOM_THUMBNAIL' } as const;
+
+/**
+ * Storage tier → key prefix (fixed platform convention): protected LOW files under `assets/lo/`,
+ * FULL and AR files under `assets/hi/` (private bucket, signed access), PUBLIC files under `media/`
+ * (public bucket).
+ */
+export function tierPrefix(role: string): 'assets/lo' | 'assets/hi' | 'media' {
+  if (role === 'MODEL_GLB_LOW' || role === 'ROOM_GLB_LOW') return 'assets/lo';
+  if (/^(MODEL_GLB_HIGH|OPTION_GLB|ROOM_GLB_HIGH|MODEL_AR_GLB|MODEL_AR_USDZ)$/.test(role)) return 'assets/hi';
+  return 'media';
+}
 
 /** Size budgets from design assumption A3 (bytes). Images get a soft budget. */
 export const BUDGETS: Record<string, number> = {
-  MODEL_HIGH: 12 * MB,
-  MODEL_LOW: 1.5 * MB,
-  AR_GLB: 5 * MB,
-  AR_USDZ: 5 * MB,
-  ROOM_SCENE: 12 * MB,
+  MODEL_GLB_HIGH: 12 * MB,
+  MODEL_GLB_LOW: 1.5 * MB,
+  MODEL_AR_GLB: 5 * MB,
+  MODEL_AR_USDZ: 5 * MB,
+  ROOM_GLB_HIGH: 12 * MB,
+  ROOM_GLB_LOW: 1.5 * MB,
 };
 export const IMAGE_BUDGET = 2 * MB;
 
-const GLB_ROLES = new Set<string>([SAUNA_ASSET_ROLES.model_high, SAUNA_ASSET_ROLES.model_low, SAUNA_ASSET_ROLES.ar_glb, ROOM_ASSET_ROLES.scene]);
+const GLB_ROLES = new Set<string>([SAUNA_ASSET_ROLES.model_high, SAUNA_ASSET_ROLES.model_low, SAUNA_ASSET_ROLES.ar_glb, ROOM_ASSET_ROLES.scene, ROOM_ASSET_ROLES.scene_low]);
 
 export type FileKind = 'glb' | 'usdz' | 'image';
 
@@ -39,7 +51,7 @@ export const CONTENT_TYPES: Record<string, string> = {
 };
 
 export function kindForRole(role: string): FileKind {
-  if (role === 'AR_USDZ') return 'usdz';
+  if (role === 'MODEL_AR_USDZ') return 'usdz';
   if (GLB_ROLES.has(role)) return 'glb';
   return 'image';
 }
@@ -95,9 +107,13 @@ export function checkMagic(kind: FileKind, ext: string, bytes: Uint8Array): stri
   }
 }
 
-/** Storage key: `catalog/{slug}/{role-lowercase}-{sha256 first 12}.{ext}`. Content-addressed, so immutable caching is safe. */
+/**
+ * Storage key = full object key = URL path without the leading slash:
+ * `{tier prefix}/catalog/{owner}/{role-lowercase}-{sha256 first 12}.{ext}`. Content-addressed, so
+ * objects are immutable and cached forever.
+ */
 export function storageKey(owner: string, role: string, hash: string, ext: string): string {
-  return `catalog/${owner}/${role.toLowerCase().replace(/_/g, '-')}-${hash.slice(0, 12)}${ext}`;
+  return `${tierPrefix(role)}/catalog/${owner}/${role.toLowerCase().replace(/_/g, '-')}-${hash.slice(0, 12)}${ext}`;
 }
 
 export function formatBytes(n: number): string {

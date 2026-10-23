@@ -251,13 +251,29 @@ $$;
 CREATE TRIGGER reseller_room_scenes_assignable BEFORE INSERT OR UPDATE OF reseller_id, room_scene_id ON reseller_room_scenes
   FOR EACH ROW EXECUTE FUNCTION reseller_room_scenes_assignable();
 
--- Catalog files are catalog assets (no reseller owner).
+-- Catalog files are catalog assets (no reseller owner), stored under the prefix of their role's
+-- tier (URL = '/' || storage_key): LOW -> assets/lo/, FULL and AR -> assets/hi/, PUBLIC -> media/.
 CREATE FUNCTION catalog_asset_guard() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp
 AS $$
+DECLARE
+  v_owner  uuid;
+  v_key    text;
+  v_tier   text;
+  v_prefix text;
 BEGIN
-  IF EXISTS (SELECT 1 FROM assets WHERE id = NEW.asset_id AND owner_reseller_id IS NOT NULL) THEN
+  SELECT owner_reseller_id, storage_key INTO v_owner, v_key FROM assets WHERE id = NEW.asset_id;
+  IF NOT FOUND THEN
+    RETURN NEW; -- the foreign key reports it
+  END IF;
+  IF v_owner IS NOT NULL THEN
     PERFORM raise_rule('ASSET_NOT_CATALOG', 'catalog entities can only use catalog assets');
+  END IF;
+  SELECT tier INTO v_tier FROM asset_roles WHERE code = NEW.asset_role;
+  v_prefix := CASE v_tier WHEN 'LOW' THEN 'assets/lo/' WHEN 'FULL' THEN 'assets/hi/' WHEN 'AR' THEN 'assets/hi/' ELSE 'media/' END;
+  IF left(v_key, length(v_prefix)) <> v_prefix THEN
+    PERFORM raise_rule('ASSET_TIER_MISMATCH',
+      format('a %s-tier file (%s) must be stored under %s', v_tier, NEW.asset_role, v_prefix), v_key);
   END IF;
   RETURN NEW;
 END

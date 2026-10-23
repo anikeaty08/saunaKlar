@@ -48,12 +48,13 @@ export async function findOnPath(bin: string): Promise<string | null> {
 export function gltfTransformSteps(role: string, input: string, output: string): string[][] {
   const tmp = `${output}.tmp.glb`;
   switch (role) {
-    case 'MODEL_LOW':
+    case 'MODEL_GLB_LOW':
+    case 'ROOM_GLB_LOW':
       return [
         ['optimize', input, tmp, '--compress', 'meshopt', '--texture-compress', 'ktx2', '--texture-size', '1024', '--simplify', 'true', '--simplify-ratio', '0.25'],
         ['copy', tmp, output],
       ];
-    case 'AR_GLB':
+    case 'MODEL_AR_GLB':
       return [['optimize', input, output, '--compress', 'draco', '--texture-compress', 'webp', '--texture-size', '2048']];
     default:
       return [['optimize', input, output, '--compress', 'meshopt', '--texture-compress', 'ktx2', '--simplify', 'false']];

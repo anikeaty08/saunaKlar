@@ -1,9 +1,10 @@
 # S3 buckets. All block public access, enforce TLS, disable ACLs.
 #
 #   web      : SPA bundle (hashed files immutable, index.html no-cache). CloudFront OAC only.
-#   branding : public-by-design images (logos, favicons, thumbnails), still only via CloudFront OAC.
-#              Keys: branding/<slug>/..., thumbnails/...
-#   assets   : protected 3D assets (GLB/KTX2/USDZ). SSE-KMS, versioned, OAC only, replicated to
+#   branding : the public bucket: tenant branding and public catalog media, still only via OAC.
+#              Keys: branding/<slug>/... (logo, favicon.ico, favicon-*.png) and media/... (thumbnails,
+#              galleries). Key = URL path without the leading slash.
+#   assets   : protected 3D assets (GLB/KTX2/USDZ) under assets/lo/... and assets/hi/... SSE-KMS, versioned, OAC only, replicated to
 #              eu-west-1. Only reachable through CloudFront behaviours that require signed cookies/URLs.
 #   uploads  : presigned PUT target for branding uploads; objects expire after one day.
 

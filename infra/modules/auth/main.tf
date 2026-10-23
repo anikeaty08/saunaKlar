@@ -167,10 +167,10 @@ resource "aws_cognito_user_pool" "customers" {
   dynamic "email_configuration" {
     for_each = local.email_configuration == null ? [] : [local.email_configuration]
     content {
-      email_sending_account  = "DEVELOPER"
-      source_arn             = email_configuration.value.source_arn
-      from_email_address     = email_configuration.value.from
-      configuration_set      = var.ses_configuration_set
+      email_sending_account = "DEVELOPER"
+      source_arn            = email_configuration.value.source_arn
+      from_email_address    = email_configuration.value.from
+      configuration_set     = var.ses_configuration_set
     }
   }
 
@@ -264,10 +264,10 @@ resource "aws_cognito_user_pool" "staff" {
   dynamic "email_configuration" {
     for_each = local.email_configuration == null ? [] : [local.email_configuration]
     content {
-      email_sending_account  = "DEVELOPER"
-      source_arn             = email_configuration.value.source_arn
-      from_email_address     = email_configuration.value.from
-      configuration_set      = var.ses_configuration_set
+      email_sending_account = "DEVELOPER"
+      source_arn            = email_configuration.value.source_arn
+      from_email_address    = email_configuration.value.from
+      configuration_set     = var.ses_configuration_set
     }
   }
 

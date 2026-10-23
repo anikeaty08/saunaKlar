@@ -6,7 +6,7 @@ export const placementSchema = z.object({
   roomSceneId: uuid,
   positionXMm: z.number().int().min(-50_000).max(50_000),
   positionZMm: z.number().int().min(-50_000).max(50_000),
-  rotationDeg: z.number().min(-360).max(360),
+  rotationDeg: z.number().min(0).lt(360),
 });
 export type Placement = z.infer<typeof placementSchema>;
 

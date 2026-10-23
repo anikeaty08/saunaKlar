@@ -57,6 +57,14 @@ export function setTransport(f: Fetch): void {
   transport = f;
 }
 
+// ---- language -------------------------------------------------------------------
+
+let language: () => string | null = () => null;
+/** Catalogue names and descriptions come back in this language (Accept-Language). */
+export function setLanguageProvider(p: () => string | null): void {
+  language = p;
+}
+
 // ---- CSRF -----------------------------------------------------------------------
 
 let csrfToken: string | null = null;
@@ -139,6 +147,8 @@ export async function api<N extends RouteName>(name: N, ...args: MaybeOptions<N>
 
   const send = async (): Promise<Response> => {
     const headers = new Headers({ Accept: 'application/json, application/problem+json' });
+    const lang = language();
+    if (lang) headers.set('Accept-Language', lang);
     if (method !== 'GET') headers.set('X-CSRF-Token', await getCsrfToken());
     let body: string | undefined;
     if (opts.body !== undefined) {

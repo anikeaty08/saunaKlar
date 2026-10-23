@@ -243,13 +243,13 @@ resource "aws_db_instance" "this" {
 
   iam_database_authentication_enabled = true
 
-  backup_retention_period  = var.backup_retention_days
-  backup_window            = "01:00-02:00"
-  maintenance_window       = "sun:02:30-sun:03:30"
-  copy_tags_to_snapshot    = true
-  delete_automated_backups = false
-  deletion_protection      = var.deletion_protection
-  skip_final_snapshot      = !var.deletion_protection
+  backup_retention_period   = var.backup_retention_days
+  backup_window             = "01:00-02:00"
+  maintenance_window        = "sun:02:30-sun:03:30"
+  copy_tags_to_snapshot     = true
+  delete_automated_backups  = false
+  deletion_protection       = var.deletion_protection
+  skip_final_snapshot       = !var.deletion_protection
   final_snapshot_identifier = var.deletion_protection ? "${var.name}-final" : null
 
   auto_minor_version_upgrade  = true

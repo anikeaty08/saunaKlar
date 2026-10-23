@@ -6,6 +6,7 @@
 import { QueryClient, queryOptions, useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { api, isApiError } from './client.ts';
 import type { Tenant } from './types.ts';
+import { getLocale, useI18n } from '../i18n/i18n.ts';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,25 +46,25 @@ async function versioned<T>(qc: QueryClient, run: (v: number) => Promise<T>): Pr
   }
 }
 
-export const catalogQuery = (qc: QueryClient, version: number | undefined) =>
+export const catalogQuery = (qc: QueryClient, version: number | undefined, locale: string = getLocale()) =>
   queryOptions({
-    queryKey: ['catalog', version ?? 0] as const,
+    queryKey: ['catalog', version ?? 0, locale] as const,
     queryFn: ({ signal }) => versioned(qc, v => api('catalog', { query: { v }, signal })),
     staleTime: Infinity,
     enabled: version !== undefined,
   });
 
-export const saunaQuery = (qc: QueryClient, version: number | undefined, slug: string) =>
+export const saunaQuery = (qc: QueryClient, version: number | undefined, slug: string, locale: string = getLocale()) =>
   queryOptions({
-    queryKey: ['sauna', version ?? 0, slug] as const,
+    queryKey: ['sauna', version ?? 0, locale, slug] as const,
     queryFn: ({ signal }) => versioned(qc, v => api('sauna', { params: { slug }, query: { v }, signal })),
     staleTime: Infinity,
     enabled: version !== undefined,
   });
 
-export const roomsQuery = (qc: QueryClient, version: number | undefined) =>
+export const roomsQuery = (qc: QueryClient, version: number | undefined, locale: string = getLocale()) =>
   queryOptions({
-    queryKey: ['rooms', version ?? 0] as const,
+    queryKey: ['rooms', version ?? 0, locale] as const,
     queryFn: ({ signal }) => versioned(qc, v => api('rooms', { query: { v }, signal })),
     staleTime: Infinity,
     enabled: version !== undefined,
@@ -89,19 +90,22 @@ export function useTenantData(): Tenant {
 export function useCatalog() {
   const qc = useQueryClient();
   const tenant = useTenant().data;
-  return useQuery(catalogQuery(qc, tenant?.catalogVersion));
+  const locale = useI18n(st => st.locale);
+  return useQuery({ ...catalogQuery(qc, tenant?.catalogVersion, locale), placeholderData: prev => prev });
 }
 
 export function useSauna(slug: string) {
   const qc = useQueryClient();
   const tenant = useTenant().data;
-  return useQuery(saunaQuery(qc, tenant?.catalogVersion, slug));
+  const locale = useI18n(st => st.locale);
+  return useQuery(saunaQuery(qc, tenant?.catalogVersion, slug, locale));
 }
 
 export function useRooms() {
   const qc = useQueryClient();
   const tenant = useTenant().data;
-  return useQuery(roomsQuery(qc, tenant?.catalogVersion));
+  const locale = useI18n(st => st.locale);
+  return useQuery(roomsQuery(qc, tenant?.catalogVersion, locale));
 }
 
 export function useSession() {

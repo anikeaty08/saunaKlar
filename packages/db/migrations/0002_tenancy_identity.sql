@@ -43,6 +43,11 @@ CREATE TABLE assets (
   height            integer     CHECK (height > 0),
   created_at        timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT assets_storage_key_key UNIQUE (storage_key),
+  -- Key = URL path without the leading slash. Catalog files live under assets/lo|hi (protected) or
+  -- media/ (public; the tier per role is checked on the link tables); reseller uploads under branding/.
+  CONSTRAINT assets_storage_key_prefix CHECK (
+    CASE WHEN owner_reseller_id IS NULL THEN storage_key ~ '^(assets/(lo|hi)|media)/'
+         ELSE storage_key ~ '^branding/[a-z0-9-]+/' END),
   -- Lets branding reference "an asset of this reseller" structurally.
   CONSTRAINT assets_id_owner_key UNIQUE (id, owner_reseller_id)
 );

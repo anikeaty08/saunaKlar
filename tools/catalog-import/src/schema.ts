@@ -108,7 +108,7 @@ export const roomSchema = z.strictObject({
     wallColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'hex colour like "#f4f1ea"').transform((s) => s.toLowerCase()),
     windowWall: z.enum(WALLS).default('none'),
   }),
-  assets: z.strictObject({ scene: localePath.optional(), thumbnail: localePath.optional() }).default({}),
+  assets: z.strictObject({ scene: localePath.optional(), scene_low: localePath.optional(), thumbnail: localePath.optional() }).default({}),
 });
 
 export const roomFileSchema = z.strictObject({ room: roomSchema });

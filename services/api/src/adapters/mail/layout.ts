@@ -1,5 +1,6 @@
 import { escapeHtml, safeUrl } from './escape.ts';
 import { palette } from './color.ts';
+import { MAIL_STRINGS, type MailLocale } from './i18n.ts';
 
 /** Reseller branding for a mail. Every value is untrusted and escaped on output. */
 export interface MailBrand {
@@ -26,7 +27,9 @@ export type Block =
   | { kind: 'button'; label: string; url: string }
   | { kind: 'facts'; rows: [label: string, value: string][] }
   | { kind: 'quote'; text: string }
-  | { kind: 'note'; text: string };
+  | { kind: 'note'; text: string }
+  /** A sentence followed by an inline link, e.g. "Forgot your password? Reset it here". */
+  | { kind: 'link'; text: string; label: string; url: string };
 
 const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
 
@@ -36,6 +39,8 @@ function blockHtml(block: Block, c: ReturnType<typeof palette>): string {
       return `<h1 style="margin:0 0 20px;font-family:${FONT};font-size:26px;line-height:32px;font-weight:600;letter-spacing:-0.3px;color:${c.ink};">${escapeHtml(block.text)}</h1>`;
     case 'paragraph':
       return `<p style="margin:0 0 16px;font-family:${FONT};font-size:16px;line-height:24px;color:${c.ink};">${escapeHtml(block.text)}</p>`;
+    case 'link':
+      return `<p style="margin:0 0 16px;font-family:${FONT};font-size:16px;line-height:24px;color:${c.ink};">${escapeHtml(block.text)} <a href="${escapeHtml(safeUrl(block.url))}" style="color:${c.accent};text-decoration:underline;">${escapeHtml(block.label)}</a></p>`;
     case 'note':
       return `<p style="margin:0 0 16px;font-family:${FONT};font-size:13px;line-height:20px;color:${c.muted};">${escapeHtml(block.text)}</p>`;
     case 'quote':
@@ -72,6 +77,8 @@ function blockText(block: Block): string {
       return `    ${block.code}`;
     case 'button':
       return `${block.label}: ${safeUrl(block.url)}`;
+    case 'link':
+      return `${block.text} ${block.label}: ${safeUrl(block.url)}`;
     case 'facts':
       return block.rows.map(([l, v]) => `${l}: ${v}`).join('\n');
   }
@@ -81,16 +88,20 @@ function blockText(block: Block): string {
  * Single-colour, table-based layout with inline styles (the only thing mail clients render
  * reliably). Dark text on light paper; the reseller's primary colour is the only hue.
  */
-export function renderMail(brand: MailBrand, input: { subject: string; preheader: string; blocks: Block[] }): RenderedMail {
+export function renderMail(
+  brand: MailBrand,
+  input: { locale: MailLocale; subject: string; preheader: string; blocks: Block[] },
+): RenderedMail {
   const c = palette(brand.primaryColor);
+  const t = MAIL_STRINGS[input.locale].layout;
   const home = safeUrl(brand.storefrontUrl);
   const footerLines = [brand.legalName, brand.legalAddress].filter((v): v is string => Boolean(v));
   const support = brand.supportEmail
-    ? `Questions? Reply to this e-mail or write to <a href="mailto:${escapeHtml(brand.supportEmail)}" style="color:${c.accent};">${escapeHtml(brand.supportEmail)}</a>.`
-    : 'Questions? Reply to this e-mail.';
+    ? `${escapeHtml(t.questionsReplyOrWrite)} <a href="mailto:${escapeHtml(brand.supportEmail)}" style="color:${c.accent};">${escapeHtml(brand.supportEmail)}</a>.`
+    : escapeHtml(t.questionsReply);
 
   const html = `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>${escapeHtml(input.subject)}</title></head>
+<html lang="${input.locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>${escapeHtml(input.subject)}</title></head>
 <body style="margin:0;padding:0;background:${c.canvas};">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(input.preheader)}</div>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${c.canvas};"><tr><td align="center" style="padding:32px 16px;">
@@ -113,7 +124,7 @@ ${footerLines.map((l) => `<p style="margin:0;white-space:pre-line;">${escapeHtml
     '',
     ...input.blocks.flatMap((b) => [blockText(b), '']),
     '--',
-    brand.supportEmail ? `Questions? Write to ${brand.supportEmail}.` : 'Questions? Reply to this e-mail.',
+    brand.supportEmail ? t.questionsWriteTo(brand.supportEmail) : t.questionsReply,
     ...footerLines,
     home,
     '',

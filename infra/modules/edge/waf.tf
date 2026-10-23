@@ -29,9 +29,9 @@ locals {
     AWSManagedRulesAmazonIpReputationList = { priority = 0, overrides = [] }
     # The API enforces its own 1 MB JSON limit; the CRS 8 KB body rule would block legitimate
     # admin payloads, so it only counts.
-    AWSManagedRulesCommonRuleSet          = { priority = 20, overrides = ["SizeRestrictions_BODY"] }
-    AWSManagedRulesKnownBadInputsRuleSet  = { priority = 30, overrides = [] }
-    AWSManagedRulesSQLiRuleSet            = { priority = 40, overrides = [] }
+    AWSManagedRulesCommonRuleSet         = { priority = 20, overrides = ["SizeRestrictions_BODY"] }
+    AWSManagedRulesKnownBadInputsRuleSet = { priority = 30, overrides = [] }
+    AWSManagedRulesSQLiRuleSet           = { priority = 40, overrides = [] }
   }
 
   bot_control_paths = ["/api/assets/session", "/api/auth/signup"]

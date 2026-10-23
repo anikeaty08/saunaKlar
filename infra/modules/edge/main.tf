@@ -4,8 +4,11 @@
 #
 # Behaviours (first match wins):
 #   /api/*        → API Gateway  (no cache unless the API sends Cache-Control; key includes x-tenant-host)
-#   /assets/*     → assets bucket (signed cookies/URLs via trusted key group; key WITHOUT Host, G1)
-#   /branding/*   → branding bucket
+#   /assets/*     → assets bucket (signed cookies/URLs via trusted key group; key WITHOUT Host, G1).
+#                   LOW cookies cover https://{host}/assets/lo/*, FULL cookies https://{host}/assets/*,
+#                   AR files use signed URLs. No URI rewriting: S3 key = URL path without leading "/".
+#   /media/*      → public bucket (catalog thumbnails/galleries, immutable, no Host in key)
+#   /branding/*   → public bucket (tenant logos/favicons under branding/<slug>/)
 #   /favicon.ico  → branding bucket (rewritten to /branding/<slug>/favicon.ico by the function)
 #   default       → web bucket (SPA; the function rewrites routes to /index.html)
 
@@ -363,6 +366,24 @@ resource "aws_cloudfront_distribution" "this" {
     cache_policy_id            = aws_cloudfront_cache_policy.assets.id
     response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
     trusted_key_groups         = [aws_cloudfront_key_group.assets.id]
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.tenant_router.arn
+    }
+  }
+
+  # Public catalog media (thumbnails, galleries): immutable hashed keys, no Host in the key, so one
+  # cached copy serves every tenant.
+  ordered_cache_behavior {
+    path_pattern               = "/media/*"
+    target_origin_id           = local.origin_ids.branding
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD"]
+    cached_methods             = ["GET", "HEAD"]
+    compress                   = true
+    cache_policy_id            = aws_cloudfront_cache_policy.static.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
 
     function_association {
       event_type   = "viewer-request"
