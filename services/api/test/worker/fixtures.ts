@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
-import { createTestDatabase } from '@saunaklar/db';
+import { migrate } from '../../../../packages/db/src/migrate.ts';
 import type { EdgeTenantStatus, MailMessage } from '../../src/adapters/types.ts';
 import { silentLogger } from '../../src/lib/log.ts';
 import type { WorkerDeps } from '../../src/worker/handler.ts';
@@ -44,6 +44,36 @@ export class FakeEdge {
   async delete(slug: string) {
     this.deletes.push(slug);
   }
+}
+
+const ADMIN_URL = process.env.DATABASE_URL ?? 'postgres://sauna:sauna@127.0.0.1:5432/sauna';
+
+/**
+ * A throwaway database built from the migrations (incl. local IdP + dev mailbox). Replace with
+ * `createTestDatabase` from @saunaklar/db once that package exports it.
+ */
+async function createTestDatabase(): Promise<{ url: string; apiUrl: string; drop(): Promise<void> }> {
+  const name = `sauna_test_worker_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+  const admin = new pg.Client({ connectionString: ADMIN_URL });
+  await admin.connect();
+  await admin.query(`CREATE DATABASE ${name}`);
+  await admin.end();
+  const url = new URL(ADMIN_URL);
+  url.pathname = `/${name}`;
+  const apiUrl = new URL(url);
+  apiUrl.username = 'sauna_api';
+  apiUrl.password = 'sauna_api';
+  await migrate(url.toString(), { local: true });
+  return {
+    url: url.toString(),
+    apiUrl: apiUrl.toString(),
+    async drop() {
+      const c = new pg.Client({ connectionString: ADMIN_URL });
+      await c.connect();
+      await c.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`);
+      await c.end();
+    },
+  };
 }
 
 export async function createHarness(): Promise<Harness> {

@@ -40,7 +40,9 @@ type RowResult = 'sent' | 'retried' | 'dead' | 'skipped';
  * delivery only if the commit itself fails after the provider accepted a mail).
  */
 export async function drainOutbox(opts: DrainOptions): Promise<DrainResult> {
-  const now = opts.now ?? (() => new Date());
+  // Without an injected clock the database clock is used (`$n IS NULL → now()`), which avoids
+  // skipping just-inserted rows when the app clock lags (ms vs µs precision).
+  const now = (): Date | null => opts.now?.() ?? null;
   const batchSize = opts.batchSize ?? 50;
   const maxBatches = opts.maxBatches ?? 10;
   const total: DrainResult = { claimed: 0, sent: 0, retried: 0, deadLettered: 0, skipped: 0 };
@@ -61,7 +63,7 @@ export async function drainOutbox(opts: DrainOptions): Promise<DrainResult> {
   return total;
 }
 
-async function claimBatch(opts: DrainOptions, at: Date, limit: number): Promise<OutboxRow[]> {
+async function claimBatch(opts: DrainOptions, at: Date | null, limit: number): Promise<OutboxRow[]> {
   return workerTx(opts.pool, async db => {
     const { rows } = await db.query<{
       id: string;
@@ -71,12 +73,12 @@ async function claimBatch(opts: DrainOptions, at: Date, limit: number): Promise<
       attempts: number;
     }>(
       `UPDATE notification_outbox o
-          SET locked_until = $1::timestamptz + interval '${LEASE}'
+          SET locked_until = coalesce($1::timestamptz, now()) + interval '${LEASE}'
         WHERE o.id IN (
           SELECT id FROM notification_outbox
            WHERE sent_at IS NULL AND failed_at IS NULL
-             AND available_at <= $1
-             AND (locked_until IS NULL OR locked_until < $1)
+             AND available_at <= coalesce($1::timestamptz, now())
+             AND (locked_until IS NULL OR locked_until < coalesce($1::timestamptz, now()))
            ORDER BY available_at, id
            LIMIT $2
            FOR UPDATE SKIP LOCKED)
@@ -95,7 +97,7 @@ async function claimBatch(opts: DrainOptions, at: Date, limit: number): Promise<
   });
 }
 
-async function processRow(opts: DrainOptions, row: OutboxRow, now: () => Date): Promise<RowResult> {
+async function processRow(opts: DrainOptions, row: OutboxRow, now: () => Date | null): Promise<RowResult> {
   const log = opts.log.child({ outboxId: row.id, eventType: row.eventType });
   const handlers = opts.handlers ?? outboxHandlers;
   try {
@@ -107,7 +109,7 @@ async function processRow(opts: DrainOptions, row: OutboxRow, now: () => Date): 
         if (!handler) throw new PermanentError(`unknown event type ${row.eventType}`);
         const result = await handler({ db, row, mailer: opts.mailer, edge: opts.edge, links: opts.links, log });
         await db.query(
-          'UPDATE notification_outbox SET sent_at = $2, locked_until = NULL, last_error = NULL WHERE id = $1',
+          'UPDATE notification_outbox SET sent_at = coalesce($2::timestamptz, now()), locked_until = NULL, last_error = NULL WHERE id = $1',
           [row.id, now()],
         );
         return result;
@@ -122,11 +124,16 @@ async function processRow(opts: DrainOptions, row: OutboxRow, now: () => Date): 
   }
 }
 
+/**
+ * Waits (briefly) for the row instead of skipping it: a concurrent claim scan can hold the
+ * lock for an instant, and skipping would strand the row until its lease expires. Another
+ * worker still processing it (expired lease) makes us wait, then see `sent_at` and skip.
+ */
 async function relock(db: PoolClient, id: string): Promise<boolean> {
   const { rowCount } = await db.query(
     `SELECT 1 FROM notification_outbox
       WHERE id = $1 AND sent_at IS NULL AND failed_at IS NULL
-      FOR UPDATE SKIP LOCKED`,
+      FOR UPDATE`,
     [id],
   );
   return rowCount === 1;
@@ -136,7 +143,7 @@ async function recordFailure(
   opts: DrainOptions,
   row: OutboxRow,
   err: unknown,
-  at: Date,
+  at: Date | null,
   log: DrainOptions['log'],
 ): Promise<RowResult> {
   const permanent = err instanceof PermanentError;
@@ -148,9 +155,9 @@ async function recordFailure(
           SET attempts = attempts + 1,
               last_error = $2,
               locked_until = NULL,
-              available_at = $3::timestamptz
+              available_at = coalesce($3::timestamptz, now())
                 + make_interval(secs => least($5::float8 * power(2, attempts), $6::float8)),
-              failed_at = CASE WHEN $4::boolean OR attempts + 1 >= $7 THEN $3::timestamptz END
+              failed_at = CASE WHEN $4::boolean OR attempts + 1 >= $7 THEN coalesce($3::timestamptz, now()) END
         WHERE id = $1 AND sent_at IS NULL AND failed_at IS NULL
         RETURNING attempts, failed_at IS NOT NULL AS dead`,
       [row.id, message, at, permanent, BACKOFF_BASE_SECONDS, BACKOFF_MAX_SECONDS, maxAttempts],

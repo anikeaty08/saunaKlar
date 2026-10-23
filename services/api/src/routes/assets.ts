@@ -49,7 +49,7 @@ export function registerAssets(app: Hono<AppEnv>): void {
     }
     const expiresAt = await issueAssetCookies(c, tier);
     c.header('Cache-Control', 'no-store');
-    return { tier: tier === 'LOW' ? 'LOW' : 'FULL', expiresAt: expiresAt.toISOString() };
+    return { tier: tier === 'LOW' ? 'LOW' as const : 'FULL' as const, expiresAt: expiresAt.toISOString() };
   });
 
   mount(app, routes.assetAr, async ({ c, body, principal }) => {

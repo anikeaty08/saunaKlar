@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
 import sharp from 'sharp';
+
+type Img = ReturnType<typeof sharp>;
 import { UPLOAD_LIMITS } from '@saunaklar/shared';
 import { AdapterError } from './errors.ts';
 import { buildIco, readLargestIcoImage } from './images/ico.ts';
@@ -69,9 +71,9 @@ export async function processBrandingUpload(
 }
 
 /** Decodes to a normalised sharp pipeline (EXIF orientation applied) and checks dimensions. */
-async function decode(buf: Buffer, format: ReturnType<typeof sniffImageFormat>): Promise<sharp.Sharp> {
+async function decode(buf: Buffer, format: ReturnType<typeof sniffImageFormat>): Promise<Img> {
   try {
-    let image: sharp.Sharp;
+    let image: Img;
     if (format === 'ico') {
       const entry = readLargestIcoImage(buf);
       image =
@@ -97,7 +99,7 @@ async function decode(buf: Buffer, format: ReturnType<typeof sniffImageFormat>):
   }
 }
 
-async function processLogo(source: sharp.Sharp): Promise<ProcessedFile[]> {
+async function processLogo(source: Img): Promise<ProcessedFile[]> {
   const resized = source.clone().resize({ width: LOGO_MAX_WIDTH, withoutEnlargement: true });
   const webp = await resized.clone().webp({ quality: 90, alphaQuality: 100, effort: 5 }).toBuffer({ resolveWithObject: true });
   const png = await resized.clone().png({ compressionLevel: 9, adaptiveFiltering: true }).toBuffer({ resolveWithObject: true });
@@ -107,7 +109,7 @@ async function processLogo(source: sharp.Sharp): Promise<ProcessedFile[]> {
   ];
 }
 
-async function processFavicon(source: sharp.Sharp): Promise<ProcessedFile[]> {
+async function processFavicon(source: Img): Promise<ProcessedFile[]> {
   const pngs = new Map<number, Buffer>();
   for (const size of FAVICON_PNG_SIZES) {
     const out = await source

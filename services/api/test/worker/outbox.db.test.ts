@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createLogger } from '../../src/lib/log.ts';
 import { drainOutbox } from '../../src/worker/outbox.ts';
+import { startLocalWorker } from '../../src/worker/local.ts';
 import {
   createHarness,
   outboxRows,
@@ -62,7 +63,7 @@ describe('drainOutbox', () => {
     expect(toCustomer.html).toContain(`https://${t.slug}.saunas.test/account/requests/${requestId}`);
     expect(toCustomer.text).toContain('12,900.00');
     const toStaff = h.mailer.sent.find(m => m.to !== customer.email)!;
-    expect(toStaff.text).toContain('Please call me');
+    expect(toStaff.text).not.toContain('Please call me'); // free text stays in the admin panel (column grants)
     expect(toStaff.html).not.toContain('Doe'); // the worker cannot read last names
 
     expect((await outboxRows(h.owner)).every(r => r.sent_at !== null)).toBe(true);
@@ -89,10 +90,11 @@ describe('drainOutbox', () => {
 
     expect(result.deadLettered).toBe(0);
     expect(h.mailer.sent.map(m => m.to)).toEqual([customer.email, customer.email]); // QUOTED status mail folds into the quote mail
-    const [status, quote] = h.mailer.sent;
+    // Rows run concurrently, so match mails by content rather than order.
+    const quote = h.mailer.sent.find(m => m.text.includes('11,500.00'));
+    const status = h.mailer.sent.find(m => m !== quote);
     expect(status!.text).toContain('We are on it');
     expect(status!.subject).toMatch(/review/i);
-    expect(quote!.text).toContain('11,500.00');
     expect(quote!.text).toContain('2030');
   });
 
@@ -114,7 +116,8 @@ describe('drainOutbox', () => {
     const at = (ms: number) => () => new Date(t0.getTime() + ms);
 
     expect(await drainOutbox(h.deps({ log, now: at(0), maxAttempts: 3 }))).toMatchObject({ retried: 1 });
-    let [row] = await outboxRows(h.owner);
+    const pending = async () => (await outboxRows(h.owner)).filter(r => r.event_type === 'REQUEST_SUBMITTED');
+    let [row] = await pending();
     expect(row!.attempts).toBe(1);
     expect(row!.available_at.getTime()).toBe(t0.getTime() + 30 * SEC);
     expect(row!.last_error).toContain('[email]');
@@ -122,11 +125,11 @@ describe('drainOutbox', () => {
 
     expect(await drainOutbox(h.deps({ log, now: at(29 * SEC), maxAttempts: 3 }))).toMatchObject({ claimed: 0 });
     expect(await drainOutbox(h.deps({ log, now: at(31 * SEC), maxAttempts: 3 }))).toMatchObject({ retried: 1 });
-    [row] = await outboxRows(h.owner);
+    [row] = await pending();
     expect(row!.available_at.getTime()).toBe(t0.getTime() + 91 * SEC); // 31 s + 60 s
 
     expect(await drainOutbox(h.deps({ log, now: at(100 * SEC), maxAttempts: 3 }))).toMatchObject({ deadLettered: 1 });
-    [row] = await outboxRows(h.owner);
+    [row] = await pending();
     expect(row!.failed_at).not.toBeNull();
     expect(row!.attempts).toBe(3);
     const dead = lines.find(l => l.msg === 'outbox.dead_letter');
@@ -184,5 +187,13 @@ describe('drainOutbox', () => {
     await h.owner.query(`UPDATE notification_outbox SET locked_until = now() + interval '2 minutes'`);
     expect(await drainOutbox(h.deps())).toMatchObject({ claimed: 0 });
     expect(await drainOutbox(h.deps({ now: () => new Date(Date.now() + 3 * 60 * SEC) }))).toMatchObject({ sent: 1 });
+  });
+
+  it('local worker drains on nudge and stops cleanly', async () => {
+    const worker = startLocalWorker(h.deps(), { intervalMs: 60_000, retentionIntervalMs: 0 });
+    await h.owner.query(`INSERT INTO notification_outbox (event_type, payload) VALUES ('TENANT_SYNC', '{"slug":"nudged","status":"ACTIVE"}')`);
+    worker.nudge();
+    await expect.poll(() => h.edge.puts.some(([slug]) => slug === 'nudged'), { timeout: 5000 }).toBe(true);
+    await worker.stop();
   });
 });
