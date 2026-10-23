@@ -5,8 +5,11 @@ import { errorKind } from './sanitize.ts';
 import { workerTx } from './tx.ts';
 
 /**
- * Retention jobs (design 15.3, review G3). Every job deletes in short batches, each in
- * its own transaction, so locks stay brief and a large backlog never blocks writers.
+ * Retention jobs (design 15.3, review G3). Every job deletes in short batches, each in its own
+ * transaction, so locks stay brief and a backlog never blocks writers. app_worker may delete
+ * outbox rows directly; append-only and customer tables go through SECURITY DEFINER functions
+ * (`retention_delete_batch`, `delete_expired_pending_customers`). On a database that predates
+ * those functions the unbatched `run_retention()` is used instead.
  */
 
 export interface RetentionOptions {
@@ -27,80 +30,122 @@ export interface RetentionCounts {
   auditEvents: number;
 }
 
-interface Job {
-  key: keyof RetentionCounts;
-  table: string;
-  /** Predicate on the table; `$1` is the cutoff. */
-  where: string;
-  /** Postgres interval subtracted from `now`. */
-  age: string;
-}
-
-/** Retention periods (proposed defaults, to confirm with counsel). */
-export const RETENTION_JOBS: readonly Job[] = [
-  { key: 'shareLinkViews', table: 'share_link_views', where: 'viewed_at < $1', age: '13 months' },
-  { key: 'sentOutbox', table: 'notification_outbox', where: 'sent_at < $1', age: '30 days' },
-  { key: 'failedOutbox', table: 'notification_outbox', where: 'failed_at < $1', age: '90 days' },
-  { key: 'auditEvents', table: 'audit_events', where: 'occurred_at < $1', age: '24 months' },
-];
-
-export const PENDING_CUSTOMER_AGE = '7 days';
-
 export interface RetentionResult extends RetentionCounts {
   /** Jobs that threw; the others still ran. The next run retries. */
   failedJobs: string[];
 }
 
+type JobKey = keyof RetentionCounts;
+
+/** Retention periods (proposed defaults, to confirm with counsel), in milliseconds-free calendar terms. */
+export const RETENTION = {
+  shareLinkViews: { months: 13 },
+  auditEvents: { months: 24 },
+  sentOutbox: { days: 30 },
+  failedOutbox: { days: 90 },
+  pendingCustomers: { days: 7 },
+} as const satisfies Record<JobKey, { days: number } | { months: number }>;
+
+/** `now` minus a calendar period (UTC). */
+export function cutoffFor(now: Date, period: { days: number } | { months: number }): Date {
+  const d = new Date(now);
+  if ('months' in period) d.setUTCMonth(d.getUTCMonth() - period.months);
+  else d.setUTCDate(d.getUTCDate() - period.days);
+  return d;
+}
+
+const OUTBOX_PREDICATE = { sentOutbox: 'sent_at', failedOutbox: 'failed_at' } as const;
+
 export async function runRetention(opts: RetentionOptions): Promise<RetentionResult> {
   const now = (opts.now ?? (() => new Date()))();
   const batchSize = opts.batchSize ?? 5000;
   const counts: RetentionCounts = { shareLinkViews: 0, sentOutbox: 0, failedOutbox: 0, pendingCustomers: 0, auditEvents: 0 };
-  const errors: string[] = [];
-
-  for (const job of RETENTION_JOBS) {
+  const failedJobs: string[] = [];
+  const run = async (key: JobKey | 'legacy', job: () => Promise<void>) => {
     try {
-      counts[job.key] = await deleteInBatches(opts.pool, job, now, batchSize);
+      await job();
     } catch (err) {
       // One failing job must not stop the others; the next run retries.
-      errors.push(job.key);
-      opts.log.error('retention.job_failed', { job: job.key, error: errorKind(err) });
+      failedJobs.push(key);
+      opts.log.error('retention.job_failed', { job: key, error: errorKind(err) });
     }
-  }
-  try {
-    counts.pendingCustomers = await cleanupPendingCustomers({
-      pool: opts.pool,
-      log: opts.log,
-      now,
-      age: PENDING_CUSTOMER_AGE,
-      batchSize: Math.min(batchSize, 100),
-      deleteIdpUser: opts.deleteIdpUser,
+  };
+
+  for (const key of ['sentOutbox', 'failedOutbox'] as const) {
+    await run(key, async () => {
+      counts[key] = await deleteOutboxInBatches(opts.pool, OUTBOX_PREDICATE[key], cutoffFor(now, RETENTION[key]), batchSize);
     });
-  } catch (err) {
-    errors.push('pendingCustomers');
-    opts.log.error('retention.job_failed', { job: 'pendingCustomers', error: errorKind(err) });
   }
 
-  opts.log.info('retention.done', { ...counts, failedJobs: errors });
-  return { ...counts, failedJobs: errors };
+  const batched = await hasBatchedFunctions(opts.pool);
+  if (batched) {
+    await run('shareLinkViews', async () => {
+      counts.shareLinkViews = await deleteViaFunction(opts.pool, 'share_link_views', cutoffFor(now, RETENTION.shareLinkViews), batchSize);
+    });
+    await run('auditEvents', async () => {
+      counts.auditEvents = await deleteViaFunction(opts.pool, 'audit_events', cutoffFor(now, RETENTION.auditEvents), batchSize);
+    });
+    await run('pendingCustomers', async () => {
+      counts.pendingCustomers = await cleanupPendingCustomers({
+        pool: opts.pool,
+        log: opts.log,
+        cutoff: cutoffFor(now, RETENTION.pendingCustomers),
+        batchSize: Math.min(batchSize, 100),
+        deleteIdpUser: opts.deleteIdpUser,
+      });
+    });
+  } else {
+    opts.log.warn('retention.unbatched_fallback');
+    await run('legacy', async () => {
+      const legacy = await workerTx(opts.pool, async db => (await db.query<{ r: Record<string, number> }>('SELECT run_retention() AS r')).rows[0]!.r);
+      counts.shareLinkViews = Number(legacy.shareLinkViews ?? 0);
+      counts.auditEvents = Number(legacy.auditEvents ?? 0);
+      counts.sentOutbox += Number(legacy.sentOutbox ?? 0);
+      counts.pendingCustomers = Number(legacy.pendingCustomers ?? 0);
+    });
+  }
+
+  opts.log.info('retention.done', { ...counts, batched, failedJobs });
+  return { ...counts, failedJobs };
 }
 
-async function deleteInBatches(pool: Pool, job: Job, now: Date, batchSize: number): Promise<number> {
+async function hasBatchedFunctions(pool: Pool): Promise<boolean> {
+  return workerTx(pool, async db => {
+    const { rows } = await db.query<{ ok: boolean }>(
+      `SELECT to_regprocedure('retention_delete_batch(text,timestamptz,integer)') IS NOT NULL
+          AND to_regprocedure('delete_expired_pending_customers(timestamptz,integer)') IS NOT NULL AS ok`,
+    );
+    return rows[0]?.ok === true;
+  });
+}
+
+async function deleteOutboxInBatches(pool: Pool, column: 'sent_at' | 'failed_at', cutoff: Date, batchSize: number): Promise<number> {
+  return loopBatches(batchSize, () =>
+    workerTx(pool, async db => {
+      const { rowCount } = await db.query(
+        `DELETE FROM notification_outbox
+          WHERE id IN (SELECT id FROM notification_outbox WHERE ${column} < $1 LIMIT $2 FOR UPDATE SKIP LOCKED)`,
+        [cutoff, batchSize],
+      );
+      return rowCount ?? 0;
+    }),
+  );
+}
+
+async function deleteViaFunction(pool: Pool, table: 'share_link_views' | 'audit_events', cutoff: Date, batchSize: number): Promise<number> {
+  return loopBatches(batchSize, () =>
+    workerTx(pool, async db => {
+      const { rows } = await db.query<{ n: number }>('SELECT retention_delete_batch($1, $2, $3) AS n', [table, cutoff, batchSize]);
+      return Number(rows[0]?.n ?? 0);
+    }),
+  );
+}
+
+async function loopBatches(batchSize: number, batch: () => Promise<number>): Promise<number> {
   let total = 0;
   for (;;) {
-    const deleted = await workerTx(pool, async db => {
-      const { rows } = await db.query<{ n: string }>(
-        `WITH doomed AS (
-           SELECT id FROM ${job.table}
-            WHERE ${job.where.replace('$1', `($1::timestamptz - interval '${job.age}')`)}
-            LIMIT $2
-            FOR UPDATE SKIP LOCKED),
-         gone AS (DELETE FROM ${job.table} t USING doomed WHERE t.id = doomed.id RETURNING 1)
-         SELECT count(*)::text AS n FROM gone`,
-        [now, batchSize],
-      );
-      return Number(rows[0]?.n ?? 0);
-    });
-    total += deleted;
-    if (deleted < batchSize) return total;
+    const n = await batch();
+    total += n;
+    if (n < batchSize) return total;
   }
 }

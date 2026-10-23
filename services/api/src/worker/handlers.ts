@@ -22,7 +22,6 @@ interface RequestRow {
   reseller_id: string;
   customer_id: string;
   status_code: string;
-  message: string | null;
   sauna_name: string;
   price_minor: string | null;
   currency_code: string | null;
@@ -30,7 +29,7 @@ interface RequestRow {
 
 async function loadRequest(db: PoolClient, requestId: string): Promise<RequestRow> {
   const { rows } = await db.query<RequestRow>(
-    `SELECT cr.id, cr.reseller_id, cr.customer_id, cr.status_code, cr.message,
+    `SELECT cr.id, cr.reseller_id, cr.customer_id, cr.status_code,
             m.name AS sauna_name,
             s.final_price_minor::text AS price_minor, s.currency_code
        FROM configuration_requests cr
@@ -47,7 +46,10 @@ async function loadRequest(db: PoolClient, requestId: string): Promise<RequestRo
 
 const merge = (a: HandlerOutcome, b: HandlerOutcome): HandlerOutcome => ({ sent: a.sent + b.sent, skipped: a.skipped + b.skipped });
 
-/** Customer confirmation + notification to every active admin of the reseller. */
+/**
+ * Customer confirmation + notification to every active admin of the reseller. The customer's
+ * free-text message is not readable by app_worker (column grants) and stays in the admin panel.
+ */
 export const requestSubmitted: OutboxHandler = async ctx => {
   const req = await loadRequest(ctx.db, requirePayloadUuid(ctx.row.payload, 'requestId', 'request_id'));
   const brand = await loadBrand(ctx, req.reseller_id);
@@ -73,7 +75,6 @@ export const requestSubmitted: OutboxHandler = async ctx => {
     customerName: customer?.status === 'ANONYMISED' ? 'A former customer' : customer?.firstName || 'A customer',
     saunaName: req.sauna_name,
     price,
-    message: req.message,
     adminUrl: brand.origin + paths.adminRequest(req.id),
   });
   const toStaff = await sendBranded(ctx, brand, await loadResellerAdminEmails(ctx.db, req.reseller_id), staffMail);

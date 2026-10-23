@@ -155,8 +155,10 @@ export async function createConfiguration(
   db: Db, tenant: TenantInfo, locale: AppLocale,
   input: { saunaModelId: string; name?: string | undefined; selections?: string[] | undefined; customerId: string | null; staffId: string | null; sourceId?: string | null },
 ): Promise<ConfigRow> {
-  // Customers may only configure visible saunas; staff may prepare hidden ones.
-  const model = await loadModel(db, tenant, locale, { id: input.saunaModelId }, input.staffId !== null && input.customerId === null);
+  // Customers may only start from visible saunas; staff may prepare hidden ones, and a
+  // clone (own configuration or a claimed share link) keeps the model it was made with.
+  const includeHidden = (input.staffId !== null && input.customerId === null) || Boolean(input.sourceId);
+  const model = await loadModel(db, tenant, locale, { id: input.saunaModelId }, includeHidden);
   if (!model) throw new ApiError('SAUNA_NOT_OFFERED', 'This sauna is not offered here.');
   const selection = checkSelection(model, input.selections ?? defaultSelection(model.rules), false);
   const { rows } = await db.query<ConfigRow>(
