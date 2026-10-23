@@ -50,7 +50,14 @@ export class LocalObjectStore implements ObjectStore {
  */
 export class S3ObjectStore implements ObjectStore {
   private clientPromise: Promise<import('@aws-sdk/client-s3').S3Client> | null = null;
-  constructor(readonly assetsBucket: string, readonly mediaBucket: string | null, readonly region?: string) {}
+  readonly assetsBucket: string;
+  readonly mediaBucket: string | null;
+  readonly region: string | undefined;
+  constructor(assetsBucket: string, mediaBucket: string | null, region?: string) {
+    this.assetsBucket = assetsBucket;
+    this.mediaBucket = mediaBucket;
+    this.region = region;
+  }
   get description(): string { return `s3://${this.assetsBucket} (assets/*)${this.mediaBucket ? `, s3://${this.mediaBucket} (media/*)` : ''}`; }
   bucketFor(key: string): string {
     if (key.startsWith('assets/')) return this.assetsBucket;

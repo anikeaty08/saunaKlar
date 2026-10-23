@@ -64,7 +64,7 @@ data "aws_iam_policy_document" "common" {
   statement {
     sid       = "AppSecrets"
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = [aws_secretsmanager_secret.origin_verify.arn, aws_secretsmanager_secret.app_keys.arn]
+    resources = [aws_secretsmanager_secret.origin.arn, aws_secretsmanager_secret.app.arn]
   }
 
   statement {
@@ -103,6 +103,13 @@ data "aws_iam_policy_document" "customer" {
     actions   = local.customer_cognito_actions
     resources = [var.customer_pool_arn]
   }
+
+  # Sign-up confirmation mail is branded and sent by the API itself (routes/auth.ts).
+  statement {
+    sid       = "SendEmail"
+    actions   = ["ses:SendEmail", "ses:SendRawEmail"]
+    resources = [var.ses_identity_arn, var.ses_configuration_set_arn]
+  }
 }
 
 data "aws_iam_policy_document" "reseller_admin" {
@@ -114,18 +121,20 @@ data "aws_iam_policy_document" "reseller_admin" {
     resources = [var.staff_pool_arn]
   }
 
-  # Presigned PUT for branding uploads, then read + delete the upload after re-encoding.
+  # Branding uploads (one public bucket, S3 key = URL path): the browser PUTs to the presigned
+  # staging key uploads/<slug>/<random> (never served by CloudFront); the function reads it,
+  # re-encodes it and writes branding/<slug>/<random>/<name>, then deletes the upload.
   statement {
-    sid       = "Uploads"
+    sid       = "BrandingUploads"
     actions   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
-    resources = ["${var.uploads_bucket_arn}/branding/*"]
+    resources = ["${var.public_bucket_arn}/uploads/*", "${var.public_bucket_arn}/branding/*"]
   }
 
-  # Re-encoded logo/favicon written to the public branding bucket, under branding/<slug>/.
+  # Mail sent directly by the API (e.g. staff notifications); most mail goes through the outbox.
   statement {
-    sid       = "Branding"
-    actions   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
-    resources = ["${var.branding_bucket_arn}/branding/*"]
+    sid       = "SendEmail"
+    actions   = ["ses:SendEmail", "ses:SendRawEmail"]
+    resources = [var.ses_identity_arn, var.ses_configuration_set_arn]
   }
 }
 
@@ -150,11 +159,6 @@ data "aws_iam_policy_document" "manufacturer_admin" {
     resources = [var.staff_pool_arn]
   }
 
-  statement {
-    sid       = "Uploads"
-    actions   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
-    resources = ["${var.uploads_bucket_arn}/manufacturer/*"]
-  }
 }
 
 data "aws_iam_policy_document" "asset_signer" {

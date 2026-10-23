@@ -1,0 +1,46 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  height: 1.6rem;
+  padding: 0 0.65rem;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border: var(--hair) solid transparent;
+}
+
+.badge--solid {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+.badge--outline {
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+
+.badge--soft {
+  background: var(--paper-3);
+  color: var(--ink);
+}
+
+.badge--dashed {
+  border: var(--hair) dashed var(--ink-3);
+  color: var(--ink-2);
+}
+
+.badge--muted {
+  color: var(--ink-3);
+  background: var(--paper-2);
+}
+
+.badge__dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: currentColor;
+}

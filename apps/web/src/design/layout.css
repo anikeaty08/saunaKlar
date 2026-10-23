@@ -1,0 +1,101 @@
+/* Page-level layout shared by storefront pages and admin shells. */
+
+.main {
+  min-height: 70dvh;
+  outline: none;
+}
+
+.page {
+  padding-top: clamp(2rem, 1rem + 4vw, 5rem);
+}
+
+.page-hero {
+  display: grid;
+  gap: var(--space-5);
+  padding-bottom: var(--space-8);
+}
+
+.page-title {
+  font-size: var(--step-6);
+  letter-spacing: -0.055em;
+  line-height: 0.9;
+  font-variation-settings: 'wdth' 82;
+  max-width: 16ch;
+}
+
+.page-title--md {
+  font-size: var(--step-5);
+}
+
+.section {
+  padding-block: var(--space-9) 0;
+}
+
+.grid-12 {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--gutter);
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-7);
+}
+
+@media (min-width: 900px) {
+  .split {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: var(--space-8);
+  }
+
+  .split--reverse {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  }
+}
+
+.numbered {
+  counter-reset: num;
+}
+
+.numbered > * {
+  counter-increment: num;
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) 2fr;
+  border-top: var(--hair) solid var(--ink);
+}
+
+.kv > dt,
+.kv > dd {
+  padding: 0.85rem 0;
+  border-bottom: var(--hair) solid var(--line);
+  font-size: var(--step--1);
+}
+
+.kv > dt {
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+.kv > dd {
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-shell__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  height: var(--header-h);
+  border-bottom: var(--hair) solid var(--line);
+  flex-wrap: wrap;
+}

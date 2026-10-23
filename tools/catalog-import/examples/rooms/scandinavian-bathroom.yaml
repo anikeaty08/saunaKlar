@@ -1,0 +1,16 @@
+# A parametric room (no GLB): the viewer builds it from `preset`.
+room:
+  code: scandinavian-bathroom
+  name: Scandinavian bathroom
+  description: Large-format tiles and a pale wall, the indoor classic.
+  status: ACTIVE
+  sort: 30
+  translations:
+    de: { name: Skandinavisches Bad, description: Großformatige Fliesen und eine helle Wand. }
+  preset:
+    widthMm: 3600
+    depthMm: 3000
+    heightMm: 2600
+    floor: tiles
+    wallColor: "#e9e5dd"
+    windowWall: east

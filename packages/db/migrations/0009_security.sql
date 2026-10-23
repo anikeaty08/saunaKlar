@@ -279,7 +279,9 @@ GRANT SELECT ON resellers TO app_tenant;
 GRANT UPDATE (default_share_expiry_days) ON resellers TO app_tenant;
 GRANT SELECT, INSERT, UPDATE ON reseller_branding TO app_tenant;
 GRANT SELECT, INSERT, DELETE ON assets TO app_tenant;
-GRANT SELECT ON staff_users TO app_tenant;
+-- Names only (history / notes show who acted); e-mail and IdP subject go through
+-- staff_principal_for_reseller() / staff_by_email().
+GRANT SELECT (id, display_name) ON staff_users TO app_tenant;
 GRANT UPDATE (display_name) ON staff_users TO app_tenant;
 GRANT SELECT ON reseller_admins TO app_tenant;
 GRANT SELECT, INSERT, UPDATE, DELETE ON customers, customer_addresses TO app_tenant;
@@ -418,8 +420,9 @@ END
 $$;
 GRANT EXECUTE ON FUNCTION activate_staff_user(text) TO app_tenant, app_platform;
 
--- Manufacturer analytics without PII (A10): counts only. NULL = every reseller.
-CREATE FUNCTION reseller_stats(p_reseller_id uuid)
+-- Manufacturer analytics without PII (A10): counts only. p_reseller_id NULL = every reseller;
+-- p_since limits every count to rows created (views: viewed) at or after it; NULL = all time.
+CREATE FUNCTION reseller_stats(p_reseller_id uuid, p_since timestamptz DEFAULT NULL)
 RETURNS TABLE (
   reseller_id uuid, customers bigint, configurations bigint, locked_configurations bigint,
   share_links bigint, share_link_views bigint, requests bigint, requests_open bigint, requests_accepted bigint
@@ -427,20 +430,23 @@ RETURNS TABLE (
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp
 AS $$
   SELECT r.id,
-    (SELECT count(*) FROM customers c WHERE c.reseller_id = r.id AND c.status = 'ACTIVE'),
-    (SELECT count(*) FROM configurations c WHERE c.reseller_id = r.id),
-    (SELECT count(*) FROM configurations c WHERE c.reseller_id = r.id AND c.locked_at IS NOT NULL),
-    (SELECT count(*) FROM share_links s WHERE s.reseller_id = r.id),
-    (SELECT count(*) FROM share_link_views v WHERE v.reseller_id = r.id),
-    (SELECT count(*) FROM configuration_requests q WHERE q.reseller_id = r.id),
+    (SELECT count(*) FROM customers c WHERE c.reseller_id = r.id AND c.status = 'ACTIVE'
+       AND (p_since IS NULL OR c.created_at >= p_since)),
+    (SELECT count(*) FROM configurations c WHERE c.reseller_id = r.id AND (p_since IS NULL OR c.created_at >= p_since)),
+    (SELECT count(*) FROM configurations c WHERE c.reseller_id = r.id AND c.locked_at IS NOT NULL
+       AND (p_since IS NULL OR c.created_at >= p_since)),
+    (SELECT count(*) FROM share_links s WHERE s.reseller_id = r.id AND (p_since IS NULL OR s.created_at >= p_since)),
+    (SELECT count(*) FROM share_link_views v WHERE v.reseller_id = r.id AND (p_since IS NULL OR v.viewed_at >= p_since)),
+    (SELECT count(*) FROM configuration_requests q WHERE q.reseller_id = r.id AND (p_since IS NULL OR q.created_at >= p_since)),
     (SELECT count(*) FROM configuration_requests q JOIN request_statuses st ON st.code = q.status_code
-       WHERE q.reseller_id = r.id AND NOT st.is_terminal),
-    (SELECT count(*) FROM configuration_requests q WHERE q.reseller_id = r.id AND q.status_code IN ('ACCEPTED', 'CLOSED'))
+       WHERE q.reseller_id = r.id AND NOT st.is_terminal AND (p_since IS NULL OR q.created_at >= p_since)),
+    (SELECT count(*) FROM configuration_requests q WHERE q.reseller_id = r.id AND q.status_code IN ('ACCEPTED', 'CLOSED')
+       AND (p_since IS NULL OR q.created_at >= p_since))
   FROM resellers r
   WHERE p_reseller_id IS NULL OR r.id = p_reseller_id
   ORDER BY r.slug
 $$;
-GRANT EXECUTE ON FUNCTION reseller_stats(uuid) TO app_platform;
+GRANT EXECUTE ON FUNCTION reseller_stats(uuid, timestamptz) TO app_platform;
 
 CREATE FUNCTION reseller_request_status_counts(p_reseller_id uuid)
 RETURNS TABLE (reseller_id uuid, status_code text, requests bigint)

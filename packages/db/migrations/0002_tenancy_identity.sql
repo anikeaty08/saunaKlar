@@ -35,7 +35,7 @@ CREATE TABLE assets (
   id                uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_reseller_id uuid        REFERENCES resellers (id),
   storage_key       text        NOT NULL
-                                CHECK (storage_key ~ '^[A-Za-z0-9][A-Za-z0-9/._-]{0,510}$' AND storage_key !~ '\.\.|//'),
+                                CHECK (length(storage_key) <= 512 AND storage_key ~ '^[A-Za-z0-9][A-Za-z0-9/._-]*$' AND storage_key !~ '\.\.|//'),
   content_type      text        NOT NULL CHECK (content_type ~ '^[a-z]+/[a-z0-9.+-]+$'),
   byte_size         bigint      CHECK (byte_size >= 0),
   sha256            char(64)    CHECK (sha256 ~ '^[0-9a-f]{64}$'),

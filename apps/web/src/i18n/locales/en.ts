@@ -496,6 +496,7 @@ const messages = {
     home: 'Back to the start',
   },
   errors: {
+    eyebrow: 'Error',
     title: 'Something went wrong',
     body: 'An unexpected error occurred. Please try again.',
     reload: 'Reload page',

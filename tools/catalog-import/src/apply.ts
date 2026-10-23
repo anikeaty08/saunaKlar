@@ -2,7 +2,7 @@
  * Apply: one transaction per sauna (and per room) as role catalog_admin. Every write is an
  * idempotent upsert by natural key that only touches rows whose values differ, followed by
  * deletes of model-level rows the manifest no longer lists. Shared entities (option groups,
- * options, attribute definitions) are created/updated but never deleted, and reseller assignments
+ * options, attribute definitions, and their translations) are created/updated but never deleted, and reseller assignments
  * are never touched: if a removal conflicts with a reseller, the database rejects the transaction
  * and the error is reported with the reseller slug.
  */
@@ -132,7 +132,6 @@ export async function applySauna(db: Queryable, manufacturerId: string, s: Desir
          ON CONFLICT (option_group_id, locale) DO UPDATE SET name = EXCLUDED.name WHERE t.name IS DISTINCT FROM EXCLUDED.name`,
         [groupId, locale, t.name]);
     }
-    await db.query('DELETE FROM option_group_translations WHERE option_group_id = $1 AND locale <> ALL($2::text[])', [groupId, Object.keys(g.translations)]);
 
     for (const o of g.options) {
       await db.query(
@@ -149,7 +148,6 @@ export async function applySauna(db: Queryable, manufacturerId: string, s: Desir
            WHERE (t.name, t.description) IS DISTINCT FROM (EXCLUDED.name, EXCLUDED.description)`,
           [optionId, locale, t.name, nullIfEmpty(t.description)]);
       }
-      await db.query('DELETE FROM option_translations WHERE option_id = $1 AND locale <> ALL($2::text[])', [optionId, Object.keys(o.translations)]);
     }
 
     await db.query(
@@ -231,11 +229,21 @@ export async function applySauna(db: Queryable, manufacturerId: string, s: Desir
 
 export async function applyRoom(db: Queryable, manufacturerId: string, r: DesiredRoom, assets: PlannedAsset[]): Promise<string> {
   await db.query(
-    `INSERT INTO room_scenes AS t (manufacturer_id, code, name, description, status, preset) VALUES ($1, $2, $3, $4, $5, $6::jsonb)
-     ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, status = EXCLUDED.status, preset = EXCLUDED.preset
-     WHERE (t.name, t.description, t.status, t.preset) IS DISTINCT FROM (EXCLUDED.name, EXCLUDED.description, EXCLUDED.status, EXCLUDED.preset)`,
-    [manufacturerId, r.code, r.name, nullIfEmpty(r.description), r.status, JSON.stringify(r.preset)]);
+    `INSERT INTO room_scenes AS t (manufacturer_id, code, name, description, status, sort_order, preset) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+     ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, status = EXCLUDED.status,
+       sort_order = EXCLUDED.sort_order, preset = EXCLUDED.preset
+     WHERE (t.name, t.description, t.status, t.sort_order, t.preset)
+       IS DISTINCT FROM (EXCLUDED.name, EXCLUDED.description, EXCLUDED.status, EXCLUDED.sort_order, EXCLUDED.preset)`,
+    [manufacturerId, r.code, r.name, nullIfEmpty(r.description), r.status, r.sortOrder, JSON.stringify(r.preset)]);
   const { id } = await one<{ id: string }>(db, 'SELECT id FROM room_scenes WHERE code = $1', [r.code]);
+  for (const [locale, t] of Object.entries(r.translations)) {
+    await db.query(
+      `INSERT INTO room_scene_translations AS t (room_scene_id, locale, name, description) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (room_scene_id, locale) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description
+       WHERE (t.name, t.description) IS DISTINCT FROM (EXCLUDED.name, EXCLUDED.description)`,
+      [id, locale, t.name, nullIfEmpty(t.description)]);
+  }
+  await db.query('DELETE FROM room_scene_translations WHERE room_scene_id = $1 AND locale <> ALL($2::text[])', [id, Object.keys(r.translations)]);
   const assetIds = await upsertAssets(db, assets);
   for (const a of assets) {
     await db.query(

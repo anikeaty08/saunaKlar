@@ -24,7 +24,7 @@ variable "admin_zone_id" {
 }
 
 variable "bucket_regional_domain_names" {
-  description = "Bucket key (web, branding, assets) → regional domain name."
+  description = "Bucket key (web, public, assets) → regional domain name."
   type        = map(string)
 }
 
@@ -33,11 +33,11 @@ variable "api_origin_domain" {
   type        = string
 }
 
-variable "origin_verify_header" {
+variable "origin_secret_header" {
   type = string
 }
 
-variable "origin_verify_value" {
+variable "origin_secret_value" {
   type      = string
   sensitive = true
 }

@@ -1,0 +1,97 @@
+# Uses the real sample model in ../models/espoo-compact.glb. Shared option groups and options
+# (wood, heater, door, lighting, extras) are described exactly like the dev seed describes them.
+sauna:
+  sku: NL-ESP-161
+  slug: espoo-glass
+  status: ACTIVE
+  name: Espoo Glass
+  description: The Espoo Compact with a full glass front, for two to three people.
+  sort: 10
+  translations:
+    de:
+      name: Espoo Glass
+      description: Die Espoo Compact mit durchgehender Glasfront, für zwei bis drei Personen.
+    fi:
+      name: Espoo Glass
+      description: Espoo Compact täyslasisella etuseinällä, 2–3 hengelle.
+  attributes:
+    width_mm: 1600
+    depth_mm: 1400
+    height_mm: 2050
+    capacity_persons: 3
+    heater_kw: 6
+    weight_kg: 410
+    interior_wood: Nordic spruce
+    outdoor: false
+  prices:
+    EUR: { list_price: "7490.00", max_discount_pct: 15 }
+    CHF: { list_price: "7190.00", max_discount_pct: 12.5 }
+  option_groups:
+    wood:
+      name: Wood
+      selection: SINGLE
+      required: true
+      sort: 0
+      translations: { de: Holzart }
+      options:
+        - code: spruce
+          name: Nordic spruce
+          description: Light, resinous and fragrant; the classic Finnish sauna wood.
+          swatch: "#e8d4a8"
+          default: true
+          translations: { de: Nordische Fichte }
+        - code: aspen
+          name: Aspen
+          description: Pale, resin-free and cool to the touch.
+          swatch: "#efe3c8"
+          translations: { de: Espe }
+        - code: thermo-aspen
+          name: Thermo-aspen
+          description: Heat-treated aspen with a deep caramel tone and high dimensional stability.
+          swatch: "#8a5a3b"
+          translations: { de: Thermo-Espe }
+    heater:
+      name: Heater
+      selection: SINGLE
+      required: true
+      sort: 1
+      translations: { de: Ofen }
+      options:
+        - { code: heater-6kw, name: Electric heater 6 kW, default: true, translations: { de: Elektroofen 6 kW } }
+        - { code: heater-wood, name: Wood-fired stove, translations: { de: Holzofen } }
+    control:
+      name: Control unit
+      selection: SINGLE
+      sort: 2
+      translations: { de: Steuerung }
+      options:
+        - { code: control-basic, name: Basic control panel, translations: { de: Basis-Steuerung } }
+        - { code: control-wifi, name: Wi-Fi control with app, translations: { de: WLAN-Steuerung mit App } }
+    lighting:
+      name: Lighting
+      selection: MULTI
+      sort: 3
+      translations: { de: Beleuchtung }
+      options:
+        - { code: led-backrest, name: LED backrest lighting, translations: { de: LED-Rückenlehnenbeleuchtung } }
+        - { code: led-underbench, name: LED under-bench lighting, translations: { de: LED-Unterbankbeleuchtung } }
+    extras:
+      name: Extras
+      selection: MULTI
+      sort: 4
+      translations: { de: Extras }
+      options:
+        - { code: audio, name: Bluetooth audio system, translations: { de: Bluetooth-Audiosystem } }
+        - { code: aroma, name: Aroma dispenser, translations: { de: Aromaspender } }
+  # Every option needs a price in every currency of `prices` (review C4); "0.00" = included.
+  option_prices:
+    EUR: { spruce: "0.00", aspen: "390.00", thermo-aspen: "790.00", heater-6kw: "0.00", heater-wood: "1190.00", control-basic: "290.00", control-wifi: "590.00", led-backrest: "240.00", led-underbench: "210.00", audio: "490.00", aroma: "180.00" }
+    CHF: { spruce: "0.00", aspen: "380.00", thermo-aspen: "760.00", heater-6kw: "0.00", heater-wood: "1150.00", control-basic: "280.00", control-wifi: "570.00", led-backrest: "230.00", led-underbench: "200.00", audio: "470.00", aroma: "170.00" }
+  rules:
+    requires:
+      - { audio: led-backrest }
+    excludes:
+      - [heater-wood, control-basic]
+      - [heater-wood, control-wifi]
+  assets:
+    model_high: ../models/espoo-compact.glb

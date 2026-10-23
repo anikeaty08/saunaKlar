@@ -1,0 +1,17 @@
+.skel {
+  display: block;
+  background: linear-gradient(90deg, var(--paper-3) 0%, var(--paper-2) 40%, var(--paper-3) 80%);
+  background-size: 300% 100%;
+  border-radius: var(--radius);
+  animation: skel 1.6s ease-in-out infinite;
+}
+
+.skel-lines {
+  display: grid;
+  gap: 0.6em;
+}
+
+@keyframes skel {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}

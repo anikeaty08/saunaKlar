@@ -20,8 +20,10 @@ export class Diagnostics {
 
 /** Thrown for a failure that should stop the run with exit code 1 (bad input, rejected import). */
 export class ImportError extends Error {
-  constructor(message: string, readonly diagnostics: Diagnostic[] = []) {
+  readonly diagnostics: Diagnostic[];
+  constructor(message: string, diagnostics: Diagnostic[] = []) {
     super(message);
+    this.diagnostics = diagnostics;
     this.name = 'ImportError';
   }
 }

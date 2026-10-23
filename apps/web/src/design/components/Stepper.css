@@ -1,0 +1,43 @@
+.stepper ol {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 0.5rem;
+}
+
+.stepper__step {
+  border-top: 2px solid var(--line);
+  padding-top: 0.6rem;
+  transition: border-color var(--dur-3) var(--ease-out);
+}
+
+.stepper__step.is-done,
+.stepper__step.is-current {
+  border-top-color: var(--ink);
+}
+
+.stepper__btn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: inherit;
+}
+
+.stepper__num {
+  font-size: var(--step--2);
+  color: var(--ink-3);
+}
+
+.stepper__label {
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.is-current .stepper__label,
+.is-done .stepper__label {
+  color: var(--ink);
+}

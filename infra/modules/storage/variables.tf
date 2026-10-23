@@ -11,13 +11,13 @@ variable "admin_host" {
 }
 
 variable "extra_upload_origins" {
-  description = "Additional origins allowed to PUT to the uploads bucket (e.g. local dev)."
+  description = "Additional origins allowed to PUT to uploads/ in the public bucket."
   type        = list(string)
   default     = []
 }
 
 variable "cloudfront_distribution_arn" {
-  description = "Distribution allowed to read the web, branding and assets buckets via OAC."
+  description = "Distribution allowed to read the web, public and assets buckets via OAC."
   type        = string
 }
 

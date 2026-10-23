@@ -20,10 +20,10 @@ locals {
   cert_domains  = distinct([local.wildcard, var.admin_host])
 
   origin_ids = {
-    web      = "s3-web"
-    branding = "s3-branding"
-    assets   = "s3-assets"
-    api      = "api"
+    web    = "s3-web"
+    public = "s3-public"
+    assets = "s3-assets"
+    api    = "api"
   }
 
   kvs_id = element(split("/", aws_cloudfront_key_value_store.tenants.arn), 1)
@@ -295,8 +295,8 @@ resource "aws_cloudfront_distribution" "this" {
   }
 
   origin {
-    origin_id                = local.origin_ids.branding
-    domain_name              = var.bucket_regional_domain_names["branding"]
+    origin_id                = local.origin_ids.public
+    domain_name              = var.bucket_regional_domain_names["public"]
     origin_access_control_id = aws_cloudfront_origin_access_control.s3.id
   }
 
@@ -329,8 +329,8 @@ resource "aws_cloudfront_distribution" "this" {
     }
 
     custom_header {
-      name  = var.origin_verify_header
-      value = var.origin_verify_value
+      name  = var.origin_secret_header
+      value = var.origin_secret_value
     }
   }
 
@@ -372,7 +372,7 @@ resource "aws_cloudfront_distribution" "this" {
   # cached copy serves every tenant.
   ordered_cache_behavior {
     path_pattern               = "/media/*"
-    target_origin_id           = local.origin_ids.branding
+    target_origin_id           = local.origin_ids.public
     viewer_protocol_policy     = "redirect-to-https"
     allowed_methods            = ["GET", "HEAD"]
     cached_methods             = ["GET", "HEAD"]
@@ -388,7 +388,7 @@ resource "aws_cloudfront_distribution" "this" {
 
   ordered_cache_behavior {
     path_pattern               = "/branding/*"
-    target_origin_id           = local.origin_ids.branding
+    target_origin_id           = local.origin_ids.public
     viewer_protocol_policy     = "redirect-to-https"
     allowed_methods            = ["GET", "HEAD"]
     cached_methods             = ["GET", "HEAD"]
@@ -404,7 +404,7 @@ resource "aws_cloudfront_distribution" "this" {
 
   ordered_cache_behavior {
     path_pattern               = "/favicon.ico"
-    target_origin_id           = local.origin_ids.branding
+    target_origin_id           = local.origin_ids.public
     viewer_protocol_policy     = "redirect-to-https"
     allowed_methods            = ["GET", "HEAD"]
     cached_methods             = ["GET", "HEAD"]

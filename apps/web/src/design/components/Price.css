@@ -1,0 +1,49 @@
+.price {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.price__label {
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.price__list {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--ink-3);
+  text-decoration-thickness: 1px;
+}
+
+.price__value {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.price--sm .price__value {
+  font-size: var(--step-0);
+  letter-spacing: -0.01em;
+}
+
+.price--md .price__value {
+  font-size: var(--step-2);
+}
+
+.price--lg .price__value {
+  font-size: var(--step-4);
+  font-weight: 300;
+}
+
+.price--xl .price__value {
+  font-size: var(--step-5);
+  font-weight: 300;
+  letter-spacing: -0.06em;
+}

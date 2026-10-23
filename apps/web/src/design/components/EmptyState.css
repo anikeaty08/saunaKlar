@@ -1,0 +1,35 @@
+.empty {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  padding: var(--space-8) 0;
+  border-top: var(--hair) solid var(--ink);
+}
+
+.empty--compact {
+  padding: var(--space-6) 0;
+}
+
+.empty__icon {
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border: var(--hair) solid var(--line-strong);
+  border-radius: 50%;
+  color: var(--ink-2);
+}
+
+.empty__title {
+  font-size: var(--step-3);
+  letter-spacing: -0.04em;
+}
+
+.empty__body {
+  color: var(--ink-3);
+  max-width: 42ch;
+}
+
+.empty__action {
+  margin-top: var(--space-3);
+}

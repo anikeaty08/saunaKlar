@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 const API = 'http://127.0.0.1:8787';
 // changeOrigin false: the API resolves the tenant from the Host header, so the
 // proxy must forward `alpha-spa.localhost:5173` untouched.
-const proxied = ['/api', '/assets', '/branding', '/favicon.ico', '/dev'];
+const proxied = ['/api', '/assets', '/media', '/branding', '/favicon.ico', '/dev'];
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -22,6 +22,9 @@ export default defineConfig(({ mode }) => {
     preview: { port: 4173, host: true, allowedHosts: ['.localhost'] },
     build: {
       target: 'es2022',
+      // /assets/* is the signed-cookie path for protected 3D files in CloudFront;
+      // the app's own bundles must live elsewhere.
+      assetsDir: 'static',
       sourcemap: true,
       chunkSizeWarningLimit: 1200,
       rollupOptions: {

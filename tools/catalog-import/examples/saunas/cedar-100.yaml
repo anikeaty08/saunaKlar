@@ -1,0 +1,54 @@
+# A sauna without 3D files yet: imported as DRAFT; the storefront shows a placeholder until
+# the model files are added to `assets` and the status is set to ACTIVE.
+sauna:
+  sku: NL-CED-100
+  slug: cedar-100
+  status: DRAFT
+  name: Cedar 100
+  description: A four-person outdoor cabin in western red cedar.
+  sort: 20
+  translations:
+    de: { name: Cedar 100, description: Eine Außensauna für vier Personen aus Rotzeder. }
+  attributes: { width_mm: 2200, depth_mm: 1800, height_mm: 2200, capacity_persons: 4, heater_kw: 9, interior_wood: Western red cedar, outdoor: true }
+  prices:
+    EUR: { list_price: "12900.00", max_discount_pct: 15 }
+    SEK: { list_price: "139000.00", max_discount_pct: 15 }
+  option_groups:
+    wood:
+      name: Wood
+      selection: SINGLE
+      required: true
+      translations: { de: Holzart }
+      options:
+        - code: red-cedar
+          name: Western red cedar
+          description: Aromatic, naturally durable and warm in colour.
+          swatch: "#a0522d"
+          default: true
+          translations: { de: Rote Zeder }
+        - code: thermo-aspen
+          name: Thermo-aspen
+          description: Heat-treated aspen with a deep caramel tone and high dimensional stability.
+          swatch: "#8a5a3b"
+          translations: { de: Thermo-Espe }
+    heater:
+      name: Heater
+      selection: SINGLE
+      required: true
+      translations: { de: Ofen }
+      options:
+        - { code: heater-9kw, name: Electric heater 9 kW, default: true, translations: { de: Elektroofen 9 kW } }
+        - { code: heater-wood, name: Wood-fired stove, translations: { de: Holzofen } }
+    extras:
+      name: Extras
+      selection: MULTI
+      translations: { de: Extras }
+      options:
+        - { code: bucket-set, name: Bucket and ladle set, translations: { de: Kübel- und Kellenset } }
+        - { code: salt-wall, name: Himalayan salt wall, translations: { de: Himalaya-Salzwand } }
+  option_prices:
+    EUR: { red-cedar: "0.00", thermo-aspen: "0.00", heater-9kw: "0.00", heater-wood: "1190.00", bucket-set: "120.00", salt-wall: "990.00" }
+    SEK: { red-cedar: "0.00", thermo-aspen: "0.00", heater-9kw: "0.00", heater-wood: "12900.00", bucket-set: "1290.00", salt-wall: "10900.00" }
+  rules:
+    excludes:
+      - [salt-wall, heater-wood]

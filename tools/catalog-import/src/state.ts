@@ -40,8 +40,17 @@ export interface CurrentRoom {
   name: string;
   description: string | null;
   status: string;
+  sortOrder: number;
   preset: unknown;
+  translations: Map<string, Translation>;
   assets: Map<string, string>;
+}
+
+/** Awaits thunks one after another; keeps the tuple types. */
+async function sequential<T extends readonly (() => Promise<unknown>)[]>(fns: T): Promise<{ -readonly [K in keyof T]: Awaited<ReturnType<T[K]>> }> {
+  const out: unknown[] = [];
+  for (const fn of fns) out.push(await fn());
+  return out as { -readonly [K in keyof T]: Awaited<ReturnType<T[K]>> };
 }
 
 const num = (v: unknown): number => (typeof v === 'string' ? Number(v) : (v as number));
@@ -52,35 +61,36 @@ export async function readSauna(db: Queryable, sku: string): Promise<CurrentSaun
   const m = rows[0];
   if (!m) return null;
   const id = m.id;
-  const [tr, attrs, prices, groups, options, oprices, req, exc, assets] = await Promise.all([
-    db.query<{ locale: string; name: string; description: string | null }>(
+  // Sequential on purpose: one client cannot run queries concurrently (pg@9 removes queueing).
+  const [tr, attrs, prices, groups, options, oprices, req, exc, assets] = await sequential([
+    () => db.query<{ locale: string; name: string; description: string | null }>(
       'SELECT locale, name, description FROM sauna_model_translations WHERE sauna_model_id = $1', [id]),
-    db.query<{ attribute_code: string; value_number: string | null; value_text: string | null; value_bool: boolean | null }>(
+    () => db.query<{ attribute_code: string; value_number: string | null; value_text: string | null; value_bool: boolean | null }>(
       'SELECT attribute_code, value_number, value_text, value_bool FROM sauna_model_attributes WHERE sauna_model_id = $1', [id]),
-    db.query<{ currency_code: string; list_price_minor: string; max_discount_bps: number }>(
+    () => db.query<{ currency_code: string; list_price_minor: string; max_discount_bps: number }>(
       'SELECT currency_code, list_price_minor, max_discount_bps FROM sauna_model_prices WHERE sauna_model_id = $1', [id]),
-    db.query<{ id: string; code: string; is_required: boolean; sort_order: number }>(
+    () => db.query<{ id: string; code: string; is_required: boolean; sort_order: number }>(
       `SELECT g.id, g.code, mg.is_required, mg.sort_order FROM sauna_model_option_groups mg
          JOIN option_groups g ON g.id = mg.option_group_id WHERE mg.sauna_model_id = $1`, [id]),
-    db.query<{ id: string; code: string; group_code: string; is_default: boolean }>(
+    () => db.query<{ id: string; code: string; group_code: string; is_default: boolean }>(
       `SELECT o.id, o.code, g.code AS group_code, mo.is_default FROM sauna_model_options mo
          JOIN options o ON o.id = mo.option_id JOIN option_groups g ON g.id = mo.option_group_id
         WHERE mo.sauna_model_id = $1`, [id]),
-    db.query<{ code: string; currency_code: string; price_delta_minor: string }>(
+    () => db.query<{ code: string; currency_code: string; price_delta_minor: string }>(
       `SELECT o.code, p.currency_code, p.price_delta_minor FROM sauna_model_option_prices p
          JOIN options o ON o.id = p.option_id WHERE p.sauna_model_id = $1`, [id]),
-    db.query<{ a: string; b: string }>(
+    () => db.query<{ a: string; b: string }>(
       `SELECT o1.code AS a, o2.code AS b FROM option_requires r
          JOIN options o1 ON o1.id = r.option_id JOIN options o2 ON o2.id = r.required_option_id
         WHERE r.sauna_model_id = $1`, [id]),
-    db.query<{ a: string; b: string }>(
+    () => db.query<{ a: string; b: string }>(
       `SELECT o1.code AS a, o2.code AS b FROM option_excludes x
          JOIN options o1 ON o1.id = x.option_a_id JOIN options o2 ON o2.id = x.option_b_id
         WHERE x.sauna_model_id = $1`, [id]),
-    db.query<{ asset_role: string; position: number; storage_key: string }>(
+    () => db.query<{ asset_role: string; position: number; storage_key: string }>(
       `SELECT ma.asset_role, ma.position, a.storage_key FROM sauna_model_assets ma
          JOIN assets a ON a.id = ma.asset_id WHERE ma.sauna_model_id = $1`, [id]),
-  ]);
+  ] as const);
   return {
     id, sku: m.sku, slug: m.slug, status: m.status, name: m.name, description: m.description, sortOrder: m.sort_order,
     translations: new Map(tr.rows.map((r) => [r.locale, { name: r.name, description: r.description }])),
@@ -139,11 +149,17 @@ export async function readAttributeDefs(db: Queryable): Promise<Map<string, { la
 }
 
 export async function readRoom(db: Queryable, code: string): Promise<CurrentRoom | null> {
-  const { rows } = await db.query<{ id: string; code: string; name: string; description: string | null; status: string; preset: unknown }>(
-    'SELECT id, code, name, description, status, preset FROM room_scenes WHERE code = $1', [code]);
+  const { rows } = await db.query<{ id: string; code: string; name: string; description: string | null; status: string; sort_order: number; preset: unknown }>(
+    'SELECT id, code, name, description, status, sort_order, preset FROM room_scenes WHERE code = $1', [code]);
   const r = rows[0];
   if (!r) return null;
+  const tr = await db.query<{ locale: string; name: string; description: string | null }>(
+    'SELECT locale, name, description FROM room_scene_translations WHERE room_scene_id = $1', [r.id]);
   const a = await db.query<{ asset_role: string; storage_key: string }>(
     `SELECT ra.asset_role, a.storage_key FROM room_scene_assets ra JOIN assets a ON a.id = ra.asset_id WHERE ra.room_scene_id = $1`, [r.id]);
-  return { ...r, assets: new Map(a.rows.map((x) => [`${x.asset_role}|0`, x.storage_key])) };
+  return {
+    id: r.id, code: r.code, name: r.name, description: r.description, status: r.status, sortOrder: r.sort_order, preset: r.preset,
+    translations: new Map(tr.rows.map((t) => [t.locale, { name: t.name, description: t.description }])),
+    assets: new Map(a.rows.map((x) => [`${x.asset_role}|0`, x.storage_key])),
+  };
 }

@@ -1,10 +1,19 @@
 # API tier: six Lambda functions (one IAM role and one DB login user each), API Gateway HTTP API,
-# SQS jobs queue + DLQ for the worker, EventBridge schedules, and the application secrets.
+# SQS jobs queue + DLQ for the worker, EventBridge schedule rules, and the application secrets.
 #
 # Lambda code is NOT built by Terraform. Functions are created with a bootstrap stub and the real
 # bundles (services/api/dist/lambda/<function>/index.mjs) are deployed by CI, which publishes a
-# version and shifts the `live` alias. Everything that invokes a function (API Gateway, SQS, SNS,
-# EventBridge Scheduler) targets the `live` alias, never $LATEST.
+# version and shifts the `live` alias. Everything that invokes a function (API Gateway, SQS,
+# EventBridge) targets the `live` alias, never $LATEST. CI also owns the native-modules layer
+# (sharp, aws-crt), so `layers` is ignored here.
+#
+# Environment contract (services/api/src/config.ts and adapters/index.ts):
+#   Plain values are set directly. Secrets are NOT placed in the environment: for every secret
+#   variable X the function gets X_SECRET_ARN, and the Lambda entry resolves it from Secrets
+#   Manager (SecretString = the raw value) into process.env.X at cold start, before loadConfig().
+#     APP_SECRET_ARN              → APP_SECRET (CSRF and cursor HMAC key)
+#     ORIGIN_SECRET_ARN           → ORIGIN_SECRET (value of the x-origin-secret header)
+#     CLOUDFRONT_PRIVATE_KEY_SECRET_ARN → CLOUDFRONT_PRIVATE_KEY (asset-signer only)
 
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
@@ -19,7 +28,7 @@ locals {
   functions = {
     "public-catalog"     = { db_user = "svc_public_catalog", worker = false, timeout = 10, memory = 512 }
     "customer"           = { db_user = "svc_customer", worker = false, timeout = 10, memory = 512 }
-    "reseller-admin"     = { db_user = "svc_reseller_admin", worker = false, timeout = 15, memory = 768 }
+    "reseller-admin"     = { db_user = "svc_reseller_admin", worker = false, timeout = 20, memory = 1024 }
     "manufacturer-admin" = { db_user = "svc_manufacturer_admin", worker = false, timeout = 15, memory = 512 }
     "asset-signer"       = { db_user = "svc_asset_signer", worker = false, timeout = 5, memory = 256 }
     "worker"             = { db_user = "svc_worker", worker = true, timeout = var.worker_timeout_seconds, memory = 512 }
@@ -29,58 +38,65 @@ locals {
 
   function_names = { for k in keys(local.functions) : k => "${var.name}-${k}" }
 
+  cognito_env = {
+    COGNITO_CUSTOMER_POOL_ID   = var.customer_pool_id
+    COGNITO_CUSTOMER_CLIENT_ID = var.customer_client_id
+    COGNITO_STAFF_POOL_ID      = var.staff_pool_id
+    COGNITO_STAFF_CLIENT_ID    = var.staff_client_id
+  }
+
+  mail_env = {
+    SES_CONFIGURATION_SET  = var.ses_configuration_set
+    MAIL_FROM_DOMAIN       = var.mail_from_domain
+    MAIL_DEFAULT_FROM_NAME = var.mail_default_from_name
+  }
+
   common_env = {
+    NODE_ENV                            = "production"
+    NODE_OPTIONS                        = "--enable-source-maps"
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED = "1"
+    ADAPTERS                            = "aws"
     APP_ENV                             = var.environment
     PLATFORM_DOMAIN                     = var.platform_domain
     ADMIN_HOST                          = var.admin_host
-    LOG_LEVEL                           = var.log_level
-    NODE_OPTIONS                        = "--enable-source-maps"
-    AWS_NODEJS_CONNECTION_REUSE_ENABLED = "1"
-    DB_HOST                             = var.db_proxy_endpoint
-    DB_PORT                             = "5432"
-    DB_NAME                             = var.db_name
-    DB_AUTH                             = "iam"
-    DB_SSL                              = "require"
-    ORIGIN_SECRET_ARN                   = aws_secretsmanager_secret.origin_verify.arn
-    APP_SECRET_ARN                      = aws_secretsmanager_secret.app_keys.arn
+    PUBLIC_SCHEME                       = "https"
+    PUBLIC_PORT                         = ""
+    COOKIE_SECURE                       = "true"
+    TRUST_X_TENANT_HOST                 = "true"
+    # Per-IP limits are enforced by WAF; in-process counters are meaningless across Lambdas.
+    RATE_LIMIT        = "false"
+    STAFF_MFA         = "REQUIRED"
+    TOTP_ISSUER       = var.totp_issuer
+    LOG_LEVEL         = var.log_level
+    DB_IAM_AUTH       = "1"
+    DATABASE_POOL_MAX = "2"
+    APP_SECRET_ARN    = aws_secretsmanager_secret.app.arn
+    ORIGIN_SECRET_ARN = aws_secretsmanager_secret.origin.arn
+    SQS_QUEUE_URL     = aws_sqs_queue.jobs.url
   }
 
   function_env = {
     "public-catalog" = {}
-    "customer" = {
-      CUSTOMER_POOL_ID   = var.customer_pool_id
-      CUSTOMER_CLIENT_ID = var.customer_client_id
-      QUEUE_URL          = aws_sqs_queue.jobs.url
-    }
-    "reseller-admin" = {
-      STAFF_POOL_ID   = var.staff_pool_id
-      STAFF_CLIENT_ID = var.staff_client_id
-      UPLOADS_BUCKET  = var.uploads_bucket_name
-      BRANDING_BUCKET = var.branding_bucket_name
-      QUEUE_URL       = aws_sqs_queue.jobs.url
-    }
-    "manufacturer-admin" = {
-      STAFF_POOL_ID   = var.staff_pool_id
-      STAFF_CLIENT_ID = var.staff_client_id
-      UPLOADS_BUCKET  = var.uploads_bucket_name
-      QUEUE_URL       = aws_sqs_queue.jobs.url
-    }
+    "customer"       = merge(local.cognito_env, local.mail_env)
+    "reseller-admin" = merge(local.cognito_env, local.mail_env, {
+      S3_ASSETS_BUCKET = var.public_bucket_name
+    })
+    "manufacturer-admin" = local.cognito_env
     "asset-signer" = {
-      SIGNING_KEY_SECRET_ARN   = aws_secretsmanager_secret.signing_key.arn
-      CF_KEY_PAIR_ID           = var.cloudfront_key_pair_id
-      ASSET_COOKIE_TTL_SECONDS = "600"
-      AR_URL_TTL_SECONDS       = "300"
+      CLOUDFRONT_KEY_PAIR_ID            = var.cloudfront_key_pair_id
+      CLOUDFRONT_PRIVATE_KEY_SECRET_ARN = aws_secretsmanager_secret.signing_key.arn
+      ASSET_COOKIE_TTL_SECONDS          = "600"
+      AR_URL_TTL_SECONDS                = "300"
     }
-    "worker" = {
-      QUEUE_URL             = aws_sqs_queue.jobs.url
-      CUSTOMER_POOL_ID      = var.customer_pool_id
-      SES_CONFIGURATION_SET = var.ses_configuration_set
-      EMAIL_FROM            = var.email_from
-      KVS_ARN               = var.kvs_arn
-      DB_DIRECT_HOST        = var.db_instance_address
-      DB_MASTER_SECRET_ARN  = var.db_master_secret_arn
+    "worker" = merge(local.cognito_env, local.mail_env, {
+      EDGE_TENANT_KVS_ARN = var.kvs_arn
+      # `migrate` task: schema owner (RDS-managed secret: {username, password}) on the instance
+      # endpoint, plus the svc_* login passwords it must keep in sync for RDS Proxy.
+      MIGRATE_DB_HOST       = var.db_instance_address
+      MIGRATE_DB_NAME       = var.db_name
+      MIGRATE_DB_SECRET_ARN = var.db_master_secret_arn
       DB_LOGIN_SECRET_ARNS  = jsonencode(var.db_login_secret_arns)
-    }
+    })
   }
 }
 
@@ -99,14 +115,14 @@ data "aws_iam_policy_document" "app_key" {
     }
   }
 
-  # SNS (SES event topic) and EventBridge must be able to write to the encrypted queue.
+  # SNS (SES feedback topic → jobs queue) must be able to write to the encrypted queue.
   statement {
     sid       = "AllowServicePublishers"
     actions   = ["kms:GenerateDataKey", "kms:Decrypt"]
     resources = ["*"]
     principals {
       type        = "Service"
-      identifiers = ["sns.amazonaws.com", "events.amazonaws.com"]
+      identifiers = ["sns.amazonaws.com"]
     }
     condition {
       test     = "StringEquals"
@@ -129,55 +145,53 @@ resource "aws_kms_alias" "app" {
 }
 
 # ---------------------------------------------------------------------------------------------
-# Secrets
+# Secrets (SecretString = the raw value; resolved by the Lambda entry at cold start)
 # ---------------------------------------------------------------------------------------------
 
-# Shared secret CloudFront adds as an origin header; every function rejects requests without it.
-resource "random_password" "origin_verify" {
+# Shared secret CloudFront adds as `x-origin-secret`; every function rejects requests without it.
+# Rotate by changing var.origin_secret_rotation (CloudFront and the secret change in one apply;
+# warm Lambdas keep the old value up to their lifetime, so rotate in a quiet window).
+resource "random_password" "origin" {
   length  = 48
   special = false
   keepers = { rotation = var.origin_secret_rotation }
 }
 
-resource "aws_secretsmanager_secret" "origin_verify" {
-  name                    = "${var.name}/edge/origin-verify"
-  description             = "Value of the x-origin-verify header CloudFront sends to API Gateway"
+resource "aws_secretsmanager_secret" "origin" {
+  name                    = "${var.name}/edge/origin-secret"
+  description             = "Value of the x-origin-secret header CloudFront sends to API Gateway"
   kms_key_id              = aws_kms_key.app.arn
   recovery_window_in_days = var.secret_recovery_window_days
 }
 
-resource "aws_secretsmanager_secret_version" "origin_verify" {
-  secret_id = aws_secretsmanager_secret.origin_verify.id
-  secret_string = jsonencode({
-    header = var.origin_verify_header
-    value  = random_password.origin_verify.result
-  })
+resource "aws_secretsmanager_secret_version" "origin" {
+  secret_id     = aws_secretsmanager_secret.origin.id
+  secret_string = random_password.origin.result
 }
 
-# HMAC keys for session/CSRF tokens (C6) and the share-token pepper.
-resource "random_password" "app_keys" {
-  for_each = toset(["sessionHmacKey", "csrfHmacKey", "shareTokenPepper"])
-  length   = 64
-  special  = false
+# APP_SECRET: CSRF tokens (C6) and cursor signing.
+resource "random_password" "app" {
+  length  = 64
+  special = false
 }
 
-resource "aws_secretsmanager_secret" "app_keys" {
-  name                    = "${var.name}/app/keys"
-  description             = "Application HMAC keys (session, CSRF, share-token pepper)"
+resource "aws_secretsmanager_secret" "app" {
+  name                    = "${var.name}/app/secret"
+  description             = "APP_SECRET: HMAC key for CSRF tokens and cursors"
   kms_key_id              = aws_kms_key.app.arn
   recovery_window_in_days = var.secret_recovery_window_days
 }
 
-resource "aws_secretsmanager_secret_version" "app_keys" {
-  secret_id     = aws_secretsmanager_secret.app_keys.id
-  secret_string = jsonencode({ for k, v in random_password.app_keys : k => v.result })
+resource "aws_secretsmanager_secret_version" "app" {
+  secret_id     = aws_secretsmanager_secret.app.id
+  secret_string = random_password.app.result
 }
 
 # CloudFront signing private key. Created empty: the operator stores the PEM out of band
 # (see infra/README.md) so the private key never enters Terraform state.
 resource "aws_secretsmanager_secret" "signing_key" {
   name                    = "${var.name}/edge/cloudfront-signing-key"
-  description             = "CloudFront trusted key group private key (PEM) for signed cookies/URLs"
+  description             = "CLOUDFRONT_PRIVATE_KEY: PEM private key of the active CloudFront public key"
   kms_key_id              = aws_kms_key.app.arn
   recovery_window_in_days = var.secret_recovery_window_days
 }
@@ -300,7 +314,8 @@ resource "aws_lambda_function" "this" {
 
   lifecycle {
     # Code is deployed by CI. Terraform owns configuration only.
-    ignore_changes = [filename, source_code_hash, s3_bucket, s3_key, s3_object_version]
+    # Native modules (sharp, aws-crt) ship as a CI-published layer.
+    ignore_changes = [filename, source_code_hash, s3_bucket, s3_key, s3_object_version, layers]
   }
 }
 
@@ -323,7 +338,7 @@ resource "aws_lambda_alias" "live" {
 resource "aws_apigatewayv2_api" "this" {
   name          = var.name
   protocol_type = "HTTP"
-  description   = "saunaklar API (only reachable through CloudFront: x-origin-verify is checked by every function)"
+  description   = "saunaklar API (only reachable through CloudFront: x-origin-secret is checked by every function)"
 }
 
 resource "aws_apigatewayv2_stage" "default" {
@@ -410,80 +425,64 @@ resource "aws_lambda_event_source_mapping" "jobs" {
   }
 }
 
+# SES bounces/complaints: SNS topic → jobs queue. The worker unwraps the SNS envelope
+# (worker/ses-events.ts) and writes email_suppressions; failed records retry via the DLQ.
 resource "aws_sns_topic_subscription" "ses_events" {
   topic_arn = var.ses_events_topic_arn
-  protocol  = "lambda"
-  endpoint  = aws_lambda_alias.live["worker"].arn
+  protocol  = "sqs"
+  endpoint  = aws_sqs_queue.jobs.arn
 }
 
-resource "aws_lambda_permission" "ses_events" {
-  statement_id  = "AllowSesEventsTopic"
+data "aws_iam_policy_document" "jobs_queue" {
+  statement {
+    sid       = "AllowSesEventsTopic"
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.jobs.arn]
+    principals {
+      type        = "Service"
+      identifiers = ["sns.amazonaws.com"]
+    }
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [var.ses_events_topic_arn]
+    }
+  }
+}
+
+resource "aws_sqs_queue_policy" "jobs" {
+  queue_url = aws_sqs_queue.jobs.id
+  policy    = data.aws_iam_policy_document.jobs_queue.json
+}
+
+# Schedules are EventBridge rules: the worker recognises the job from the rule name suffix
+# (`…-outbox-sweep`, `…-retention`, see worker/handler.ts scheduledJob()).
+resource "aws_cloudwatch_event_rule" "worker" {
+  for_each            = var.worker_schedules
+  name                = "${var.name}-${each.key}"
+  description         = "Invoke the worker: ${each.key}"
+  schedule_expression = each.value
+}
+
+resource "aws_cloudwatch_event_target" "worker" {
+  for_each = var.worker_schedules
+  rule     = aws_cloudwatch_event_rule.worker[each.key].name
+  arn      = aws_lambda_alias.live["worker"].arn
+
+  retry_policy {
+    maximum_retry_attempts       = 2
+    maximum_event_age_in_seconds = 300
+  }
+}
+
+resource "aws_lambda_permission" "worker_schedule" {
+  for_each      = var.worker_schedules
+  statement_id  = "AllowEventBridge-${each.key}"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.this["worker"].function_name
   qualifier     = aws_lambda_alias.live["worker"].name
-  principal     = "sns.amazonaws.com"
-  source_arn    = var.ses_events_topic_arn
-}
-
-data "aws_iam_policy_document" "scheduler_assume" {
-  statement {
-    actions = ["sts:AssumeRole"]
-    principals {
-      type        = "Service"
-      identifiers = ["scheduler.amazonaws.com"]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = "aws:SourceAccount"
-      values   = [local.account_id]
-    }
-  }
-}
-
-resource "aws_iam_role" "scheduler" {
-  name               = "${var.name}-scheduler"
-  assume_role_policy = data.aws_iam_policy_document.scheduler_assume.json
-}
-
-data "aws_iam_policy_document" "scheduler" {
-  statement {
-    actions   = ["lambda:InvokeFunction"]
-    resources = [aws_lambda_alias.live["worker"].arn]
-  }
-}
-
-resource "aws_iam_role_policy" "scheduler" {
-  role   = aws_iam_role.scheduler.id
-  policy = data.aws_iam_policy_document.scheduler.json
-}
-
-resource "aws_scheduler_schedule_group" "this" {
-  name = var.name
-}
-
-resource "aws_scheduler_schedule" "worker" {
-  for_each = var.worker_schedules
-
-  name                         = "${var.name}-${each.key}"
-  group_name                   = aws_scheduler_schedule_group.this.name
-  schedule_expression          = each.value.expression
-  schedule_expression_timezone = "Europe/Berlin"
-  description                  = "Worker task ${each.value.task}"
-
-  flexible_time_window {
-    mode = "OFF"
-  }
-
-  target {
-    arn      = aws_lambda_alias.live["worker"].arn
-    role_arn = aws_iam_role.scheduler.arn
-    input    = jsonencode({ task = each.value.task })
-
-    retry_policy {
-      maximum_retry_attempts       = 2
-      maximum_event_age_in_seconds = 300
-    }
-  }
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.worker[each.key].arn
 }
 
 # ---------------------------------------------------------------------------------------------

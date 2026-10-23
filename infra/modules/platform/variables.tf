@@ -41,9 +41,10 @@ variable "email_domain" {
   type        = string
 }
 
-variable "email_from" {
-  description = "Default From header, e.g. \"Sauna Configurator <no-reply@mail.example.com>\"."
+variable "mail_from_name" {
+  description = "Default From display name; mail is always sent from no-reply@<email_domain>."
   type        = string
+  default     = "Saunaklar"
 }
 
 # --- network ---------------------------------------------------------------------------------

@@ -35,9 +35,10 @@ variable "email_domain" {
   type        = string
 }
 
-variable "email_from" {
-  description = "Default From header for platform e-mail."
+variable "mail_from_name" {
+  description = "From display name for platform mail (sent from no-reply@<email_domain>)."
   type        = string
+  default     = "Saunaklar"
 }
 
 variable "signing_public_keys" {

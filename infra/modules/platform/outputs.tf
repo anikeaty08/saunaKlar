@@ -4,8 +4,9 @@ output "web_bucket" {
   value = module.storage.bucket_names["web"]
 }
 
-output "branding_bucket" {
-  value = module.storage.bucket_names["branding"]
+output "public_bucket" {
+  description = "media/ (catalog thumbnails), branding/<slug>/, uploads/ staging."
+  value       = module.storage.bucket_names["public"]
 }
 
 output "assets_bucket" {

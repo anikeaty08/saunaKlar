@@ -8,7 +8,7 @@ zone_id         = "Z0123456789ABCDEFGHIJ" # hosted zone of saunas.example.com
 # admin_zone_id = "Z…" # only if admin_host is in another zone / registrable domain
 
 email_domain = "mail.saunas.example.com"
-email_from   = "Sauna Configurator <no-reply@mail.saunas.example.com>"
+mail_from_name = "Saunaklar"
 
 # openssl genrsa -out signing-k1.pem 2048 && openssl rsa -in signing-k1.pem -pubout -out signing-k1.pub.pem
 # The PRIVATE key goes to Secrets Manager (see infra/README.md), never into tfvars.

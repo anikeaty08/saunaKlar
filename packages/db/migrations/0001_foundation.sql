@@ -37,7 +37,8 @@ GRANT app_tenant, app_platform, app_worker TO sauna_api;
 
 -- Nobody but the owner creates objects; app roles only use the schema.
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
-GRANT USAGE ON SCHEMA public TO app_tenant, app_platform, app_worker, catalog_admin;
+-- sauna_api itself only needs the schema to call resolve_tenant() before switching roles.
+GRANT USAGE ON SCHEMA public TO app_tenant, app_platform, app_worker, catalog_admin, sauna_api;
 
 -- Functions created from here on are not executable by PUBLIC unless granted explicitly
 -- (pg_default_acl is per database; the per-schema form cannot revoke the PUBLIC default).

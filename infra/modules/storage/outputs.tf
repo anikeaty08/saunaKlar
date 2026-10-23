@@ -1,5 +1,5 @@
 output "bucket_names" {
-  description = "Bucket key (web, branding, assets, uploads) → bucket name."
+  description = "Bucket key (web, public, assets) → bucket name."
   value       = { for k, b in aws_s3_bucket.this : k => b.id }
 }
 

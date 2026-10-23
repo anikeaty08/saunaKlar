@@ -635,7 +635,7 @@ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_from  text := CASE WHEN TG_OP = 'UPDATE' THEN OLD.status_code END;
-  v_note  text := nullif(btrim(current_setting('app.status_note', true)), '');
+  v_note  text := nullif(btrim(coalesce(current_setting('app.status_note', true), '')), '');
   v_hist  bigint;
 BEGIN
   INSERT INTO request_status_history
@@ -655,6 +655,7 @@ BEGIN
       'fromStatus', v_from,
       'toStatus', NEW.status_code,
       'actorKind', app_actor_kind(),
+      'note', left(v_note, 2000),
       'historyId', v_hist
     )
   );

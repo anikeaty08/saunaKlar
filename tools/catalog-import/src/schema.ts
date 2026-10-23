@@ -99,6 +99,8 @@ export const roomSchema = z.strictObject({
   code,
   name: nonEmpty,
   description: z.string().default(''),
+  sort: z.number().int().min(0).max(32767).default(0),
+  translations: translations.default({}),
   status: z.enum(STATUSES).default('DRAFT'),
   preset: z.strictObject({
     widthMm: z.number().int().min(1000).max(30000),

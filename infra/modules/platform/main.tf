@@ -73,7 +73,7 @@ module "auth" {
   deletion_protection           = var.deletion_protection
   ses_identity_arn              = module.messaging.identity_arn
   ses_configuration_set         = module.messaging.configuration_set_name
-  email_from                    = var.email_from
+  email_from                    = "${var.mail_from_name} <no-reply@${var.email_domain}>"
   custom_message_log_group_name = module.observability.lambda_log_group_names["cognito-custom-message"]
   custom_message_log_group_arn  = module.observability.lambda_log_group_arns["cognito-custom-message"]
   customer_access_token_minutes = var.customer_access_token_minutes
@@ -121,10 +121,8 @@ module "api" {
   staff_pool_arn     = module.auth.staff_pool_arn
   staff_client_id    = module.auth.staff_client_id
 
-  uploads_bucket_name  = module.storage.bucket_names["uploads"]
-  uploads_bucket_arn   = module.storage.bucket_arns["uploads"]
-  branding_bucket_name = module.storage.bucket_names["branding"]
-  branding_bucket_arn  = module.storage.bucket_arns["branding"]
+  public_bucket_name = module.storage.bucket_names["public"]
+  public_bucket_arn  = module.storage.bucket_arns["public"]
 
   kvs_arn                = module.edge.kvs_arn
   cloudfront_key_pair_id = module.edge.signing_key_pair_id
@@ -133,7 +131,8 @@ module "api" {
   ses_configuration_set     = module.messaging.configuration_set_name
   ses_configuration_set_arn = module.messaging.configuration_set_arn
   ses_events_topic_arn      = module.messaging.events_topic_arn
-  email_from                = var.email_from
+  mail_from_domain          = var.email_domain
+  mail_default_from_name    = var.mail_from_name
 
   log_group_names          = module.observability.lambda_log_group_names
   log_group_arns           = module.observability.lambda_log_group_arns
@@ -157,8 +156,8 @@ module "edge" {
 
   bucket_regional_domain_names = module.storage.bucket_regional_domain_names
   api_origin_domain            = module.api.api_origin_domain
-  origin_verify_header         = module.api.origin_verify_header
-  origin_verify_value          = module.api.origin_verify_value
+  origin_secret_header         = module.api.origin_secret_header
+  origin_secret_value          = module.api.origin_secret_value
 
   signing_public_keys = var.signing_public_keys
   active_signing_key  = var.active_signing_key

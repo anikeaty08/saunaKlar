@@ -1,12 +1,15 @@
-# S3 buckets. All block public access, enforce TLS, disable ACLs.
+# S3 buckets. All block public access, enforce TLS, disable ACLs. S3 key = URL path without the
+# leading slash, so CloudFront needs no URI rewriting.
 #
-#   web      : SPA bundle (hashed files immutable, index.html no-cache). CloudFront OAC only.
-#   branding : the public bucket: tenant branding and public catalog media, still only via OAC.
-#              Keys: branding/<slug>/... (logo, favicon.ico, favicon-*.png) and media/... (thumbnails,
-#              galleries). Key = URL path without the leading slash.
-#   assets   : protected 3D assets (GLB/KTX2/USDZ) under assets/lo/... and assets/hi/... SSE-KMS, versioned, OAC only, replicated to
-#              eu-west-1. Only reachable through CloudFront behaviours that require signed cookies/URLs.
-#   uploads  : presigned PUT target for branding uploads; objects expire after one day.
+#   web    : SPA bundle (hashed files immutable, index.html no-cache). CloudFront OAC only.
+#   public : public-by-design objects, still only reachable via CloudFront OAC:
+#              media/...               catalog thumbnails and galleries (/media/*)
+#              branding/<slug>/...     tenant logos and favicons (/branding/*, /favicon.ico)
+#              uploads/<slug>/<random> presigned-PUT staging for branding uploads; no CloudFront
+#                                      behaviour routes here and objects expire after one day.
+#   assets : protected 3D assets (assets/lo/..., assets/hi/..., AR files). SSE-KMS, versioned,
+#            OAC only, replicated to eu-west-1. Only served by the /assets/* behaviour, which
+#            requires signed cookies (LOW: /assets/lo/*, FULL: /assets/*) or signed URLs (AR).
 
 data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
@@ -16,13 +19,10 @@ locals {
   partition  = data.aws_partition.current.partition
 
   buckets = {
-    web      = "${var.name}-web-${local.account_id}"
-    branding = "${var.name}-branding-${local.account_id}"
-    assets   = "${var.name}-assets-${local.account_id}"
-    uploads  = "${var.name}-uploads-${local.account_id}"
+    web    = "${var.name}-web-${local.account_id}"
+    public = "${var.name}-public-${local.account_id}"
+    assets = "${var.name}-assets-${local.account_id}"
   }
-
-  cloudfront_buckets = toset(["web", "branding", "assets"])
 
   upload_origins = concat(["https://*.${var.platform_domain}", "https://${var.admin_host}"], var.extra_upload_origins)
 }
@@ -100,7 +100,7 @@ resource "aws_s3_bucket_ownership_controls" "this" {
 }
 
 resource "aws_s3_bucket_versioning" "this" {
-  for_each = { for k, b in aws_s3_bucket.this : k => b if k != "uploads" }
+  for_each = aws_s3_bucket.this
   bucket   = each.value.id
   versioning_configuration {
     status = "Enabled"
@@ -120,8 +120,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   }
 }
 
-resource "aws_s3_bucket_lifecycle_configuration" "versioned" {
-  for_each = { for k, b in aws_s3_bucket.this : k => b if k != "uploads" }
+resource "aws_s3_bucket_lifecycle_configuration" "this" {
+  for_each = aws_s3_bucket.this
   bucket   = each.value.id
 
   rule {
@@ -134,34 +134,34 @@ resource "aws_s3_bucket_lifecycle_configuration" "versioned" {
     }
 
     abort_incomplete_multipart_upload {
-      days_after_initiation = 7
+      days_after_initiation = 1
+    }
+  }
+
+  # Branding upload staging objects are processed within minutes; anything left is abandoned.
+  dynamic "rule" {
+    for_each = each.key == "public" ? [1] : []
+    content {
+      id     = "expire-uploads"
+      status = "Enabled"
+      filter {
+        prefix = "uploads/"
+      }
+      expiration {
+        days = 1
+      }
+      noncurrent_version_expiration {
+        noncurrent_days = 1
+      }
     }
   }
 
   depends_on = [aws_s3_bucket_versioning.this]
 }
 
-resource "aws_s3_bucket_lifecycle_configuration" "uploads" {
-  bucket = aws_s3_bucket.this["uploads"].id
-
-  rule {
-    id     = "expire-uploads"
-    status = "Enabled"
-    filter {}
-
-    expiration {
-      days = 1
-    }
-
-    abort_incomplete_multipart_upload {
-      days_after_initiation = 1
-    }
-  }
-}
-
-# Browsers PUT directly to the uploads bucket with a presigned URL from the tenant host.
-resource "aws_s3_bucket_cors_configuration" "uploads" {
-  bucket = aws_s3_bucket.this["uploads"].id
+# Browsers PUT branding uploads directly to uploads/ with a presigned URL from the tenant host.
+resource "aws_s3_bucket_cors_configuration" "public" {
+  bucket = aws_s3_bucket.this["public"].id
 
   cors_rule {
     allowed_methods = ["PUT"]
@@ -198,21 +198,19 @@ data "aws_iam_policy_document" "bucket" {
     }
   }
 
-  dynamic "statement" {
-    for_each = contains(local.cloudfront_buckets, each.key) ? [1] : []
-    content {
-      sid       = "AllowCloudFrontOac"
-      actions   = ["s3:GetObject"]
-      resources = ["${each.value.arn}/*"]
-      principals {
-        type        = "Service"
-        identifiers = ["cloudfront.amazonaws.com"]
-      }
-      condition {
-        test     = "StringEquals"
-        variable = "aws:SourceArn"
-        values   = [var.cloudfront_distribution_arn]
-      }
+  # CloudFront reads only the paths it serves (uploads/ staging is never readable via the edge).
+  statement {
+    sid       = "AllowCloudFrontOac"
+    actions   = ["s3:GetObject"]
+    resources = each.key == "public" ? ["${each.value.arn}/media/*", "${each.value.arn}/branding/*"] : ["${each.value.arn}/*"]
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceArn"
+      values   = [var.cloudfront_distribution_arn]
     }
   }
 

@@ -36,12 +36,12 @@ output "jobs_dlq_name" {
   value = aws_sqs_queue.jobs_dlq.name
 }
 
-output "origin_verify_header" {
-  value = var.origin_verify_header
+output "origin_secret_header" {
+  value = var.origin_secret_header
 }
 
-output "origin_verify_value" {
-  value     = random_password.origin_verify.result
+output "origin_secret_value" {
+  value     = random_password.origin.result
   sensitive = true
 }
 

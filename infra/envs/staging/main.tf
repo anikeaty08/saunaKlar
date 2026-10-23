@@ -15,7 +15,7 @@ module "platform" {
   zone_id         = var.zone_id
   admin_zone_id   = var.admin_zone_id
   email_domain    = var.email_domain
-  email_from      = var.email_from
+  mail_from_name  = var.mail_from_name
 
   signing_public_keys = var.signing_public_keys
   active_signing_key  = var.active_signing_key

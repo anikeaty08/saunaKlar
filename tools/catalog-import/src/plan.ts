@@ -63,13 +63,14 @@ const pct = (bps: number): string => `${(bps / 100).toString()}%`;
 
 function diffMap<V>(
   changes: Change[], what: string, desired: Map<string, V>, current: Map<string, V> | null | undefined,
-  eq: (a: V, b: V) => boolean, show: (v: V) => string,
+  eq: (a: V, b: V) => boolean, show: (v: V) => string, removes = true,
 ): void {
   for (const [k, v] of desired) {
     const c = current?.get(k);
     if (c === undefined) changes.push({ op: 'create', what: `${what} ${k}`, detail: show(v) });
     else if (!eq(v, c)) changes.push({ op: 'update', what: `${what} ${k}`, detail: `${show(c)} → ${show(v)}` });
   }
+  if (!removes) return;
   for (const [k, c] of current ?? []) {
     if (!desired.has(k)) changes.push({ op: 'remove', what: `${what} ${k}`, detail: show(c) });
   }
@@ -150,7 +151,8 @@ export async function planSauna(db: Queryable, owner: Queryable | null, s: Desir
       if (sg.selection !== g.selection) f.push(`selection ${sg.selection} → ${g.selection}`);
       if (f.length) changes.push({ op: 'update', what: `option group ${g.code}`, detail: `${f.join(', ')} (shared)` });
     }
-    diffMap(changes, `option group ${g.code} translation`, tr, sg?.translations, (a, b) => a === b, (v) => `"${v}"`);
+    // Shared entities: translations are added/updated, never removed (other manifests or the admin may rely on them).
+    diffMap(changes, `option group ${g.code} translation`, tr, sg?.translations, (a, b) => a === b, (v) => `"${v}"`, false);
     for (const o of g.options) {
       const so = sharedOptions.get(`${g.code}/${o.code}`);
       if (!so) changes.push({ op: 'create', what: `option ${g.code}/${o.code}`, detail: `${o.name} (shared)` });
@@ -162,7 +164,7 @@ export async function planSauna(db: Queryable, owner: Queryable | null, s: Desir
         if (f.length) changes.push({ op: 'update', what: `option ${g.code}/${o.code}`, detail: `${f.join(', ')} (shared)` });
       }
       diffMap(changes, `option ${g.code}/${o.code} translation`, new Map(Object.entries(o.translations)), so?.translations,
-        (a, b) => a.name === b.name && nullIfEmpty(a.description) === nullIfEmpty(b.description), (v) => `"${v.name}"`);
+        (a, b) => a.name === b.name && nullIfEmpty(a.description) === nullIfEmpty(b.description), (v) => `"${v.name}"`, false);
     }
   }
 
@@ -201,9 +203,12 @@ export async function planRoom(db: Queryable, r: DesiredRoom, assets: PlannedAss
     if (cur.name !== r.name) f.push(`name "${cur.name}" → "${r.name}"`);
     if (nullIfEmpty(cur.description) !== nullIfEmpty(r.description)) f.push('description');
     if (cur.status !== r.status) f.push(`status ${cur.status} → ${r.status}`);
+    if (cur.sortOrder !== r.sortOrder) f.push(`sort ${cur.sortOrder} → ${r.sortOrder}`);
     if (JSON.stringify(sortKeys(cur.preset)) !== JSON.stringify(sortKeys(r.preset))) f.push('preset');
     if (f.length) changes.push({ op: 'update', what: `room ${r.code}`, detail: f.join(', ') });
   }
+  diffMap(changes, 'translation', new Map(Object.entries(r.translations)), cur?.translations,
+    (a, b) => a.name === b.name && nullIfEmpty(a.description) === nullIfEmpty(b.description), (v) => `"${v.name}"`);
   diffMap(changes, 'asset', new Map(assets.map((a) => [`${a.role}|0`, a.key])), cur?.assets, (a, b) => a === b, (v) => v);
   for (const c of changes) if (c.what.startsWith('asset ')) c.what = c.what.replace(/\|0$/, '');
   return { kind: 'room', key: r.code, file: r.file, isNew: !cur, changes, blockers: [] };
@@ -221,8 +226,13 @@ export async function planAttributes(db: Queryable, catalog: Catalog): Promise<I
   for (const a of catalog.attributes) {
     const c = cur.get(a.code);
     if (!c) changes.push({ op: 'create', what: `attribute ${a.code}`, detail: `${a.label}${a.unit ? ` [${a.unit}]` : ''}, ${a.valueType}` });
-    else if (c.label !== a.label || c.unit !== a.unit || c.valueType !== a.valueType || c.sortOrder !== a.sortOrder) {
-      changes.push({ op: 'update', what: `attribute ${a.code}`, detail: `${c.label} → ${a.label}` });
+    else {
+      const f: string[] = [];
+      if (c.label !== a.label) f.push(`label "${c.label}" → "${a.label}"`);
+      if (c.unit !== a.unit) f.push(`unit ${c.unit ?? '-'} → ${a.unit ?? '-'}`);
+      if (c.valueType !== a.valueType) f.push(`type ${c.valueType} → ${a.valueType}`);
+      if (c.sortOrder !== a.sortOrder) f.push(`sort ${c.sortOrder} → ${a.sortOrder}`);
+      if (f.length) changes.push({ op: 'update', what: `attribute ${a.code}`, detail: f.join(', ') });
     }
   }
   // Attribute definitions are shared and never removed by the importer (other saunas may use them).

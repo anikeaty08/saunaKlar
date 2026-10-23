@@ -1,0 +1,129 @@
+.pf {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.pf main {
+  flex: 1;
+}
+
+.pf__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: var(--header-h);
+}
+
+.pf__logo {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-display);
+  font-weight: 650;
+  font-size: var(--step-1);
+  letter-spacing: -0.04em;
+}
+
+.pf__admin {
+  font-size: var(--step--1);
+  margin-right: 0.5rem;
+}
+
+.pf__hero {
+  padding-block: var(--space-9) var(--space-8);
+  display: grid;
+  gap: var(--space-5);
+}
+
+.pf__hero--unknown {
+  min-height: 55dvh;
+  align-content: center;
+}
+
+.pf__title {
+  font-size: var(--step-6);
+  letter-spacing: -0.055em;
+  line-height: 0.92;
+  font-variation-settings: 'wdth' 82;
+  max-width: 14ch;
+}
+
+.pf__marquee {
+  border-block: var(--hair) solid var(--ink);
+  padding-block: 0.6rem;
+}
+
+.pf__marquee-word {
+  font-family: var(--font-mono);
+  font-size: var(--step-2);
+  padding-inline: 1.25rem;
+  letter-spacing: -0.02em;
+}
+
+.pf__features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: var(--space-6);
+  padding-block: var(--space-8);
+}
+
+.pf__features li {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+  border-top: var(--hair) solid var(--line);
+  padding-top: var(--space-4);
+}
+
+.pf__features h2 {
+  font-size: var(--step-2);
+  letter-spacing: -0.03em;
+}
+
+.pf__features p {
+  color: var(--ink-3);
+}
+
+.pf__num {
+  font-size: var(--step--2);
+  color: var(--ink-3);
+}
+
+.pf__examples {
+  padding-block: var(--space-6) var(--space-9);
+}
+
+.pf__examples ul {
+  margin-top: var(--space-4);
+  border-top: var(--hair) solid var(--ink);
+}
+
+.pf__example {
+  display: grid;
+  grid-template-columns: 3rem 1fr auto;
+  align-items: center;
+  padding-block: 1.1rem;
+  border-bottom: var(--hair) solid var(--line);
+  text-decoration: none;
+  font-family: var(--font-display);
+  font-size: var(--step-3);
+  letter-spacing: -0.04em;
+  transition: padding var(--dur-3) var(--ease-out);
+}
+
+.pf__example:hover {
+  padding-left: 0.75rem;
+}
+
+.pf__example .flip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pf__foot {
+  padding-block: var(--space-5);
+  border-top: var(--hair) solid var(--line);
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  color: var(--ink-3);
+}

@@ -93,19 +93,12 @@ variable "staff_client_id" {
 
 # --- storage / edge / messaging --------------------------------------------------------------
 
-variable "uploads_bucket_name" {
-  type = string
+variable "public_bucket_name" {
+  description = "Public bucket (branding/, media/, uploads/ staging). S3_ASSETS_BUCKET for the admin functions."
+  type        = string
 }
 
-variable "uploads_bucket_arn" {
-  type = string
-}
-
-variable "branding_bucket_name" {
-  type = string
-}
-
-variable "branding_bucket_arn" {
+variable "public_bucket_arn" {
   type = string
 }
 
@@ -131,8 +124,21 @@ variable "ses_configuration_set_arn" {
   type = string
 }
 
-variable "email_from" {
-  type = string
+variable "mail_from_domain" {
+  description = "Platform mail domain; From is always no-reply@<domain> (MAIL_FROM_DOMAIN)."
+  type        = string
+}
+
+variable "mail_default_from_name" {
+  description = "From display name when no reseller brand applies (MAIL_DEFAULT_FROM_NAME)."
+  type        = string
+  default     = "Saunaklar"
+}
+
+variable "totp_issuer" {
+  description = "Issuer shown in authenticator apps for staff MFA (TOTP_ISSUER)."
+  type        = string
+  default     = "Saunaklar"
 }
 
 variable "ses_events_topic_arn" {
@@ -208,32 +214,39 @@ variable "route_throttles" {
   default = {
     "ANY /api/auth/{proxy+}"       = { burst = 100, rate = 50 }
     "ANY /api/auth/staff/{proxy+}" = { burst = 20, rate = 10 }
-    "POST /api/assets/session"     = { burst = 200, rate = 100 }
+    "ANY /api/assets/{proxy+}"     = { burst = 200, rate = 100 }
   }
 }
 
 # --- routing ---------------------------------------------------------------------------------
 
 variable "routes" {
-  description = "HTTP API route key → function key (design 13). Most specific route wins."
+  description = "HTTP API route key → function key. Mirrors app.ts: each function mounts only its own routes."
   type        = map(string)
   default = {
-    "GET /api/health"                  = "public-catalog"
-    "GET /api/tenant"                  = "public-catalog"
-    "GET /api/catalog"                 = "public-catalog"
-    "GET /api/catalog/{proxy+}"        = "public-catalog"
-    "GET /api/rooms"                   = "public-catalog"
-    "GET /api/shared/{token}"          = "asset-signer"
-    "POST /api/assets/session"         = "asset-signer"
+    # public-catalog: routes/catalog.ts
+    "GET /api/health"           = "public-catalog"
+    "GET /api/tenant"           = "public-catalog"
+    "GET /api/catalog"          = "public-catalog"
+    "GET /api/catalog/{proxy+}" = "public-catalog"
+    "GET /api/rooms"            = "public-catalog"
+    "GET /api/shared/{token}"   = "public-catalog"
+    # asset-signer: routes/assets.ts (/api/assets/session, /api/assets/ar)
+    "ANY /api/assets/{proxy+}" = "asset-signer"
+    # customer: routes/auth.ts, account.ts, configurations.ts (incl. C5 claim)
     "POST /api/shared/{token}/claim"   = "customer"
     "ANY /api/auth/{proxy+}"           = "customer"
     "ANY /api/me"                      = "customer"
     "ANY /api/me/{proxy+}"             = "customer"
     "ANY /api/configurations"          = "customer"
     "ANY /api/configurations/{proxy+}" = "customer"
-    "ANY /api/auth/staff/{proxy+}"     = "reseller-admin"
-    "ANY /api/admin/{proxy+}"          = "reseller-admin"
-    "ANY /api/manufacturer/{proxy+}"   = "manufacturer-admin"
+    # reseller-admin: routes/staffAuth.ts + admin.ts. Staff login is served here for both the
+    # tenant hosts and the admin host (manufacturer-admin also mounts it, but one route can only
+    # target one function).
+    "ANY /api/auth/staff/{proxy+}" = "reseller-admin"
+    "ANY /api/admin/{proxy+}"      = "reseller-admin"
+    # manufacturer-admin
+    "ANY /api/manufacturer/{proxy+}" = "manufacturer-admin"
   }
 
   validation {
@@ -244,24 +257,23 @@ variable "routes" {
 }
 
 variable "worker_schedules" {
-  description = "EventBridge Scheduler entries invoking the worker with {\"task\": <task>}."
-  type        = map(object({ expression = string, task = string }))
+  description = "EventBridge rule suffix → schedule. The worker maps the suffix to a job (outbox-sweep, retention)."
+  type        = map(string)
   default = {
-    "outbox-sweep"  = { expression = "rate(1 minute)", task = "outbox-sweep" }
-    "kvs-reconcile" = { expression = "rate(1 hour)", task = "kvs-reconcile" }
-    "retention"     = { expression = "cron(15 3 * * ? *)", task = "retention" }
+    "outbox-sweep" = "rate(1 minute)"
+    "retention"    = "cron(15 2 * * ? *)"
   }
 }
-
 # --- secrets ---------------------------------------------------------------------------------
 
-variable "origin_verify_header" {
-  type    = string
-  default = "x-origin-verify"
+variable "origin_secret_header" {
+  description = "Header CloudFront adds and middleware/core.ts checks."
+  type        = string
+  default     = "x-origin-secret"
 }
 
 variable "origin_secret_rotation" {
-  description = "Change this value to rotate the CloudFront origin secret (functions accept current + previous)."
+  description = "Change this value to rotate the CloudFront origin secret."
   type        = string
   default     = "1"
 }

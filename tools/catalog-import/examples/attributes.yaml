@@ -1,0 +1,12 @@
+# Shared attribute dictionary. Every attribute code a sauna uses must be declared here.
+# Codes, labels and order match the dev seed (packages/db/src/seed.ts), so importing into a
+# seeded database changes nothing here except the two attributes the seed does not have.
+attributes:
+  width_mm:         { label: Width,            unit: mm,      type: number,  sort: 0 }
+  depth_mm:         { label: Depth,            unit: mm,      type: number,  sort: 1 }
+  height_mm:        { label: Height,           unit: mm,      type: number,  sort: 2 }
+  capacity_persons: { label: Seats,            unit: persons, type: number,  sort: 3 }
+  heater_kw:        { label: Heater output,    unit: kW,      type: number,  sort: 4 }
+  weight_kg:        { label: Weight,           unit: kg,      type: number,  sort: 5 }
+  interior_wood:    { label: Interior wood,                   type: text,    sort: 6 }
+  outdoor:          { label: Suitable outdoors,               type: boolean, sort: 7 }

@@ -83,6 +83,8 @@ export interface DesiredRoom {
   name: string;
   description: string;
   status: string;
+  sortOrder: number;
+  translations: Record<string, Translation>;
   preset: RoomManifest['preset'];
   assets: AssetSource[];
 }
@@ -130,7 +132,8 @@ async function parseYamlFile<S extends z.ZodType>(abs: string, rel: string, sche
   }
   const parsed = schema.safeParse(doc.toJS());
   if (!parsed.success) {
-    for (const issue of parsed.error.issues) diag.error(rel, issue.path.map(String).join('.'), issue.message);
+    // Paths are reported relative to the `sauna:` / `room:` root, matching the other diagnostics.
+    for (const issue of parsed.error.issues) diag.error(rel, issue.path.map(String).join('.').replace(/^(sauna|room)\.?/, ''), issue.message);
     return null;
   }
   return parsed.data;
@@ -457,7 +460,10 @@ export async function loadCatalog(dirArg: string, opts: ValidateOptions = {}): P
     const prev = roomCodes.get(r.code);
     if (prev) diag.error(rel, 'code', `room code "${r.code}" is also used by ${prev}`);
     roomCodes.set(r.code, rel);
-    const room: DesiredRoom = { file: rel, code: r.code, name: r.name, description: r.description, status: r.status, preset: r.preset, assets: [] };
+    const room: DesiredRoom = {
+      file: rel, code: r.code, name: r.name, description: r.description, status: r.status, sortOrder: r.sort,
+      translations: resolveTranslations(r.translations), preset: r.preset, assets: [],
+    };
     for (const [key, role] of Object.entries(ROOM_ASSET_ROLES)) {
       const p = r.assets[key as keyof typeof ROOM_ASSET_ROLES];
       if (!p) continue;

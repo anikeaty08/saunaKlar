@@ -1,0 +1,30 @@
+@property --flip-shade {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
+.locale-stage {
+  position: relative;
+}
+
+.locale-stage.is-flipping {
+  overflow: clip;
+}
+
+.locale-page {
+  position: relative;
+  background: var(--paper);
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.is-flipping .locale-page::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  background: var(--ink);
+  opacity: var(--flip-shade);
+}
