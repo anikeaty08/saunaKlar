@@ -1,0 +1,243 @@
+# Least-privilege policies: one role per function. Shared basics + function-specific statements.
+
+locals {
+  # arn:aws:rds-db:<region>:<account>:dbuser:<proxy-resource-id>/<db-user>
+  rds_connect_arn = { for k, v in local.functions :
+    k => "arn:${local.partition}:rds-db:${local.region}:${local.account_id}:dbuser:${var.db_proxy_resource_id}/${v.db_user}"
+  }
+
+  # Cognito actions the BFF needs for the customer pool (sign-up, login, reset, erasure).
+  customer_cognito_actions = [
+    "cognito-idp:SignUp",
+    "cognito-idp:ConfirmSignUp",
+    "cognito-idp:ResendConfirmationCode",
+    "cognito-idp:InitiateAuth",
+    "cognito-idp:ForgotPassword",
+    "cognito-idp:ConfirmForgotPassword",
+    "cognito-idp:RevokeToken",
+    "cognito-idp:AdminGetUser",
+    "cognito-idp:AdminDeleteUser",
+    "cognito-idp:AdminUserGlobalSignOut",
+    "cognito-idp:AdminUpdateUserAttributes",
+  ]
+
+  # Staff login with TOTP MFA (both admin functions serve it).
+  staff_auth_actions = [
+    "cognito-idp:InitiateAuth",
+    "cognito-idp:RespondToAuthChallenge",
+    "cognito-idp:AssociateSoftwareToken",
+    "cognito-idp:VerifySoftwareToken",
+    "cognito-idp:RevokeToken",
+    "cognito-idp:AdminGetUser",
+    "cognito-idp:AdminUserGlobalSignOut",
+  ]
+}
+
+data "aws_iam_policy_document" "common" {
+  for_each = local.functions
+
+  statement {
+    sid       = "Logs"
+    actions   = ["logs:CreateLogStream", "logs:PutLogEvents"]
+    resources = ["${var.log_group_arns[each.key]}:*"]
+  }
+
+  # Hyperplane ENIs for VPC access. These EC2 actions do not support resource-level scoping.
+  statement {
+    sid = "VpcAccess"
+    actions = [
+      "ec2:CreateNetworkInterface",
+      "ec2:DescribeNetworkInterfaces",
+      "ec2:DeleteNetworkInterface",
+      "ec2:AssignPrivateIpAddresses",
+      "ec2:UnassignPrivateIpAddresses",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid       = "XRay"
+    actions   = ["xray:PutTraceSegments", "xray:PutTelemetryRecords"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid       = "AppSecrets"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_secretsmanager_secret.origin_verify.arn, aws_secretsmanager_secret.app_keys.arn]
+  }
+
+  statement {
+    sid       = "AppKey"
+    actions   = ["kms:Decrypt"]
+    resources = [aws_kms_key.app.arn]
+  }
+
+  statement {
+    sid       = "DbConnect"
+    actions   = ["rds-db:connect"]
+    resources = [local.rds_connect_arn[each.key]]
+  }
+}
+
+# Functions that write a "kick" message so the worker drains the outbox without waiting for the
+# next scheduled sweep. The outbox row in PostgreSQL stays the source of truth.
+data "aws_iam_policy_document" "enqueue" {
+  statement {
+    sid       = "EnqueueJobs"
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.jobs.arn]
+  }
+  statement {
+    sid       = "EnqueueJobsKms"
+    actions   = ["kms:GenerateDataKey"]
+    resources = [aws_kms_key.app.arn]
+  }
+}
+
+data "aws_iam_policy_document" "customer" {
+  source_policy_documents = [data.aws_iam_policy_document.enqueue.json]
+
+  statement {
+    sid       = "CustomerPool"
+    actions   = local.customer_cognito_actions
+    resources = [var.customer_pool_arn]
+  }
+}
+
+data "aws_iam_policy_document" "reseller_admin" {
+  source_policy_documents = [data.aws_iam_policy_document.enqueue.json]
+
+  statement {
+    sid       = "StaffPool"
+    actions   = local.staff_auth_actions
+    resources = [var.staff_pool_arn]
+  }
+
+  # Presigned PUT for branding uploads, then read + delete the upload after re-encoding.
+  statement {
+    sid       = "Uploads"
+    actions   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
+    resources = ["${var.uploads_bucket_arn}/branding/*"]
+  }
+
+  # Re-encoded logo/favicon written to the public branding bucket, under branding/<slug>/.
+  statement {
+    sid       = "Branding"
+    actions   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
+    resources = ["${var.branding_bucket_arn}/branding/*"]
+  }
+}
+
+data "aws_iam_policy_document" "manufacturer_admin" {
+  source_policy_documents = [data.aws_iam_policy_document.enqueue.json]
+
+  statement {
+    sid       = "StaffPoolAuth"
+    actions   = local.staff_auth_actions
+    resources = [var.staff_pool_arn]
+  }
+
+  # Inviting, disabling and re-enabling reseller owners / staff.
+  statement {
+    sid = "StaffPoolAdmin"
+    actions = [
+      "cognito-idp:AdminCreateUser",
+      "cognito-idp:AdminDisableUser",
+      "cognito-idp:AdminEnableUser",
+      "cognito-idp:AdminResetUserPassword",
+    ]
+    resources = [var.staff_pool_arn]
+  }
+
+  statement {
+    sid       = "Uploads"
+    actions   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
+    resources = ["${var.uploads_bucket_arn}/manufacturer/*"]
+  }
+}
+
+data "aws_iam_policy_document" "asset_signer" {
+  statement {
+    sid       = "SigningKey"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_secretsmanager_secret.signing_key.arn]
+  }
+}
+
+data "aws_iam_policy_document" "worker" {
+  statement {
+    sid       = "ConsumeJobs"
+    actions   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes", "sqs:ChangeMessageVisibility", "sqs:SendMessage"]
+    resources = [aws_sqs_queue.jobs.arn]
+  }
+
+  statement {
+    sid       = "JobsKms"
+    actions   = ["kms:GenerateDataKey"]
+    resources = [aws_kms_key.app.arn]
+  }
+
+  statement {
+    sid       = "SendEmail"
+    actions   = ["ses:SendEmail", "ses:SendRawEmail"]
+    resources = [var.ses_identity_arn, var.ses_configuration_set_arn]
+  }
+
+  # Edge tenant table: slug → status (design 5.1).
+  statement {
+    sid = "TenantKvs"
+    actions = [
+      "cloudfront-keyvaluestore:DescribeKeyValueStore",
+      "cloudfront-keyvaluestore:GetKey",
+      "cloudfront-keyvaluestore:ListKeys",
+      "cloudfront-keyvaluestore:PutKey",
+      "cloudfront-keyvaluestore:DeleteKey",
+      "cloudfront-keyvaluestore:UpdateKeys",
+    ]
+    resources = [var.kvs_arn]
+  }
+
+  # G3 cleanup of abandoned PENDING sign-ups.
+  statement {
+    sid       = "CustomerPoolCleanup"
+    actions   = ["cognito-idp:AdminDeleteUser", "cognito-idp:AdminGetUser"]
+    resources = [var.customer_pool_arn]
+  }
+
+  # `migrate` task: schema owner + login-user passwords (to create/update the svc_* roles).
+  statement {
+    sid       = "MigrationSecrets"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = concat([var.db_master_secret_arn], values(var.db_login_secret_arns))
+  }
+
+  statement {
+    sid       = "MigrationSecretsKms"
+    actions   = ["kms:Decrypt"]
+    resources = [var.db_kms_key_arn]
+  }
+}
+
+locals {
+  extra_policy = {
+    "public-catalog"     = ""
+    "customer"           = data.aws_iam_policy_document.customer.json
+    "reseller-admin"     = data.aws_iam_policy_document.reseller_admin.json
+    "manufacturer-admin" = data.aws_iam_policy_document.manufacturer_admin.json
+    "asset-signer"       = data.aws_iam_policy_document.asset_signer.json
+    "worker"             = data.aws_iam_policy_document.worker.json
+  }
+}
+
+data "aws_iam_policy_document" "function" {
+  for_each                = local.functions
+  source_policy_documents = compact([data.aws_iam_policy_document.common[each.key].json, local.extra_policy[each.key]])
+}
+
+resource "aws_iam_role_policy" "function" {
+  for_each = local.functions
+  name     = "least-privilege"
+  role     = aws_iam_role.function[each.key].id
+  policy   = data.aws_iam_policy_document.function[each.key].json
+}

@@ -1,0 +1,37 @@
+{
+  "name": "@saunaklar/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/local.ts",
+    "start": "tsx src/local.ts",
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "esbuild": "^0.28.2"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudfront-keyvaluestore": "^3.1156.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.1156.0",
+    "@aws-sdk/client-s3": "^3.1156.0",
+    "@aws-sdk/client-sesv2": "^3.1156.0",
+    "@aws-sdk/client-sqs": "^3.1156.0",
+    "@aws-sdk/cloudfront-signer": "^3.1155.0",
+    "@aws-sdk/s3-request-presigner": "^3.1156.0",
+    "@aws-sdk/signature-v4-crt": "^3.1156.0",
+    "@hono/node-server": "^2.1.5",
+    "aws-jwt-verify": "^5.2.1",
+    "hono": "^4.13.13",
+    "jose": "^6.2.13",
+    "pg": "^8.23.1",
+    "sharp": "^0.35.5",
+    "tsx": "^4.23.15",
+    "zod": "^4.6.7"
+  }
+}
