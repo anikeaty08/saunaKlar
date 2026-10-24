@@ -20,8 +20,7 @@ export function fill(template: string, values: Record<string, string | number>):
 }
 
 /** GET a JSON API path in the browser (Chromium resolves *.localhost, Node does not). */
-export async function getJson<T = unknown>(page: Page, url: string, headers: Record<string, string> = {}): Promise<{ status: number; body: T }> {
-  if (Object.keys(headers).length) await page.setExtraHTTPHeaders(headers);
+export async function getJson<T = unknown>(page: Page, url: string): Promise<{ status: number; body: T }> {
   const res = await page.goto(url);
   if (!res) throw new Error(`no response for ${url}`);
   const text = await res.text();

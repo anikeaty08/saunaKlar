@@ -1,18 +1,21 @@
 import { SEED, en, escape, expect, fill, loginWithForm, test } from './fixtures.ts';
 
-// FIXME: the configurator (storefront/pages/Configure.tsx), the login page (storefront/account/Auth.tsx)
-// and the account pages (storefront/account/Account.tsx) do not exist yet. Remove `.fixme` once they land.
-test.fixme('customer configures a sauna, sees the price change, saves and sends a request', async ({ page }) => {
+test('customer configures a sauna, sees the price change, saves and sends a request', async ({ page }) => {
   await loginWithForm(page, '/account/login', 'anna@example.test');
   await expect(page.getByText(fill(en.auth.welcome, { name: 'Anna' }))).toBeVisible();
 
   await page.goto('/saunas/lappi-barrel');
   await page.getByRole('link', { name: en.detail.configure }).click();
-  await expect(page.getByRole('heading', { name: fill(en.configure.title, { name: 'Lappi Barrel' }) })).toBeVisible();
+  await expect(page).toHaveTitle(new RegExp(escape(fill(en.configure.title, { name: 'Lappi Barrel' }))));
+  await expect(page.getByRole('heading', { level: 1, name: 'Lappi Barrel' })).toBeVisible();
 
-  const total = page.getByTestId('configure-total').or(page.getByRole('region', { name: en.configure.summary }).getByText(/€/).last());
+  // The running total (Price with the "Total" label); the wood option is shown as a swatch and as a list item.
+  const total = page.locator('.cfg__total');
+  await expect(total).toContainText('€');
   const before = await total.innerText();
-  await page.getByRole('radio', { name: /Thermo-aspen/ }).check();
+  const aspen = page.getByRole('radio', { name: /Thermo-aspen/ }).last();
+  await aspen.click();
+  await expect(aspen).toHaveAttribute('aria-checked', 'true');
   await expect(total).not.toHaveText(before);
 
   await page.getByRole('button', { name: en.configure.saveDraft, exact: true }).click();

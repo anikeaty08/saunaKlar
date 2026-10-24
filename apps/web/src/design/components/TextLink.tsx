@@ -9,7 +9,7 @@ type Props = Omit<LinkProps, 'children'> & {
   /** `underline` draws a hairline that wipes on hover; `plain` relies on the flip only. */
   tone?: 'plain' | 'underline';
   /** Load the route chunk and its data on hover/focus (default on). */
-  prefetch?: boolean;
+  warm?: boolean;
 };
 
 function hrefOf(to: LinkProps['to']): string {
@@ -17,8 +17,8 @@ function hrefOf(to: LinkProps['to']): string {
 }
 
 /** Router link whose letters flip vertically on hover. */
-export const TextLink = forwardRef<HTMLAnchorElement, Props>(function TextLink({ children, tone = 'plain', prefetch = true, className, onPointerEnter, onFocus, to, ...rest }, ref) {
-  const warm = () => prefetch && prefetchPath(hrefOf(to));
+export const TextLink = forwardRef<HTMLAnchorElement, Props>(function TextLink({ children, tone = 'plain', warm: warmOn = true, className, onPointerEnter, onFocus, to, ...rest }, ref) {
+  const warm = () => warmOn && prefetchPath(hrefOf(to));
   return (
     <Link
       ref={ref}

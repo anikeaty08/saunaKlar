@@ -4,7 +4,7 @@ import {
 } from '@saunaklar/shared';
 import type { Db, TenantInfo } from '../context.ts';
 import { ApiError } from '../lib/problem.ts';
-import { getConfigRow, getSnapshot, lockConfiguration, type ConfigRow } from './configurations.ts';
+import { cloneConfiguration, getConfigRow, getSnapshot, lockConfiguration, type ConfigRow } from './configurations.ts';
 
 /**
  * Request workflow (design 9.4). Status changes are plain UPDATEs; the
@@ -26,10 +26,33 @@ interface RequestRow {
 
 const iso = (d: Date) => d.toISOString();
 
+/**
+ * Locks the configuration (if needed) and creates its request; returns the request id.
+ * A configuration whose frozen price has expired (review G4) is not requested at that
+ * price: it is cloned, the clone is locked at current prices and requested instead, so the
+ * returned request carries the new configuration.
+ */
 export async function submitRequest(db: Db, tenant: TenantInfo, locale: AppLocale, config: ConfigRow, customerId: string, message: string | undefined, validDays: number): Promise<string> {
   if (config.customer_id !== customerId) throw new ApiError('NOT_FOUND', 'Configuration not found.');
   const existing = await db.query<{ id: string }>('select id from configuration_requests where configuration_id = $1', [config.id]);
   if (existing.rows[0]) return existing.rows[0].id; // idempotent retry (design 13)
+  if (config.locked_at) {
+    // Serialises retries of an expired submit, so they all find the same replacement.
+    await db.query('select 1 from configurations where id = $1 for update', [config.id]);
+    const { rows: [snap] } = await db.query<{ expired: boolean }>(
+      'select price_valid_until <= now() as expired from configuration_price_snapshots where configuration_id = $1', [config.id]);
+    if (snap?.expired) {
+      const { rows: [replacement] } = await db.query<{ id: string }>(
+        `select r.id from configuration_requests r
+           join configurations c on c.id = r.configuration_id
+           join configuration_price_snapshots s on s.configuration_id = c.id
+          where c.source_configuration_id = $1 and r.customer_id = $2 and s.price_valid_until > now()
+          order by r.created_at desc limit 1`, [config.id, customerId]);
+      if (replacement) return replacement.id;
+      const clone = await cloneConfiguration(db, tenant, locale, config, { customerId, staffId: null });
+      return submitRequest(db, tenant, locale, clone, customerId, message, validDays);
+    }
+  }
   // lockConfiguration holds the configuration row lock until commit, so a concurrent submit
   // waits there and then finds the request the first one created (no unique violation).
   await lockConfiguration(db, tenant, locale, config, validDays);

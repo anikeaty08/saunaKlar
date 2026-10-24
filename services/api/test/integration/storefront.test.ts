@@ -52,8 +52,15 @@ describe('catalog versioning (review C1)', () => {
   it('prices a sauna with the reseller discount and the cap', async () => {
     const r = await h.client('alpha.localhost').get('/api/catalog/saunas/espoo-compact');
     expect(r.status).toBe(200);
-    expect(r.body.priceFromMinor).toBe(r.body.listPriceMinor - 50_000 > r.body.listPriceMinor * (1 - r.body.maxDiscountBps / 10_000) ? r.body.listPriceMinor - 50_000 : Math.ceil(r.body.listPriceMinor * (1 - r.body.maxDiscountBps / 10_000)));
-    expect(r.body.groups.length).toBeGreaterThan(0);
+    // "From" = list price + the cheapest option of every required group (valid in the seed),
+    // less the FIXED 500.00 discount capped at maxDiscountBps of that subtotal.
+    const groups = r.body.groups as { required: boolean; options: { priceDeltaMinor: number }[] }[];
+    const subtotal = r.body.listPriceMinor + groups.filter(g => g.required).reduce((s, g) => s + Math.min(...g.options.map(o => o.priceDeltaMinor)), 0);
+    const discount = Math.min(50_000, Math.floor(subtotal * r.body.maxDiscountBps / 10_000));
+    expect(r.body.priceFromMinor).toBe(subtotal - discount);
+    expect(groups.length).toBeGreaterThan(0);
+    const list = await h.client('alpha.localhost').get('/api/catalog');
+    expect(list.body.items.find((i: { slug: string }) => i.slug === 'espoo-compact').priceFromMinor).toBe(r.body.priceFromMinor);
   });
 });
 
@@ -132,12 +139,21 @@ describe('share links', () => {
     expect((await h.client('beta.localhost').get(`/api/shared/${SEED_SHARE_TOKEN}`)).status).toBe(404);
   });
 
-  it('a customer can claim it into an editable draft (review C5)', async () => {
+  it('a customer can claim it, request it directly or clone it to edit (review C5)', async () => {
     const c = h.client('alpha.localhost');
     await c.login('ben@example.test', SEED_PASSWORD);
     const r = await c.post(`/api/shared/${SEED_SHARE_TOKEN}/claim`);
     expect(r.status).toBe(201);
     const cfg = await c.get(`/api/configurations/${r.body.configurationId}`);
-    expect(cfg.body.locked).toBe(false);
+    expect(cfg.body.locked).toBe(true);
+    expect(cfg.body.snapshot.finalPriceMinor).toBeGreaterThan(0);
+
+    const edit = await c.post(`/api/configurations/${r.body.configurationId}/clone`);
+    expect(edit.status).toBe(201);
+    expect(edit.body.locked).toBe(false);
+
+    const req = await c.post(`/api/configurations/${r.body.configurationId}/requests`, { message: 'As shown in the showroom' });
+    expect(req.status).toBe(201);
+    expect(req.body.configuration.id).toBe(r.body.configurationId);
   });
 });

@@ -20,11 +20,15 @@ test.describe('local server smoke', () => {
     expect(body.items.map(i => i.slug).sort()).toEqual(['espoo-compact', 'kuopio-cube', 'lappi-barrel', 'turku-panorama']);
   });
 
-  test('localises catalogue texts by Accept-Language', async ({ page }) => {
-    const { body } = await getJson<Detail>(page, `${ALPHA}/api/catalog/saunas/espoo-compact`, { 'Accept-Language': 'fr' });
-    expect(body.description).toContain('Sauna d’intérieur compact');
-    const wood = body.groups.find(g => g.code === 'wood')!;
-    expect(wood.options.map(o => o.name)).toContain('Épicéa nordique');
+  test.describe('in French', () => {
+    // Chromium derives a navigation's Accept-Language from the context locale (an extra header is ignored).
+    test.use({ locale: 'fr-FR' });
+    test('localises catalogue texts by Accept-Language', async ({ page }) => {
+      const { body } = await getJson<Detail>(page, `${ALPHA}/api/catalog/saunas/espoo-compact`);
+      expect(body.description).toContain('Sauna d’intérieur compact');
+      const wood = body.groups.find(g => g.code === 'wood')!;
+      expect(wood.options.map(o => o.name)).toContain('Épicéa nordique');
+    });
   });
 
   test('serves the seeded share link snapshot', async ({ page }) => {

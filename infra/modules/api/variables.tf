@@ -14,6 +14,12 @@ variable "admin_host" {
   type = string
 }
 
+variable "share_price_valid_days" {
+  description = "SHARE_PRICE_VALID_DAYS: validity of a locked price (G4)."
+  type        = number
+  default     = 30
+}
+
 variable "log_level" {
   type    = string
   default = "info"
@@ -221,7 +227,7 @@ variable "route_throttles" {
 # --- routing ---------------------------------------------------------------------------------
 
 variable "routes" {
-  description = "HTTP API route key → function key. Mirrors app.ts: each function mounts only its own routes."
+  description = "Storefront HTTP API route key → function key. Mirrors app.ts: each function mounts only its own routes."
   type        = map(string)
   default = {
     # public-catalog: routes/catalog.ts
@@ -240,20 +246,33 @@ variable "routes" {
     "ANY /api/me/{proxy+}"             = "customer"
     "ANY /api/configurations"          = "customer"
     "ANY /api/configurations/{proxy+}" = "customer"
-    # reseller-admin: routes/staffAuth.ts + admin.ts. Staff login is served here for both the
-    # tenant hosts and the admin host (manufacturer-admin also mounts it, but one route can only
-    # target one function).
+    # reseller-admin: routes/staffAuth.ts + admin.ts (staff login on tenant hosts, app_tenant).
+    # The admin host has its own API (admin_routes) served only by manufacturer-admin.
     "ANY /api/auth/staff/{proxy+}" = "reseller-admin"
     "ANY /api/admin/{proxy+}"      = "reseller-admin"
-    # manufacturer-admin
-    "ANY /api/manufacturer/{proxy+}" = "manufacturer-admin"
   }
 
   validation {
     condition = alltrue([for f in values(var.routes) :
-    contains(["public-catalog", "customer", "reseller-admin", "manufacturer-admin", "asset-signer"], f)])
-    error_message = "Routes must target an API function (not the worker)."
+    contains(["public-catalog", "customer", "reseller-admin", "asset-signer"], f)])
+    error_message = "Storefront routes must target a tenant function (manufacturer-admin is only on the admin API)."
   }
+}
+
+variable "admin_routes" {
+  description = "Routes of the admin-host API, all served by manufacturer-admin (routes/staffAuth.ts + manufacturer.ts)."
+  type        = list(string)
+  default     = ["GET /api/health", "ANY /api/auth/staff/{proxy+}", "ANY /api/manufacturer/{proxy+}"]
+}
+
+variable "admin_throttle_burst_limit" {
+  type    = number
+  default = 100
+}
+
+variable "admin_throttle_rate_limit" {
+  type    = number
+  default = 50
 }
 
 variable "worker_schedules" {

@@ -15,6 +15,7 @@
     "db:migrate": "npm run migrate -w @saunaklar/db",
     "db:seed": "npm run seed -w @saunaklar/db",
     "db:reset": "npm run reset -w @saunaklar/db",
+    "openapi": "tsx packages/shared/scripts/openapi.ts",
     "build": "npm run build -w @saunaklar/web && npm run build -w @saunaklar/api",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run typecheck",

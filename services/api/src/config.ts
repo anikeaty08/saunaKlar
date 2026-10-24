@@ -18,7 +18,7 @@ const schema = z.object({
   /** Scheme used when building absolute links (share links, e-mails). */
   PUBLIC_SCHEME: z.enum(['http', 'https']).default('http'),
   /** Port appended to absolute links in development (e.g. 5173 for Vite). Empty in production. */
-  PUBLIC_PORT: z.string().default('5173'),
+  PUBLIC_PORT: z.string().optional(),
   /** Secret for CSRF tokens and cursor signing. 32+ random bytes in production. */
   APP_SECRET: z.string().min(16).default('dev-only-secret-change-me-0123456789'),
   /** Shared secret CloudFront adds as `x-origin-secret`; empty disables the check (local). */
@@ -44,7 +44,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     const msg = parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ');
     throw new Error(`Invalid configuration: ${msg}`);
   }
-  const cfg = parsed.data;
+  // Default port only outside production; production links are https://<host> with no port.
+  const cfg = { ...parsed.data, PUBLIC_PORT: parsed.data.PUBLIC_PORT ?? (parsed.data.NODE_ENV === 'production' ? '' : '5173') };
   if (cfg.NODE_ENV === 'production') {
     if (cfg.APP_SECRET.startsWith('dev-only')) throw new Error('APP_SECRET must be set in production');
     if (!cfg.ORIGIN_SECRET) throw new Error('ORIGIN_SECRET must be set in production');

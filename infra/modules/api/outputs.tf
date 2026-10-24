@@ -11,6 +11,14 @@ output "api_origin_domain" {
   value = replace(aws_apigatewayv2_api.this.api_endpoint, "https://", "")
 }
 
+output "admin_api_id" {
+  value = aws_apigatewayv2_api.admin.id
+}
+
+output "admin_api_origin_domain" {
+  value = replace(aws_apigatewayv2_api.admin.api_endpoint, "https://", "")
+}
+
 output "function_names" {
   description = "Function key → Lambda function name."
   value       = { for k, f in aws_lambda_function.this : k => f.function_name }

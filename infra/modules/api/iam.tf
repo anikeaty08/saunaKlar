@@ -61,6 +61,8 @@ data "aws_iam_policy_document" "common" {
     resources = ["*"]
   }
 
+  # APP_SECRET_ARN and ORIGIN_SECRET_ARN (lib/runtimeEnv.ts). Function-specific secrets are
+  # granted below: the signing key to asset-signer, DB owner + login secrets to the worker.
   statement {
     sid       = "AppSecrets"
     actions   = ["secretsmanager:GetSecretValue"]
@@ -80,24 +82,7 @@ data "aws_iam_policy_document" "common" {
   }
 }
 
-# Functions that write a "kick" message so the worker drains the outbox without waiting for the
-# next scheduled sweep. The outbox row in PostgreSQL stays the source of truth.
-data "aws_iam_policy_document" "enqueue" {
-  statement {
-    sid       = "EnqueueJobs"
-    actions   = ["sqs:SendMessage"]
-    resources = [aws_sqs_queue.jobs.arn]
-  }
-  statement {
-    sid       = "EnqueueJobsKms"
-    actions   = ["kms:GenerateDataKey"]
-    resources = [aws_kms_key.app.arn]
-  }
-}
-
 data "aws_iam_policy_document" "customer" {
-  source_policy_documents = [data.aws_iam_policy_document.enqueue.json]
-
   statement {
     sid       = "CustomerPool"
     actions   = local.customer_cognito_actions
@@ -113,8 +98,6 @@ data "aws_iam_policy_document" "customer" {
 }
 
 data "aws_iam_policy_document" "reseller_admin" {
-  source_policy_documents = [data.aws_iam_policy_document.enqueue.json]
-
   statement {
     sid       = "StaffPool"
     actions   = local.staff_auth_actions
@@ -129,18 +112,9 @@ data "aws_iam_policy_document" "reseller_admin" {
     actions   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
     resources = ["${var.public_bucket_arn}/uploads/*", "${var.public_bucket_arn}/branding/*"]
   }
-
-  # Mail sent directly by the API (e.g. staff notifications); most mail goes through the outbox.
-  statement {
-    sid       = "SendEmail"
-    actions   = ["ses:SendEmail", "ses:SendRawEmail"]
-    resources = [var.ses_identity_arn, var.ses_configuration_set_arn]
-  }
 }
 
 data "aws_iam_policy_document" "manufacturer_admin" {
-  source_policy_documents = [data.aws_iam_policy_document.enqueue.json]
-
   statement {
     sid       = "StaffPoolAuth"
     actions   = local.staff_auth_actions
@@ -172,14 +146,8 @@ data "aws_iam_policy_document" "asset_signer" {
 data "aws_iam_policy_document" "worker" {
   statement {
     sid       = "ConsumeJobs"
-    actions   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes", "sqs:ChangeMessageVisibility", "sqs:SendMessage"]
+    actions   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes", "sqs:ChangeMessageVisibility"]
     resources = [aws_sqs_queue.jobs.arn]
-  }
-
-  statement {
-    sid       = "JobsKms"
-    actions   = ["kms:GenerateDataKey"]
-    resources = [aws_kms_key.app.arn]
   }
 
   statement {
@@ -209,7 +177,7 @@ data "aws_iam_policy_document" "worker" {
     resources = [var.customer_pool_arn]
   }
 
-  # `migrate` task: schema owner + login-user passwords (to create/update the svc_* roles).
+  # `migrate` task (worker/deps.ts): schema owner + svc_* login passwords to sync.
   statement {
     sid       = "MigrationSecrets"
     actions   = ["secretsmanager:GetSecretValue"]

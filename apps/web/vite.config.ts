@@ -39,7 +39,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const mock = env.VITE_MOCK_API === '1';
   return {
-    plugins: [react(), dracoDecoder()],
+    // plugin-react is typed against the hoisted (newer) vite used by vitest.
+    plugins: [react() as unknown as Plugin, dracoDecoder()],
     server: {
       port: 5173,
       host: true,

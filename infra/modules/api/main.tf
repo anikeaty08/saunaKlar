@@ -7,13 +7,15 @@
 # EventBridge) targets the `live` alias, never $LATEST. CI also owns the native-modules layer
 # (sharp, aws-crt), so `layers` is ignored here.
 #
-# Environment contract (services/api/src/config.ts and adapters/index.ts):
-#   Plain values are set directly. Secrets are NOT placed in the environment: for every secret
-#   variable X the function gets X_SECRET_ARN, and the Lambda entry resolves it from Secrets
-#   Manager (SecretString = the raw value) into process.env.X at cold start, before loadConfig().
-#     APP_SECRET_ARN              → APP_SECRET (CSRF and cursor HMAC key)
-#     ORIGIN_SECRET_ARN           → ORIGIN_SECRET (value of the x-origin-secret header)
-#     CLOUDFRONT_PRIVATE_KEY_SECRET_ARN → CLOUDFRONT_PRIVATE_KEY (asset-signer only)
+# Environment contract: every variable below is read by services/api (config.ts, deps.ts,
+# adapters/index.ts, lib/runtimeEnv.ts, worker/deps.ts; documented in services/api/.env.example).
+# Secrets are never placed in the environment: the function gets the Secrets Manager ARN and
+# resolves it itself (SecretString = raw value):
+#   APP_SECRET_ARN, ORIGIN_SECRET_ARN        → lib/runtimeEnv.ts at cold start (every function)
+#   CLOUDFRONT_PRIVATE_KEY_SECRET_ARN        → adapters/index.ts on first signing (asset-signer)
+#   MIGRATION_DB_SECRET_ARN, DB_LOGIN_SECRET_ARNS → worker/deps.ts at migrate time (worker)
+# Each role may read exactly those secrets (iam.tf). AWS_REGION and AWS_LAMBDA_FUNCTION_NAME
+# come from the Lambda runtime.
 
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
@@ -38,66 +40,91 @@ locals {
 
   function_names = { for k in keys(local.functions) : k => "${var.name}-${k}" }
 
+  # Every HTTP function runs the session middleware, which verifies Cognito access tokens
+  # (JWKS over HTTPS; no IAM needed), so all of them need the pool and client ids.
   cognito_env = {
     COGNITO_CUSTOMER_POOL_ID   = var.customer_pool_id
     COGNITO_CUSTOMER_CLIENT_ID = var.customer_client_id
     COGNITO_STAFF_POOL_ID      = var.staff_pool_id
     COGNITO_STAFF_CLIENT_ID    = var.staff_client_id
+    TOTP_ISSUER                = var.totp_issuer
   }
 
+  # SesMailer: only functions that send mail (customer sign-up mail, worker outbox).
   mail_env = {
     SES_CONFIGURATION_SET  = var.ses_configuration_set
     MAIL_FROM_DOMAIN       = var.mail_from_domain
     MAIL_DEFAULT_FROM_NAME = var.mail_default_from_name
   }
 
+  # loadConfig() (config.ts) + createDbPool() (deps.ts) + runtimeEnv.ts, for every function.
+  # PUBLIC_PORT is left unset: it defaults to "" when NODE_ENV=production.
   common_env = {
     NODE_ENV                            = "production"
     NODE_OPTIONS                        = "--enable-source-maps"
+    NODE_EXTRA_CA_CERTS                 = "/var/runtime/ca-cert.pem" # Amazon RDS CAs (migrate task: verify-full)
     AWS_NODEJS_CONNECTION_REUSE_ENABLED = "1"
     ADAPTERS                            = "aws"
-    APP_ENV                             = var.environment
     PLATFORM_DOMAIN                     = var.platform_domain
     ADMIN_HOST                          = var.admin_host
     PUBLIC_SCHEME                       = "https"
-    PUBLIC_PORT                         = ""
     COOKIE_SECURE                       = "true"
     TRUST_X_TENANT_HOST                 = "true"
     # Per-IP limits are enforced by WAF; in-process counters are meaningless across Lambdas.
-    RATE_LIMIT        = "false"
-    STAFF_MFA         = "REQUIRED"
-    TOTP_ISSUER       = var.totp_issuer
-    LOG_LEVEL         = var.log_level
-    DB_IAM_AUTH       = "1"
-    DATABASE_POOL_MAX = "2"
-    APP_SECRET_ARN    = aws_secretsmanager_secret.app.arn
-    ORIGIN_SECRET_ARN = aws_secretsmanager_secret.origin.arn
-    SQS_QUEUE_URL     = aws_sqs_queue.jobs.url
+    RATE_LIMIT               = "false"
+    STAFF_MFA                = "REQUIRED"
+    SHARE_PRICE_VALID_DAYS   = tostring(var.share_price_valid_days)
+    ASSET_COOKIE_TTL_SECONDS = "600"
+    AR_URL_TTL_SECONDS       = "300"
+    LOG_LEVEL                = var.log_level
+    DB_IAM_AUTH              = "1"
+    DATABASE_POOL_MAX        = "2"
+    APP_SECRET_ARN           = aws_secretsmanager_secret.app.arn
+    ORIGIN_SECRET_ARN        = aws_secretsmanager_secret.origin.arn
   }
 
   function_env = {
-    "public-catalog" = {}
+    "public-catalog" = local.cognito_env
     "customer"       = merge(local.cognito_env, local.mail_env)
-    "reseller-admin" = merge(local.cognito_env, local.mail_env, {
+    "reseller-admin" = merge(local.cognito_env, {
       S3_ASSETS_BUCKET = var.public_bucket_name
     })
     "manufacturer-admin" = local.cognito_env
-    "asset-signer" = {
+    "asset-signer" = merge(local.cognito_env, {
       CLOUDFRONT_KEY_PAIR_ID            = var.cloudfront_key_pair_id
       CLOUDFRONT_PRIVATE_KEY_SECRET_ARN = aws_secretsmanager_secret.signing_key.arn
-      ASSET_COOKIE_TTL_SECONDS          = "600"
-      AR_URL_TTL_SECONDS                = "300"
-    }
+    })
     "worker" = merge(local.cognito_env, local.mail_env, {
       EDGE_TENANT_KVS_ARN = var.kvs_arn
-      # `migrate` task: schema owner (RDS-managed secret: {username, password}) on the instance
-      # endpoint, plus the svc_* login passwords it must keep in sync for RDS Proxy.
-      MIGRATE_DB_HOST       = var.db_instance_address
-      MIGRATE_DB_NAME       = var.db_name
-      MIGRATE_DB_SECRET_ARN = var.db_master_secret_arn
-      DB_LOGIN_SECRET_ARNS  = jsonencode(var.db_login_secret_arns)
+      # `migrate` task: schema owner (RDS-managed secret {username, password}) straight to the
+      # instance, then the svc_* logins RDS Proxy uses are synced from their secrets.
+      MIGRATION_DB_HOST       = var.db_instance_address
+      MIGRATION_DB_PORT       = "5432"
+      MIGRATION_DB_NAME       = var.db_name
+      MIGRATION_DB_SECRET_ARN = var.db_master_secret_arn
+      DB_LOGIN_SECRET_ARNS    = jsonencode(var.db_login_secret_arns)
     })
   }
+
+  # API Gateway access logs. No query strings, cookies or bodies: they can carry tokens or
+  # personal data (G10).
+  access_log_format = jsonencode({
+    requestId      = "$context.requestId"
+    requestTime    = "$context.requestTimeEpoch"
+    httpMethod     = "$context.httpMethod"
+    routeKey       = "$context.routeKey"
+    path           = "$context.path"
+    status         = "$context.status"
+    responseLength = "$context.responseLength"
+    latency        = "$context.responseLatency"
+    integration    = "$context.integration.latency"
+    integrationErr = "$context.integration.error"
+    ip             = "$context.identity.sourceIp"
+  })
+
+  # The worker zip holds worker/index.mjs plus migrations/ (packages/db resolves ../migrations/
+  # relative to the bundle), so its handler lives one directory down.
+  handlers = { for k, v in local.functions : k => v.worker ? "worker/index.handler" : "index.handler" }
 }
 
 # ---------------------------------------------------------------------------------------------
@@ -238,6 +265,11 @@ data "archive_file" "stub" {
   output_path = "${path.root}/.terraform/build/api-stub.zip"
 
   source {
+    filename = "worker/index.mjs"
+    content  = "export { handler } from '../index.mjs';\n"
+  }
+
+  source {
     filename = "index.mjs"
     content  = <<-JS
       // Bootstrap stub. CI replaces it with services/api/dist/lambda/<function>/index.mjs.
@@ -274,7 +306,7 @@ resource "aws_lambda_function" "this" {
   role          = aws_iam_role.function[each.key].arn
   runtime       = "nodejs22.x"
   architectures = ["arm64"]
-  handler       = "index.handler"
+  handler       = local.handlers[each.key]
   memory_size   = lookup(var.memory_mb, each.key, each.value.memory)
   timeout       = each.value.timeout
   publish       = true
@@ -339,7 +371,7 @@ resource "aws_lambda_alias" "live" {
 resource "aws_apigatewayv2_api" "this" {
   name          = var.name
   protocol_type = "HTTP"
-  description   = "saunaklar API (only reachable through CloudFront: x-origin-secret is checked by every function)"
+  description   = "saunaklar storefront API (tenant hosts, via CloudFront; x-origin-secret is checked by every function)"
 }
 
 resource "aws_apigatewayv2_stage" "default" {
@@ -365,20 +397,7 @@ resource "aws_apigatewayv2_stage" "default" {
 
   access_log_settings {
     destination_arn = var.api_access_log_group_arn
-    # No query strings, cookies or bodies: they can carry tokens or personal data (G10).
-    format = jsonencode({
-      requestId      = "$context.requestId"
-      requestTime    = "$context.requestTimeEpoch"
-      httpMethod     = "$context.httpMethod"
-      routeKey       = "$context.routeKey"
-      path           = "$context.path"
-      status         = "$context.status"
-      responseLength = "$context.responseLength"
-      latency        = "$context.responseLatency"
-      integration    = "$context.integration.latency"
-      integrationErr = "$context.integration.error"
-      ip             = "$context.identity.sourceIp"
-    })
+    format          = local.access_log_format
   }
 
   depends_on = [aws_apigatewayv2_route.this]
@@ -408,6 +427,62 @@ resource "aws_lambda_permission" "api" {
   qualifier     = aws_lambda_alias.live[each.key].name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.this.execution_arn}/*/*"
+}
+
+# ---------------------------------------------------------------------------------------------
+# Admin API (C6): the manufacturer admin host gets its own HTTP API whose only target is the
+# manufacturer-admin function (staff login on the admin host runs as app_platform there). The
+# tenant router selects this origin for /api/* on ADMIN_HOST, so storefront hosts can never reach
+# manufacturer-admin, and the admin host can never reach the tenant functions.
+# ---------------------------------------------------------------------------------------------
+
+resource "aws_apigatewayv2_api" "admin" {
+  name          = "${var.name}-admin"
+  protocol_type = "HTTP"
+  description   = "saunaklar manufacturer admin API (ADMIN_HOST only, via CloudFront)"
+}
+
+resource "aws_apigatewayv2_stage" "admin" {
+  api_id      = aws_apigatewayv2_api.admin.id
+  name        = "$default"
+  auto_deploy = true
+
+  default_route_settings {
+    throttling_burst_limit   = var.admin_throttle_burst_limit
+    throttling_rate_limit    = var.admin_throttle_rate_limit
+    detailed_metrics_enabled = true
+  }
+
+  access_log_settings {
+    destination_arn = var.api_access_log_group_arn
+    format          = local.access_log_format
+  }
+
+  depends_on = [aws_apigatewayv2_route.admin]
+}
+
+resource "aws_apigatewayv2_integration" "admin" {
+  api_id                 = aws_apigatewayv2_api.admin.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_alias.live["manufacturer-admin"].invoke_arn
+  payload_format_version = "2.0"
+  timeout_milliseconds   = local.functions["manufacturer-admin"].timeout * 1000 + 1000
+}
+
+resource "aws_apigatewayv2_route" "admin" {
+  for_each  = toset(var.admin_routes)
+  api_id    = aws_apigatewayv2_api.admin.id
+  route_key = each.key
+  target    = "integrations/${aws_apigatewayv2_integration.admin.id}"
+}
+
+resource "aws_lambda_permission" "admin_api" {
+  statement_id  = "AllowAdminApiGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.this["manufacturer-admin"].function_name
+  qualifier     = aws_lambda_alias.live["manufacturer-admin"].name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.admin.execution_arn}/*/*"
 }
 
 # ---------------------------------------------------------------------------------------------
