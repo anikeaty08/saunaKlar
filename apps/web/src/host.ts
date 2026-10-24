@@ -20,16 +20,12 @@ export type HostKind =
   | { kind: 'platform'; reason: 'root' | 'unknown-host' | 'reserved-slug'; attempted?: string };
 
 /**
- * Mirrors the `reserved_slugs` seed so the SPA does not even ask the API for
+ * Exactly the `reserved_slugs` seed (packages/db/migrations/0010_reference_data.sql) so the SPA does not even ask the API for
  * them; the database stays the authority.
  */
 export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
-  'www', 'api', 'admin', 'app', 'assets', 'static', 'cdn', 'media', 'img', 'images',
-  'mail', 'email', 'smtp', 'imap', 'pop', 'ftp', 'ns1', 'ns2', 'dns', 'mx',
-  'auth', 'login', 'account', 'accounts', 'id', 'sso', 'oauth',
-  'dev', 'test', 'staging', 'stage', 'prod', 'preview', 'demo', 'beta', 'local', 'localhost',
-  'help', 'support', 'status', 'docs', 'blog', 'billing', 'security', 'abuse', 'postmaster', 'webmaster',
-  'manufacturer', 'platform', 'root', 'system', 'internal',
+  'www', 'api', 'admin', 'app', 'assets', 'static', 'cdn', 'mail', 'smtp',
+  'help', 'support', 'status', 'docs', 'blog', 'dev', 'staging', 'test',
 ]);
 
 export function parseHost(host: string, config: HostConfig): HostKind {

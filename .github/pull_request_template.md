@@ -4,7 +4,7 @@
 
 ## How it was tested
 
-- [ ] `npx tsc -b`
+- [ ] `npm run typecheck`
 - [ ] Unit / DB / API tests (`npx vitest run --project unit|db|api`)
 - [ ] E2E (`npx playwright test`) for user-facing flows
 - [ ] Tried it locally on a tenant host (`http://<slug>.localhost:5173`) and/or the admin host

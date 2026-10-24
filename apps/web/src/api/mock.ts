@@ -341,7 +341,12 @@ const handlers: Partial<Record<RouteName, Handler>> = {
     return configDto(c);
   },
   submitRequest: ({ params, body }) => {
-    const c = ownConfig(params.id!);
+    let c = ownConfig(params.id!);
+    // An expired locked price is re-priced into a fresh locked copy, like the API does.
+    if (c.snapshotAt && new Date(plusDays(c.snapshotAt, 30)) < new Date()) {
+      c = { ...c, id: crypto.randomUUID(), lockedAt: now(), snapshotAt: now(), source: c.id, createdAt: now(), updatedAt: now() };
+      state.configs.push(c);
+    }
     if (state.requests.some(r => r.configurationId === c.id)) throw new Problem('REQUEST_EXISTS', 'A request for this configuration was already sent.');
     const v = validate(rulesOf(sauna(c.saunaSlug)), c.selections);
     if (!v.valid) throw new Problem('OPTION_RULES_VIOLATED', v.issues[0]!.message);

@@ -32,7 +32,7 @@ Provider lock files are committed with hashes for linux and macOS (amd64 and arm
 
 | Path | Origin | Cache key | Notes |
 |---|---|---|---|
-| `/api/*` | API Gateway | `x-tenant-host` + all query strings | cached only when the API sends `Cache-Control`; adds `x-origin-secret` |
+| `/api/*` | storefront HTTP API; **admin HTTP API** on `admin_host` | `x-tenant-host` + all query strings | cached only when the API sends `Cache-Control`; adds `x-origin-secret` |
 | `/assets/*` | assets bucket | path only (**no Host**, G1) | trusted key group: LOW cookie `https://{host}/assets/lo/*`, FULL `https://{host}/assets/*`, AR signed URLs |
 | `/static/*` | web bucket | path only | hashed SPA bundles, forced 1 year, immutable |
 | `/media/*` | public bucket | path only | catalog thumbnails and galleries |
@@ -44,6 +44,12 @@ The S3 key is always the URL path without the leading slash. The viewer-request 
 `{slug}.<platform_domain>` host must exist as `ACTIVE` in the KeyValueStore (the worker writes
 `slug → ACTIVE|SUSPENDED`), otherwise the edge answers 404 (problem+json under `/api/`). The admin
 host skips the lookup. The function also sets `x-tenant-host`, overwriting anything the client sent.
+
+**Two HTTP APIs (C6).** Tenant hosts use the storefront API (public-catalog, customer,
+reseller-admin, asset-signer; staff login there runs as `app_tenant`). On `admin_host` the router
+switches `/api/*` to the admin API (`cf.selectRequestOriginById`), whose only target is
+manufacturer-admin (`/api/health`, `/api/auth/staff/*`, `/api/manufacturer/*`, as `app_platform`).
+Neither host can reach the other side's functions.
 
 ## 1. Bootstrap (once per AWS account)
 
@@ -130,19 +136,21 @@ Production runs after staging and waits for approval through the `production` Gi
 | `<name>/db/svc_*` | Terraform (random) | the password RDS Proxy uses to log in as each function's DB user |
 | `rds!db-…` | RDS (managed, rotated) | the master user `sauna_owner`, used only by the migrate task |
 
-Secrets are never put into Lambda environment variables. A function gets `<VAR>_SECRET_ARN`
-(`APP_SECRET_ARN`, `ORIGIN_SECRET_ARN`, `CLOUDFRONT_PRIVATE_KEY_SECRET_ARN`). The Lambda entry
-reads each one at cold start (the SecretString is the raw value) into `process.env.<VAR>` before
-`loadConfig()`.
+Secrets are never put into Lambda environment variables, only their ARNs.
+`lib/runtimeEnv.ts` resolves `APP_SECRET_ARN` and `ORIGIN_SECRET_ARN` at cold start (the
+SecretString is the raw value). The asset signer reads `CLOUDFRONT_PRIVATE_KEY_SECRET_ARN` on first
+use. The worker reads the database secrets only while it runs `migrate`.
 
 ## 4. Lambda bundles
 
 `npm run build -w @saunaklar/api` runs `services/api/build.mjs` and writes
 `services/api/dist/lambda/<function>/index.mjs` (plus source maps) for `public-catalog`, `customer`,
-`reseller-admin`, `manufacturer-admin`, `asset-signer` and `worker`. Handler: `index.handler`,
-runtime `nodejs22.x`, `arm64`. `.github/scripts/build-lambda-artifacts.sh` zips each directory as is.
-The worker bundle must therefore carry the SQL migrations next to `index.mjs`. A
-`dist/lambda/cognito-custom-message/` bundle is deployed to the Cognito trigger if it exists.
+`reseller-admin`, `manufacturer-admin`, `asset-signer` and `worker`, and copies the SQL migrations
+to `dist/lambda/migrations/`. Runtime `nodejs22.x`, `arm64`. `.github/scripts/build-lambda-artifacts.sh`
+zips each function directory with handler `index.handler`. The worker zip holds `worker/` and
+`migrations/` with handler `worker/index.handler`, because packages/db resolves `../migrations/`
+from the bundle. A `dist/lambda/cognito-custom-message/` bundle is deployed to the Cognito
+trigger if it exists.
 
 `sharp`, `aws-crt` and `@aws-sdk/signature-v4-crt` stay outside the bundle. CI builds them for
 linux-arm64 at the versions in `package-lock.json`, publishes them as the layer
@@ -150,13 +158,26 @@ linux-arm64 at the versions in `package-lock.json`, publishes them as the layer
 
 Terraform creates each function with a stub that answers 503 until the first CI deploy.
 
-Environment contract (set by `modules/api`): `NODE_ENV=production`, `ADAPTERS=aws`,
-`API_DATABASE_URL` (`postgres://svc_<fn>@<proxy>:5432/sauna`, IAM token as password), `DB_IAM_AUTH=1`,
-`PLATFORM_DOMAIN`, `ADMIN_HOST`, `PUBLIC_SCHEME=https`, `TRUST_X_TENANT_HOST=true`, `RATE_LIMIT=false`
-(WAF does it), `COGNITO_{CUSTOMER,STAFF}_{POOL,CLIENT}_ID`, `SES_CONFIGURATION_SET`, `MAIL_FROM_DOMAIN`,
-`MAIL_DEFAULT_FROM_NAME`, `S3_ASSETS_BUCKET` (public bucket), `SQS_QUEUE_URL`, `CLOUDFRONT_KEY_PAIR_ID`,
-`EDGE_TENANT_KVS_ARN`. The worker also gets `MIGRATE_DB_HOST`, `MIGRATE_DB_NAME`,
-`MIGRATE_DB_SECRET_ARN` and `DB_LOGIN_SECRET_ARNS`.
+Environment contract (set by `modules/api`, read by `services/api`; all names are in
+`services/api/.env.example`):
+
+| Variable | public-catalog | customer | reseller-admin | manufacturer-admin | asset-signer | worker |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| `NODE_ENV=production`, `ADAPTERS=aws`, `PLATFORM_DOMAIN`, `ADMIN_HOST`, `PUBLIC_SCHEME=https`, `COOKIE_SECURE`, `TRUST_X_TENANT_HOST`, `RATE_LIMIT=false`, `STAFF_MFA`, `SHARE_PRICE_VALID_DAYS`, `ASSET_COOKIE_TTL_SECONDS`, `AR_URL_TTL_SECONDS`, `LOG_LEVEL` (config.ts) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `API_DATABASE_URL` (`postgres://svc_<fn>@<proxy>:5432/sauna`), `DB_IAM_AUTH=1`, `DATABASE_POOL_MAX` (deps.ts) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `APP_SECRET_ARN`, `ORIGIN_SECRET_ARN` (runtimeEnv.ts) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `COGNITO_{CUSTOMER,STAFF}_{POOL,CLIENT}_ID`, `TOTP_ISSUER` (session middleware, IdP) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `SES_CONFIGURATION_SET`, `MAIL_FROM_DOMAIN`, `MAIL_DEFAULT_FROM_NAME` (mailer) | | ✓ | | | | ✓ |
+| `S3_ASSETS_BUCKET` (public bucket: uploads/, branding/) | | | ✓ | | | |
+| `CLOUDFRONT_KEY_PAIR_ID`, `CLOUDFRONT_PRIVATE_KEY_SECRET_ARN` | | | | | ✓ | |
+| `EDGE_TENANT_KVS_ARN` | | | | | | ✓ |
+| `MIGRATION_DB_{HOST,PORT,NAME,SECRET_ARN}`, `DB_LOGIN_SECRET_ARNS` (worker/deps.ts) | | | | | | ✓ |
+
+`PUBLIC_PORT` is left unset; it defaults to empty in production. `NODE_EXTRA_CA_CERTS=/var/runtime/ca-cert.pem`
+makes the runtime trust the Amazon RDS CAs, which the migrate task needs for its direct `verify-full`
+TLS connection. Secrets each role may read: every function gets the app and origin secrets;
+asset-signer also gets the signing key; the worker also gets the RDS master secret and the seven
+`svc_*` login secrets.
 
 ### Database users
 
@@ -170,9 +191,11 @@ Each function connects through RDS Proxy as its own login user with IAM auth
 | worker | `svc_worker` | `app_worker` |
 | catalog import (CI) | `svc_catalog_import` | `catalog_admin` |
 
-The migrate task connects straight to the instance as the master user. It creates these login roles
-(or resets their passwords) from the `DB_LOGIN_SECRET_ARNS` secrets and grants each one its
-membership, so the proxy's stored passwords always match. Use transaction-local settings only
+The migrate task (`worker/deps.ts`) builds the owner URL from the RDS-managed master secret at
+migrate time, applies `packages/db` migrations, then runs `syncLoginUsers()`. That creates or
+updates each `svc_*` login (LOGIN NOINHERIT, exactly one application role, schema usage,
+`resolve_tenant()`) from its secret, so the passwords stored for RDS Proxy always match. Only a
+SCRAM-SHA-256 verifier is sent, never the plaintext, because the instance logs DDL. Use transaction-local settings only
 (`set_config(…, true)`): session state pins proxy connections, and the alarm
 `<name>-rds-proxy-session-pinning` fires.
 

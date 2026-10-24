@@ -61,6 +61,8 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
+            // Vite's preload helper is used by every dynamic import; keep it in the shell, never in a lazy vendor chunk.
+            if (id.includes('vite/preload-helper') || id.includes('commonjsHelpers')) return 'react';
             if (!id.includes('node_modules')) return undefined;
             if (/[\\/]node_modules[\\/](three|three-stdlib|@react-three|three-mesh-bvh|troika-[^\\/]+|camera-controls|maath|meshline|stats-gl|@monogrid|detect-gpu|hls\.js)[\\/]/.test(id)) return 'three';
             if (/[\\/]node_modules[\\/](gsap|@gsap)[\\/]/.test(id)) return 'gsap';
