@@ -9,7 +9,7 @@
  */
 import { calculatePrice, type Discount as PricingDiscount } from '@saunaklar/pricing';
 import { defaultSelection, validate, type ModelRules } from '@saunaklar/rules';
-import { routes, type ErrorCode, type RouteName, ERROR_STATUS, CUSTOMER_TRANSITIONS } from '@saunaklar/shared';
+import { routes, type ErrorCode, type RouteName, ERROR_STATUS, CUSTOMER_TRANSITIONS, STAFF_TRANSITIONS } from '@saunaklar/shared';
 import { setTransport } from './client.ts';
 import { MOCK_TENANTS, ROOM_PRESETS, fid, saunaDetails, tenantDto } from './mock-data.ts';
 import type { Configuration, RequestDto, SaunaDetail, Session } from './types.ts';
@@ -41,7 +41,24 @@ const problem = (p: Problem) =>
 interface Customer { id: string; email: string; firstName: string; lastName: string; phone: string | null; locale: string; createdAt: string }
 interface StoredConfig { id: string; name: string; saunaSlug: string; selections: string[]; placement: Configuration['placement']; lockedAt: string | null; snapshotAt: string | null; source: string | null; createdAt: string; updatedAt: string }
 interface StoredRequest { id: string; configurationId: string; status: RequestDto['status']; message: string | null; history: RequestDto['history']; createdAt: string; updatedAt: string; quote: RequestDto['activeQuote'] }
-interface State { csrf: string; customer: Customer | null; pending: Record<string, Omit<Customer, 'id' | 'createdAt'>>; configs: StoredConfig[]; requests: StoredRequest[] }
+interface StoredLink { id: string; configurationId: string; expiresAt: string; revokedAt: string | null; createdAt: string; views: number }
+interface StoredNote { id: string; requestId: string; body: string; authorName: string; createdAt: string }
+interface Staff { id: string; email: string; displayName: string }
+interface State {
+  csrf: string;
+  customer: Customer | null;
+  pending: Record<string, Omit<Customer, 'id' | 'createdAt'>>;
+  configs: StoredConfig[];
+  requests: StoredRequest[];
+  staff?: Staff | null;
+  links?: StoredLink[];
+  notes?: StoredNote[];
+  quotes?: NonNullable<RequestDto['activeQuote']>[];
+  order?: string[];
+  shareDays?: number;
+  logos?: Record<string, string>;
+  pendingStaff?: Staff;
+}
 
 const KEY = 'saunaklar:mock-api';
 let catalogVersion = 7;
@@ -207,6 +224,7 @@ function page<T>(items: T[], q: URLSearchParams) {
 }
 
 function session(): Session {
+  if (state.staff) return { kind: 'staff', csrfToken: state.csrf, staff: { ...state.staff, scope: 'RESELLER', role: 'OWNER' } };
   return state.customer
     ? { kind: 'customer', csrfToken: state.csrf, customer: { id: state.customer.id, email: state.customer.email, firstName: state.customer.firstName, lastName: state.customer.lastName, locale: state.customer.locale } }
     : { kind: 'anonymous', csrfToken: state.csrf };
@@ -242,6 +260,7 @@ const handlers: Partial<Record<RouteName, Handler>> = {
   refresh: () => session(),
   logout: () => {
     state.customer = null;
+    state.staff = null;
     state.csrf = crypto.randomUUID();
     return { ok: true };
   },
@@ -410,6 +429,273 @@ const handlers: Partial<Record<RouteName, Handler>> = {
   assetAr: () => ({ glbUrl: null, usdzUrl: null, expiresAt: new Date(Date.now() + 300_000).toISOString() }),
 };
 
+// ---- reseller admin (mock) -------------------------------------------------------
+// Staff sign-in: any e-mail, password "wrong" fails, then any 6-digit code but 000000.
+// Admin lists show what this browser created as a customer (configurations, requests).
+
+const requireStaff = () => {
+  if (!state.staff) throw new Problem('UNAUTHENTICATED', 'Please sign in.');
+};
+const staffName = () => state.staff?.displayName ?? 'Staff';
+const mockCustomers = () => (state.customer ? [state.customer] : []);
+const customerSummary = (c: Customer) => ({
+  id: c.id, email: c.email, firstName: c.firstName, lastName: c.lastName, status: 'ACTIVE' as const, createdAt: c.createdAt,
+  configurations: state.configs.length, requests: state.requests.length,
+});
+function adminRequestDto(r: StoredRequest) {
+  const c = mockCustomers()[0] ?? { id: fid('customer:demo'), email: 'demo@example.test', firstName: 'Demo', lastName: 'Customer', phone: null };
+  return {
+    ...requestDto(r),
+    customer: { id: c.id, email: c.email, firstName: c.firstName, lastName: c.lastName, phone: c.phone },
+    notes: (state.notes ?? []).filter(n => n.requestId === r.id).map(({ requestId: _r, ...n }) => n),
+    quotes: (() => {
+      const own = (state.quotes ?? []).filter(q => (q as { requestId?: string }).requestId === r.id).map(({ requestId: _r, ...q }: NonNullable<RequestDto['activeQuote']> & { requestId?: string }) => q);
+      return own.length ? own : r.quote ? [r.quote] : [];
+    })(),
+    allowedTransitions: STAFF_TRANSITIONS[r.status],
+  };
+}
+function adminSauna(slug: string) {
+  const t = tenant();
+  const s = saunaDetails().find(x => x.slug === slug)!;
+  const own = t.perSauna[slug] ?? null;
+  const p = calculatePrice({ listPriceMinor: s.listPriceMinor, maxDiscountBps: s.maxDiscountBps, options: [], perSaunaDiscount: own, defaultDiscount: t.defaultDiscount });
+  const order = state.order ?? saunaDetails().map(x => x.slug);
+  return {
+    id: s.id, slug: s.slug, name: s.name, thumbnailUrl: s.assets.thumbnailUrl, isVisible: !t.hidden.includes(slug), sortOrder: order.indexOf(slug),
+    listPriceMinor: s.listPriceMinor, maxDiscountBps: s.maxDiscountBps, discount: own,
+    effectiveDiscount: p.discountMinor > 0 ? { type: 'FIXED' as const, value: p.discountMinor } : null, priceFromMinor: p.finalPriceMinor,
+  };
+}
+const adminSaunaList = () => {
+  const order = state.order ?? saunaDetails().map(x => x.slug);
+  return { items: [...saunaDetails()].sort((a, b) => order.indexOf(a.slug) - order.indexOf(b.slug)).map(s => adminSauna(s.slug)), defaultDiscount: tenant().defaultDiscount };
+};
+const slugOf = (id: string) => saunaDetails().find(s => s.id === id)?.slug ?? (() => { throw new Problem('NOT_FOUND', 'Sauna not found.'); })();
+const brandingDto = () => ({ ...tenantDto(tenant(), catalogVersion).branding, logoUrl: state.logos?.LOGO ?? null, faviconUrl: state.logos?.FAVICON ?? null });
+const linkDto = (l: StoredLink) => ({ ...l, lastViewedAt: null, state: l.revokedAt ? ('REVOKED' as const) : new Date(l.expiresAt) < new Date() ? ('EXPIRED' as const) : ('ACTIVE' as const) });
+const uploads = new Map<string, { kind: string; url: string | null }>();
+
+Object.assign(handlers, {
+  staffLogin: ({ body }: Ctx) => {
+    if (body.password === 'wrong') throw new Problem('INVALID_CREDENTIALS', 'E-mail or password is incorrect.');
+    const email = String(body.email).toLowerCase();
+    state.pendingStaff = { id: fid(`staff:${email}`), email, displayName: email.split('@')[0]!.replace(/^./, c => c.toUpperCase()) + ' Staff' };
+    return { status: 'MFA_REQUIRED', challengeId: 'mock-challenge' };
+  },
+  staffMfa: ({ body }: Ctx) => {
+    if (body.code === '000000') throw new Problem('MFA_INVALID', 'That code is not valid.');
+    state.staff = state.pendingStaff ?? { id: fid('staff:demo'), email: 'owner@example.test', displayName: 'Demo Owner' };
+    state.csrf = crypto.randomUUID();
+    return { status: 'OK' };
+  },
+  staffNewPassword: () => ({ status: 'MFA_REQUIRED', challengeId: 'mock-challenge' }),
+  adminAnalytics: ({ query }: Ctx) => {
+    requireStaff();
+    const days = Number(query.get('days') ?? 30);
+    const day = (iso: string) => iso.slice(0, 10);
+    const daily = Array.from({ length: days }, (_, i) => {
+      const date = day(plusDays(now(), i - days + 1));
+      return { date, requests: state.requests.filter(r => day(r.createdAt) === date).length, configurations: state.configs.filter(c => day(c.createdAt) === date).length, views: 0 };
+    });
+    const byStatus: Record<string, number> = {};
+    for (const r of state.requests) byStatus[r.status] = (byStatus[r.status] ?? 0) + 1;
+    const top = new Map<string, number>();
+    for (const c of state.configs) top.set(c.saunaSlug, (top.get(c.saunaSlug) ?? 0) + 1);
+    return {
+      days,
+      totals: { customers: mockCustomers().length, configurations: state.configs.length, requests: state.requests.length, shareLinkViews: 0, acceptedRequests: byStatus.ACCEPTED ?? 0 },
+      requestsByStatus: byStatus,
+      daily,
+      topSaunas: [...top].map(([slug, n]) => ({ saunaModelId: saunaDetails().find(s => s.slug === slug)!.id, name: saunaDetails().find(s => s.slug === slug)!.name, configurations: n, requests: state.requests.filter(r => state.configs.find(c => c.id === r.configurationId)?.saunaSlug === slug).length })),
+    };
+  },
+  adminRequests: ({ query }: Ctx) => {
+    requireStaff();
+    const status = query.get('status');
+    const q = (query.get('q') ?? '').toLowerCase();
+    const rows = [...state.requests].reverse().map(r => {
+      const d = adminRequestDto(r);
+      return { id: d.id, status: d.status, saunaName: d.configuration.sauna.name, configurationName: d.configuration.name, finalPriceMinor: d.snapshot.finalPriceMinor, currency: d.snapshot.currency, createdAt: d.createdAt, updatedAt: d.updatedAt, customerName: `${d.customer.firstName} ${d.customer.lastName}`, customerEmail: d.customer.email };
+    });
+    return page(rows.filter(r => (!status || r.status === status) && (!q || `${r.customerName} ${r.customerEmail} ${r.saunaName}`.toLowerCase().includes(q))), query);
+  },
+  adminRequest: ({ params }: Ctx) => {
+    requireStaff();
+    const r = state.requests.find(x => x.id === params.id);
+    if (!r) throw new Problem('NOT_FOUND', 'Request not found.');
+    return adminRequestDto(r);
+  },
+  adminTransition: ({ params, body }: Ctx) => {
+    requireStaff();
+    const r = state.requests.find(x => x.id === params.id)!;
+    const to = body.toStatus as RequestDto['status'];
+    if (!STAFF_TRANSITIONS[r.status].includes(to)) throw new Problem('INVALID_TRANSITION', 'Not allowed.');
+    r.history.push({ fromStatus: r.status, toStatus: to, actor: 'STAFF', actorName: staffName(), note: (body.note as string) ?? null, at: now() });
+    r.status = to;
+    r.updatedAt = now();
+    return adminRequestDto(r);
+  },
+  adminNote: ({ params, body }: Ctx) => {
+    requireStaff();
+    (state.notes ??= []).push({ id: crypto.randomUUID(), requestId: params.id!, body: String(body.body), authorName: staffName(), createdAt: now() });
+    return adminRequestDto(state.requests.find(x => x.id === params.id)!);
+  },
+  adminQuote: ({ params, body }: Ctx) => {
+    requireStaff();
+    const r = state.requests.find(x => x.id === params.id)!;
+    const at = now();
+    for (const q of state.quotes ?? []) if ((q as { requestId?: string }).requestId === r.id && !q.supersededAt) q.supersededAt = at;
+    const quote = { id: crypto.randomUUID(), amountMinor: Number(body.amountMinor), currency: 'EUR', validUntil: String(body.validUntil), note: (body.note as string) ?? null, createdAt: at, supersededAt: null, requestId: r.id };
+    (state.quotes ??= []).push(quote);
+    const { requestId: _x, ...active } = quote;
+    r.quote = active;
+    if (r.status !== 'QUOTED') {
+      r.history.push({ fromStatus: r.status, toStatus: 'QUOTED', actor: 'STAFF', actorName: staffName(), note: null, at });
+      r.status = 'QUOTED';
+    }
+    r.updatedAt = at;
+    return adminRequestDto(r);
+  },
+  adminCustomers: ({ query }: Ctx) => (requireStaff(), page(mockCustomers().map(customerSummary), query)),
+  adminCustomer: ({ params }: Ctx) => {
+    requireStaff();
+    const c = mockCustomers().find(x => x.id === params.id);
+    if (!c) throw new Problem('NOT_FOUND', 'Customer not found.');
+    return { ...customerSummary(c), phone: c.phone, addresses: [], recentConfigurations: state.configs.slice(-5).reverse().map(summaryDto), recentRequests: [...state.requests].reverse().slice(0, 5).map(r => { const d = requestDto(r); return { id: d.id, status: d.status, saunaName: d.configuration.sauna.name, configurationName: d.configuration.name, finalPriceMinor: d.snapshot.finalPriceMinor, currency: d.snapshot.currency, createdAt: d.createdAt, updatedAt: d.updatedAt }; }) };
+  },
+  adminConfigurations: ({ query }: Ctx) => (requireStaff(), page([...state.configs].reverse().map(summaryDto), query)),
+  adminConfiguration: ({ params }: Ctx) => {
+    requireStaff();
+    const c = state.configs.find(x => x.id === params.id);
+    if (!c) throw new Problem('NOT_FOUND', 'Configuration not found.');
+    return configDto(c);
+  },
+  adminCreateConfiguration: ({ body }: Ctx) => {
+    requireStaff();
+    const s = saunaDetails().find(x => x.id === body.saunaModelId)!;
+    const c: StoredConfig = { id: crypto.randomUUID(), name: (body.name as string) || s.name, saunaSlug: s.slug, selections: defaultSelection(rulesOf(s)), placement: null, lockedAt: null, snapshotAt: null, source: null, createdAt: now(), updatedAt: now() };
+    state.configs.push(c);
+    return configDto(c);
+  },
+  adminPutSelections: ({ params, body }: Ctx) => {
+    requireStaff();
+    const c = state.configs.find(x => x.id === params.id)!;
+    c.selections = body.optionIds as string[];
+    c.updatedAt = now();
+    return configDto(c);
+  },
+  adminShareLinks: ({ params }: Ctx) => (requireStaff(), { items: (state.links ?? []).filter(l => l.configurationId === params.id).reverse().map(linkDto) }),
+  adminCreateShareLink: ({ params, body }: Ctx) => {
+    requireStaff();
+    const l: StoredLink = { id: crypto.randomUUID(), configurationId: params.id!, expiresAt: plusDays(now(), Number(body.expiresInDays ?? state.shareDays ?? 30)), revokedAt: null, createdAt: now(), views: 0 };
+    (state.links ??= []).push(l);
+    return { id: l.id, url: `${location.origin}/s/demo`, expiresAt: l.expiresAt };
+  },
+  adminRevokeShareLink: ({ params }: Ctx) => {
+    requireStaff();
+    const l = (state.links ?? []).find(x => x.id === params.linkId)!;
+    l.revokedAt = now();
+    return linkDto(l);
+  },
+  adminSaunas: () => (requireStaff(), adminSaunaList()),
+  adminPatchSauna: ({ params, body }: Ctx) => {
+    requireStaff();
+    const slug = slugOf(params.id!);
+    const t = tenant();
+    if (typeof body.isVisible === 'boolean') t.hidden = body.isVisible ? t.hidden.filter(h => h !== slug) : [...t.hidden, slug];
+    catalogVersion++;
+    return adminSauna(slug);
+  },
+  adminSaunaOrder: ({ body }: Ctx) => {
+    requireStaff();
+    state.order = (body.saunaModelIds as string[]).map(slugOf);
+    catalogVersion++;
+    return adminSaunaList();
+  },
+  adminPutSaunaDiscount: ({ params, body }: Ctx) => {
+    requireStaff();
+    const slug = slugOf(params.id!);
+    const s = saunaDetails().find(x => x.slug === slug)!;
+    if (body.type === 'PERCENT' && Number(body.value) > s.maxDiscountBps) throw new Problem('DISCOUNT_EXCEEDS_CAP', 'Above the cap.');
+    tenant().perSauna[slug] = { type: body.type as 'PERCENT' | 'FIXED', value: Number(body.value) };
+    catalogVersion++;
+    return adminSauna(slug);
+  },
+  adminDeleteSaunaDiscount: ({ params }: Ctx) => {
+    requireStaff();
+    const slug = slugOf(params.id!);
+    delete tenant().perSauna[slug];
+    catalogVersion++;
+    return adminSauna(slug);
+  },
+  adminPutDefaultDiscount: ({ body }: Ctx) => {
+    requireStaff();
+    tenant().defaultDiscount = { type: body.type as 'PERCENT' | 'FIXED', value: Number(body.value) };
+    catalogVersion++;
+    return adminSaunaList();
+  },
+  adminDeleteDefaultDiscount: () => {
+    requireStaff();
+    tenant().defaultDiscount = null;
+    catalogVersion++;
+    return adminSaunaList();
+  },
+  adminBranding: () => (requireStaff(), brandingDto()),
+  adminPatchBranding: ({ body }: Ctx) => {
+    requireStaff();
+    const t = tenant();
+    if (body.displayName) t.name = String(body.displayName);
+    if ('tagline' in body) t.tagline = (body.tagline as string) ?? '';
+    if (body.primaryColor) t.primaryColor = String(body.primaryColor);
+    if ('supportEmail' in body) t.supportEmail = (body.supportEmail as string) ?? '';
+    if ('supportPhone' in body) t.supportPhone = (body.supportPhone as string) ?? '';
+    if ('legalName' in body) t.legalName = (body.legalName as string) ?? '';
+    if ('legalAddress' in body) t.legalAddress = (body.legalAddress as string) ?? '';
+    if (body.vatDisplay) t.vatDisplay = body.vatDisplay as typeof t.vatDisplay;
+    catalogVersion++;
+    return brandingDto();
+  },
+  adminCreateUpload: ({ body }: Ctx) => {
+    requireStaff();
+    const id = crypto.randomUUID();
+    uploads.set(id, { kind: String(body.kind), url: null });
+    return { uploadId: id, url: `${location.origin}/__mock/upload/${id}`, headers: {}, expiresAt: plusDays(now(), 1) };
+  },
+  adminCompleteUpload: ({ params }: Ctx) => {
+    requireStaff();
+    const u = uploads.get(params.uploadId!);
+    if (!u?.url) throw new Problem('UPLOAD_INVALID', 'Nothing was uploaded.');
+    (state.logos ??= {})[u.kind] = u.url;
+    return brandingDto();
+  },
+  adminSettings: () => (requireStaff(), { defaultShareExpiryDays: state.shareDays ?? 30 }),
+  adminPatchSettings: ({ body }: Ctx) => {
+    requireStaff();
+    state.shareDays = Number(body.defaultShareExpiryDays);
+    return { defaultShareExpiryDays: state.shareDays };
+  },
+} satisfies Partial<Record<RouteName, Handler>>);
+
+/** The presigned PUT goes to object storage, outside the API transport: catch it here. */
+function interceptUploads() {
+  const real = window.fetch.bind(window);
+  window.fetch = async (input, init) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    const m = /\/__mock\/upload\/([0-9a-f-]+)$/.exec(url);
+    if (m && init?.method === 'PUT' && init.body instanceof Blob) {
+      const u = uploads.get(m[1]!);
+      if (u) u.url = await new Promise<string>(res => {
+        const r = new FileReader();
+        r.onload = () => res(String(r.result));
+        r.readAsDataURL(init.body as Blob);
+      });
+      return new Response(null, { status: 200 });
+    }
+    return real(input, init);
+  };
+}
+
 // ---- router ---------------------------------------------------------------------------------
 
 const table = (Object.entries(routes) as [RouteName, (typeof routes)[RouteName]][]).map(([name, def]) => {
@@ -455,6 +741,7 @@ async function mockFetch(req: Request): Promise<Response> {
 
 export function installMock(): void {
   setTransport(mockFetch);
+  interceptUploads();
   (window as unknown as { __mock: unknown }).__mock = {
     bumpCatalog: () => ++catalogVersion,
     /** Staff quotes (or re-quotes) the latest request: `__mock.quote()` then accept to exercise the 409 path. */
@@ -462,7 +749,7 @@ export function installMock(): void {
       const r = requestId ? state.requests.find(x => x.id === requestId) : state.requests.at(-1);
       if (!r) return 'no request';
       const at = now();
-      r.quote = { id: crypto.randomUUID(), amountMinor, currency: 'CHF', validUntil: plusDays(at, 30), note: null, createdAt: at, supersededAt: null };
+      r.quote = { id: crypto.randomUUID(), amountMinor, currency: 'EUR', validUntil: plusDays(at, 30), note: null, createdAt: at, supersededAt: null };
       if (r.status !== 'QUOTED') {
         r.history.push({ fromStatus: r.status, toStatus: 'QUOTED', actor: 'STAFF', actorName: 'Showroom', note: null, at });
         r.status = 'QUOTED';
