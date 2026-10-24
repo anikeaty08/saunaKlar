@@ -25,7 +25,8 @@
  *   COGNITO_STAFF_POOL_ID, COGNITO_STAFF_CLIENT_ID         staff user pool (MFA required) and app client
  *   SES_CONFIGURATION_SET         SES v2 configuration set (event publishing for bounces/complaints)
  *   CLOUDFRONT_KEY_PAIR_ID        public key id of the CloudFront key group
- *   CLOUDFRONT_PRIVATE_KEY        PEM private key (literal `\n` allowed), injected from Secrets Manager
+ *   CLOUDFRONT_PRIVATE_KEY_SECRET_ARN  Secrets Manager secret holding the signing PEM (what infra sets)
+ *   CLOUDFRONT_PRIVATE_KEY        alternative: the PEM inline (literal `\n` allowed), for ad-hoc runs
  *   EDGE_TENANT_KVS_ARN           CloudFront KeyValueStore ARN of the tenant directory
  *   SQS_QUEUE_URL                 notification queue
  */
@@ -42,6 +43,7 @@ import { InProcessQueue, type QueueHandler } from './queue/in-process.ts';
 import { SqsQueue } from './queue/sqs.ts';
 import { LocalObjectStore, type LocalUploadGrant } from './storage/local.ts';
 import { S3ObjectStore } from './storage/s3.ts';
+import { loadSecretString } from './secrets.ts';
 import type { AssetSigner, EdgeTenantStore, IdentityProvider, Mailer, ObjectStore, Queryable, Queue, TxRunner } from './types.ts';
 
 export * from './types.ts';
@@ -215,6 +217,15 @@ function createLocalAdapters(env: Env, deps: AdapterDeps): Adapters {
   };
 }
 
+/** The signing PEM: from Secrets Manager (deployed Lambdas) or inline (tests, ad-hoc runs). */
+function cloudFrontPrivateKey(env: Env, region: string | undefined): string | (() => Promise<string>) {
+  const arn = env.CLOUDFRONT_PRIVATE_KEY_SECRET_ARN;
+  if (arn) return () => loadSecretString(arn, region ? { region } : {});
+  const pem = env.CLOUDFRONT_PRIVATE_KEY;
+  if (!pem) throw new Error('Missing environment variable CLOUDFRONT_PRIVATE_KEY_SECRET_ARN (or CLOUDFRONT_PRIVATE_KEY)');
+  return pem.replace(/\\n/g, '\n');
+}
+
 function createAwsAdapters(env: Env): Adapters {
   const region = env.AWS_REGION;
   const identity = lazy(
@@ -241,7 +252,7 @@ function createAwsAdapters(env: Env): Adapters {
     () =>
       new CloudFrontAssetSigner({
         keyPairId: required(env, 'CLOUDFRONT_KEY_PAIR_ID'),
-        privateKey: required(env, 'CLOUDFRONT_PRIVATE_KEY').replace(/\\n/g, '\n'),
+        privateKey: cloudFrontPrivateKey(env, region),
       }),
   );
   const objectStore = lazy(() => new S3ObjectStore(required(env, 'S3_ASSETS_BUCKET'), region ? { region } : {}));

@@ -343,7 +343,11 @@ export function registerManufacturer(app: Hono<AppEnv>): void {
     const { config } = c.get('deps');
     const cursor = decodeCursor(config.APP_SECRET, query.cursor);
     const params: unknown[] = [m, query.limit + 1];
-    const where = [`(a.reseller_id is null or a.reseller_id in (select id from resellers where manufacturer_id = $1))`];
+    // Rows without a reseller (catalog prices) belong to the manufacturer of their sauna model;
+    // other manufacturers' catalog changes stay invisible.
+    const where = [`(a.reseller_id in (select id from resellers where manufacturer_id = $1)
+      or (a.reseller_id is null and coalesce(a.details->'new'->>'sauna_model_id', a.details->'old'->>'sauna_model_id')::uuid
+            in (select id from sauna_models where manufacturer_id = $1)))`];
     if (query.resellerId) { params.push(query.resellerId); where.push(`a.reseller_id = $${params.length}`); }
     if (query.entityType) { params.push(query.entityType); where.push(`a.entity_type = $${params.length}`); }
     if (cursor) { params.push(cursor.id); where.push(`a.id < $${params.length}::bigint`); }

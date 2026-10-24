@@ -11,6 +11,12 @@ import { deviceClass, resolveShareToken } from '../domain/sharing.ts';
 import { issueAssetCookies } from './assets.ts';
 
 const IMMUTABLE = 'public, max-age=31536000, immutable';
+/**
+ * Localised by Accept-Language only: CloudFront's cache key has the query string but not
+ * that header, so such a response may be cached by the browser (which honours Vary) but
+ * never by a shared cache, or one visitor's language would be served to everybody.
+ */
+const IMMUTABLE_PRIVATE = 'private, max-age=31536000, immutable';
 
 /**
  * Catalog cache contract (rule 9, review C1). The client asks with
@@ -37,7 +43,7 @@ async function checkVersion(c: Ctx, v: number | undefined): Promise<void> {
     c.header('Cache-Control', 'no-store');
     throw new ApiError('STALE_CATALOG_VERSION', 'The catalog has changed, reload it.', { meta: { currentVersion: current } });
   }
-  c.header('Cache-Control', IMMUTABLE);
+  c.header('Cache-Control', c.req.query('lang') ? IMMUTABLE : IMMUTABLE_PRIVATE);
 }
 
 export function registerCatalog(app: Hono<AppEnv>): void {

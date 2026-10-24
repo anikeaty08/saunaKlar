@@ -95,3 +95,11 @@ describe('NoopEdgeTenantStore', () => {
     await expect(store.put('-bad-', 'ACTIVE')).rejects.toThrow();
   });
 });
+
+describe('createAdapters (aws) CloudFront key source', () => {
+  it('needs the key pair id and a key source, preferring the Secrets Manager ARN', () => {
+    const base = { ADAPTERS: 'aws', AWS_REGION: 'eu-central-1', CLOUDFRONT_KEY_PAIR_ID: 'K1' };
+    expect(() => createAdapters(base).assetSigner).toThrow('CLOUDFRONT_PRIVATE_KEY_SECRET_ARN');
+    expect(createAdapters({ ...base, CLOUDFRONT_PRIVATE_KEY_SECRET_ARN: 'arn:aws:secretsmanager:eu-central-1:1:secret:k' }).assetSigner).toBeDefined();
+  });
+});

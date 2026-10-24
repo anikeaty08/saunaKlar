@@ -1,0 +1,47 @@
+version: 2
+updates:
+  # npm workspaces: one root lockfile covers every package.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 10
+    groups:
+      aws-sdk:
+        patterns: ['@aws-sdk/*', 'aws-jwt-verify']
+      react:
+        patterns: ['react', 'react-dom', '@types/react', '@types/react-dom', 'react-router', 'react-router-dom']
+      three:
+        patterns: ['three', '@types/three', '@react-three/*']
+      testing:
+        patterns: ['vitest', '@vitest/*', '@playwright/test', 'fast-check']
+      tooling:
+        patterns: ['typescript', 'esbuild', 'vite', '@vitejs/*', 'tsx', '@types/node']
+    ignore:
+      # Node major follows the Lambda runtime (nodejs22.x), not the latest release.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
+
+  # Provider versions are pinned in the lock files of each root.
+  - package-ecosystem: terraform
+    directories:
+      - /infra/envs/dev
+      - /infra/envs/staging
+      - /infra/envs/prod
+      - /infra/bootstrap
+    schedule:
+      interval: weekly
+    groups:
+      terraform-providers:
+        patterns: ['*']

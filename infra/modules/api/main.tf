@@ -293,7 +293,8 @@ resource "aws_lambda_function" "this" {
   environment {
     variables = merge(local.common_env, local.function_env[each.key], {
       APP_FUNCTION = each.key
-      DB_USER      = each.value.db_user
+      # IAM auth: no password in the URL; deps.ts signs a token for this user per connection.
+      API_DATABASE_URL = "postgres://${each.value.db_user}@${var.db_proxy_endpoint}:5432/${var.db_name}?sslmode=require"
     })
   }
 

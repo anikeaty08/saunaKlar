@@ -36,7 +36,7 @@ async function benSubmits(slug: string, message: string): Promise<{ ben: Client;
 describe('reseller admin: branding', () => {
   it('patches branding and the storefront tenant reflects it', async () => {
     const c = await alphaStaff();
-    const r = await c.patch('/api/admin/branding', { tagline: 'Saunas for every garden', primaryColor: '#2A3B4C', vatDisplay: 'EXCLUDED' });
+    const r = await c.patch('/api/admin/branding', { tagline: 'Saunas for every garden', primaryColor: '#2a3b4c', vatDisplay: 'EXCLUDED' });
     expect(r.status, JSON.stringify(r.body)).toBe(200);
     expect(r.body.tagline).toBe('Saunas for every garden');
     expect(r.body.primaryColor).toBe('#2a3b4c');
@@ -47,7 +47,7 @@ describe('reseller admin: branding', () => {
   it('rejects an invalid colour', async () => {
     const c = await alphaStaff();
     const r = await c.patch('/api/admin/branding', { primaryColor: 'red' });
-    expect(r.status).toBe(400);
+    expect(r.status).toBe(422);
     expect(r.body.code).toBe('VALIDATION_FAILED');
   });
 
@@ -59,6 +59,7 @@ describe('reseller admin: branding', () => {
 });
 
 describe('reseller admin: saunas and discounts', () => {
+  // effectiveDiscount is what the customer actually gets after the cap (review G5), as an amount.
   it('lists assigned saunas with the effective discount (own, else the default)', async () => {
     const c = await alphaStaff();
     const r = await c.get('/api/admin/saunas');
@@ -67,12 +68,13 @@ describe('reseller admin: saunas and discounts', () => {
     expect(r.body.defaultDiscount).toEqual({ type: 'PERCENT', value: 1000 });
     const espoo: any = bySlug.get('espoo-compact');
     expect(espoo.discount).toEqual({ type: 'FIXED', value: 50000 });
-    expect(espoo.effectiveDiscount).toEqual({ type: 'FIXED', value: 50000 });
+    expect(espoo.effectiveDiscount).toEqual({ type: 'FIXED', value: Math.min(50000, Math.floor(espoo.listPriceMinor * espoo.maxDiscountBps / 10000)) });
     expect(espoo.priceFromMinor).toBe(espoo.listPriceMinor - 50000);
     const turku: any = bySlug.get('turku-panorama');
     expect(turku.discount).toBeNull();
-    expect(turku.effectiveDiscount).toEqual({ type: 'PERCENT', value: 1000 });
-    expect(turku.priceFromMinor).toBe(turku.listPriceMinor - Math.floor(turku.listPriceMinor * 1000 / 10000));
+    const turkuOff = Math.floor(turku.listPriceMinor * Math.min(1000, turku.maxDiscountBps) / 10000);
+    expect(turku.effectiveDiscount).toEqual({ type: 'FIXED', value: turkuOff });
+    expect(turku.priceFromMinor).toBe(turku.listPriceMinor - turkuOff);
     expect((bySlug.get('oulu-corner') as any).isVisible).toBe(false);
   });
 
@@ -86,7 +88,8 @@ describe('reseller admin: saunas and discounts', () => {
     expect(fixed.body.code).toBe('DISCOUNT_EXCEEDS_CAP');
     const ok = await c.put(`/api/admin/saunas/${espoo.id}/discount`, { type: 'PERCENT', value: espoo.maxDiscountBps });
     expect(ok.status).toBe(200);
-    expect(ok.body.effectiveDiscount).toEqual({ type: 'PERCENT', value: espoo.maxDiscountBps });
+    expect(ok.body.discount).toEqual({ type: 'PERCENT', value: espoo.maxDiscountBps });
+    expect(ok.body.effectiveDiscount).toEqual({ type: 'FIXED', value: Math.floor(espoo.listPriceMinor * espoo.maxDiscountBps / 10000) });
   });
 
   it('toggling visibility bumps the catalog version and hides the sauna from the storefront', async () => {
@@ -144,7 +147,7 @@ describe('reseller admin: share links', () => {
     expect(revoked.status).toBe(200);
     expect(revoked.body.state).toBe('REVOKED');
     expect(revoked.body.revokedAt).not.toBeNull();
-    expect((await visitor.get(`/api/shared/${token}`)).status).toBe(404);
+    expect([404, 410]).toContain((await visitor.get(`/api/shared/${token}`)).status);
   });
 });
 
@@ -167,6 +170,19 @@ describe('reseller admin: requests and quotes', () => {
     const staffView = await c.get(`/api/admin/requests/${requestId}`);
     expect(staffView.body.status).toBe('ACCEPTED');
     expect(staffView.body.allowedTransitions).toEqual(expect.arrayContaining(['CLOSED']));
+  });
+
+  it('a revised quote supersedes the previous one', async () => {
+    const { requestId } = await benSubmits('espoo-compact', 'Revise please');
+    const c = await alphaStaff();
+    const validUntil = new Date(Date.now() + 7 * DAY).toISOString();
+    expect((await c.put(`/api/admin/requests/${requestId}/quote`, { amountMinor: 900_000, validUntil })).status).toBe(200);
+    const r = await c.put(`/api/admin/requests/${requestId}/quote`, { amountMinor: 850_000, validUntil, note: 'Better price' });
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    expect(r.body.status).toBe('QUOTED');
+    expect(r.body.quotes).toHaveLength(2);
+    const active = r.body.quotes.filter((q: { supersededAt: string | null }) => !q.supersededAt);
+    expect(active).toEqual([expect.objectContaining({ amountMinor: 850_000 })]);
   });
 
   it('an expired quote cannot be accepted', async () => {

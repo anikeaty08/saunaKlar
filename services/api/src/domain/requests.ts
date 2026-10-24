@@ -30,15 +30,20 @@ export async function submitRequest(db: Db, tenant: TenantInfo, locale: AppLocal
   if (config.customer_id !== customerId) throw new ApiError('NOT_FOUND', 'Configuration not found.');
   const existing = await db.query<{ id: string }>('select id from configuration_requests where configuration_id = $1', [config.id]);
   if (existing.rows[0]) return existing.rows[0].id; // idempotent retry (design 13)
+  // lockConfiguration holds the configuration row lock until commit, so a concurrent submit
+  // waits there and then finds the request the first one created (no unique violation).
   await lockConfiguration(db, tenant, locale, config, validDays);
+  const raced = await db.query<{ id: string }>('select id from configuration_requests where configuration_id = $1', [config.id]);
+  if (raced.rows[0]) return raced.rows[0].id;
   const { rows } = await db.query<{ id: string }>(
     `insert into configuration_requests (reseller_id, customer_id, configuration_id, message) values ($1, $2, $3, $4) returning id`,
     [tenant.id, customerId, config.id, message?.trim() || null]);
   return rows[0]!.id;
 }
 
-async function getRequestRow(db: Db, id: string, customerId?: string): Promise<RequestRow> {
-  const { rows } = await db.query<RequestRow>('select * from configuration_requests where id = $1', [id]);
+/** `lock`: take the row lock first, so the status checks below see the state the write will apply to. */
+async function getRequestRow(db: Db, id: string, customerId?: string, lock = false): Promise<RequestRow> {
+  const { rows } = await db.query<RequestRow>(`select * from configuration_requests where id = $1${lock ? ' for update' : ''}`, [id]);
   const row = rows[0];
   if (!row || (customerId && row.customer_id !== customerId)) throw new ApiError('NOT_FOUND', 'Request not found.');
   return row;
@@ -127,7 +132,7 @@ export async function buildAdminRequestDto(db: Db, tenant: TenantInfo, locale: A
 
 /** Staff status change. QUOTED is reached only through `putQuote`, so a quote always exists. */
 export async function staffTransition(db: Db, id: string, to: RequestStatus, note: string | undefined): Promise<void> {
-  const row = await getRequestRow(db, id);
+  const row = await getRequestRow(db, id, undefined, true);
   if (to === 'QUOTED') throw new ApiError('QUOTE_MISSING', 'Add a quote to move the request to QUOTED.');
   if (!STAFF_TRANSITIONS[row.status_code].includes(to)) throw new ApiError('INVALID_TRANSITION', `Cannot change ${row.status_code} to ${to}.`);
   await setStatus(db, id, to, note);
@@ -136,11 +141,13 @@ export async function staffTransition(db: Db, id: string, to: RequestStatus, not
 async function setStatus(db: Db, id: string, to: RequestStatus, note: string | undefined): Promise<void> {
   // The history trigger reads the note from this transaction-local setting.
   await db.query(`select set_config('app.status_note', $1, true)`, [note?.trim() ?? '']);
-  await db.query('update configuration_requests set status_code = $2, updated_at = now() where id = $1', [id, to]);
+  // Only status_code is writable for app_tenant; updated_at is maintained by the set_updated_at trigger.
+  await db.query('update configuration_requests set status_code = $2 where id = $1', [id, to]);
 }
 
 export async function customerTransition(db: Db, id: string, customerId: string, to: 'ACCEPTED' | 'CANCELLED', now: Date): Promise<void> {
-  const row = await getRequestRow(db, id, customerId);
+  // Serialised with putQuote: an accept never applies to a quote that replaced the one checked here.
+  const row = await getRequestRow(db, id, customerId, true);
   if (!CUSTOMER_TRANSITIONS[row.status_code].includes(to)) throw new ApiError('INVALID_TRANSITION', `Cannot change ${row.status_code} to ${to}.`);
   if (to === 'ACCEPTED') {
     const active = (await loadQuotes(db, id)).find(q => !q.supersededAt);
@@ -157,8 +164,9 @@ export async function customerTransition(db: Db, id: string, customerId: string,
  * through IN_REVIEW first and the history shows the real sequence.
  */
 export async function putQuote(db: Db, tenant: TenantInfo, id: string, staffId: string, input: { amountMinor: number; validUntil: string; note?: string | undefined }, now: Date): Promise<void> {
-  await db.query('select 1 from configuration_requests where id = $1 for update', [id]);
-  const row = await getRequestRow(db, id);
+  // Lock before the status check: a customer accepting concurrently must not end up with a
+  // superseded quote behind an ACCEPTED request.
+  const row = await getRequestRow(db, id, undefined, true);
   if (!['SUBMITTED', 'IN_REVIEW', 'QUOTED'].includes(row.status_code)) throw new ApiError('INVALID_TRANSITION', `A ${row.status_code} request cannot be quoted.`);
   if (new Date(input.validUntil) <= now) throw new ApiError('VALIDATION_FAILED', 'The quote must be valid in the future.', { errors: { validUntil: ['Must be in the future.'] } });
   if (row.status_code !== 'IN_REVIEW') await setStatus(db, id, 'IN_REVIEW', row.status_code === 'QUOTED' ? 'Revised quote' : undefined);

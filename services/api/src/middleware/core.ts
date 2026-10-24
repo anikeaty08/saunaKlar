@@ -37,6 +37,9 @@ export const securityHeaders: MiddlewareHandler<AppEnv> = async (c, next) => {
   c.header('referrer-policy', 'strict-origin-when-cross-origin');
   c.header('cross-origin-resource-policy', 'same-origin');
   if (!c.res.headers.has('cache-control')) c.header('cache-control', 'no-store');
+  // A response a shared cache (CloudFront) may store must not carry a cookie: the anonymous
+  // browser id it would hand to every later visitor is what the CSRF token is derived from.
+  if (/\bpublic\b/.test(c.res.headers.get('cache-control') ?? '')) c.res.headers.delete('set-cookie');
 };
 
 /** Only CloudFront may call the API in production (design 15.1 "origin lock"). */
