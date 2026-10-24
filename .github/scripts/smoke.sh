@@ -17,6 +17,7 @@ check() { # url expected-status [grep-pattern]
     sleep $((attempt * 5))
   done
   if [ "$status" != "$want" ] || { [ -n "$pattern" ] && ! grep -q "$pattern" "$body"; }; then
+    # shellcheck disable=SC2016 # the single quotes are literal output
     echo "FAIL $url: status $status (want $want)${pattern:+, pattern '$pattern'}" >&2
     head -c 400 "$body" >&2; echo >&2
     fail=1

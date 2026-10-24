@@ -24,7 +24,8 @@ locals {
 #
 # Terraform only creates the function with a bootstrap stub; CI deploys the real bundle
 # (services/api/dist/lambda/cognito-custom-message/index.mjs). The trigger needs no VPC/DB access:
-# everything it renders comes from the event's clientMetadata.
+# everything it renders comes from the event's clientMetadata, which the API passes on SignUp,
+# ResendConfirmationCode, ForgotPassword and AdminCreateUser; without it the platform brand is used.
 
 data "archive_file" "custom_message_stub" {
   type        = "zip"
@@ -79,10 +80,14 @@ resource "aws_lambda_function" "custom_message" {
 
   environment {
     variables = {
-      APP_ENV         = var.environment
-      PLATFORM_DOMAIN = var.platform_domain
-      ADMIN_HOST      = var.admin_host
-      NODE_OPTIONS    = "--enable-source-maps"
+      # Read by services/api/src/functions/cognito-custom-message.ts: links in branded mails
+      # must point at *.PLATFORM_DOMAIN or ADMIN_HOST; MAIL_DEFAULT_FROM_NAME is the
+      # fallback brand when clientMetadata is missing or rejected.
+      APP_ENV                = var.environment
+      PLATFORM_DOMAIN        = var.platform_domain
+      ADMIN_HOST             = var.admin_host
+      MAIL_DEFAULT_FROM_NAME = var.mail_default_from_name
+      NODE_OPTIONS           = "--enable-source-maps"
     }
   }
 
@@ -164,6 +169,19 @@ resource "aws_cognito_user_pool" "customers" {
     }
   }
 
+  # custom:reseller_id, the tenant a customer signed up with (set once by the BFF on SignUp).
+  schema {
+    name                     = "reseller_id"
+    attribute_data_type      = "String"
+    required                 = false
+    mutable                  = false
+    developer_only_attribute = false
+    string_attribute_constraints {
+      min_length = 36
+      max_length = 36
+    }
+  }
+
   dynamic "email_configuration" {
     for_each = local.email_configuration == null ? [] : [local.email_configuration]
     content {
@@ -210,8 +228,8 @@ resource "aws_cognito_user_pool_client" "customers" {
     refresh_token = "days"
   }
 
-  read_attributes  = ["email", "email_verified"]
-  write_attributes = ["email"]
+  read_attributes  = ["email", "email_verified", "custom:reseller_id"]
+  write_attributes = ["email", "custom:reseller_id"]
 }
 
 # ---------------------------------------------------------------------------------------------

@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "tsc --noEmit -p . && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p ."
+    "typecheck": "tsc --noEmit -p .",
+    "i18n:check": "node scripts/i18n-check.mjs"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",

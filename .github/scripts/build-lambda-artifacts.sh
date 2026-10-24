@@ -42,6 +42,7 @@ pkgs="$(node -e '
 echo "layer packages: $pkgs"
 layer_dir="$(mktemp -d)"
 mkdir -p "$layer_dir/nodejs"
+# shellcheck disable=SC2086 # $pkgs is a space-separated list of name@version
 (cd "$layer_dir/nodejs" && echo '{"private":true}' > package.json &&
   npm install --no-audit --no-fund --omit=dev --os=linux --cpu=arm64 --libc=glibc $pkgs >/dev/null)
 # aws-crt ships prebuilt binaries for every platform; keep only linux arm64 (layer size limit).

@@ -75,6 +75,7 @@ module "auth" {
   ses_identity_arn              = module.messaging.identity_arn
   ses_configuration_set         = module.messaging.configuration_set_name
   email_from                    = "${var.mail_from_name} <no-reply@${var.email_domain}>"
+  mail_default_from_name        = var.mail_from_name
   custom_message_log_group_name = module.observability.lambda_log_group_names["cognito-custom-message"]
   custom_message_log_group_arn  = module.observability.lambda_log_group_arns["cognito-custom-message"]
   customer_access_token_minutes = var.customer_access_token_minutes

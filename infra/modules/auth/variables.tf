@@ -14,6 +14,12 @@ variable "admin_host" {
   type = string
 }
 
+variable "mail_default_from_name" {
+  description = "Brand name in Cognito mails when no valid reseller clientMetadata is passed (MAIL_DEFAULT_FROM_NAME)."
+  type        = string
+  default     = "Saunaklar"
+}
+
 variable "deletion_protection" {
   type    = bool
   default = true

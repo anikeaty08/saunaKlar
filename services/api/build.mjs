@@ -4,7 +4,7 @@
 import { build } from 'esbuild';
 import { cp, rm } from 'node:fs/promises';
 
-const functions = ['public-catalog', 'customer', 'reseller-admin', 'manufacturer-admin', 'asset-signer', 'worker'];
+const functions = ['public-catalog', 'customer', 'reseller-admin', 'manufacturer-admin', 'asset-signer', 'worker', 'cognito-custom-message'];
 const common = {
   bundle: true,
   platform: 'node',

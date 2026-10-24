@@ -1,54 +1,56 @@
 import { useEffect } from 'react';
-import { Outlet, useLocation } from 'react-router';
+import { Navigate, Outlet } from 'react-router';
+import { Activity, Boxes, ScrollText, SearchX, Store } from 'lucide-react';
+import { EmptyState } from '../design/components/EmptyState.tsx';
+import { ButtonLink } from '../design/components/Button.tsx';
 import { useT } from '../i18n/i18n.ts';
 import { applyTheme } from '../design/theme.ts';
-import { TextNavLink } from '../design/components/TextLink.tsx';
-import { EmptyState } from '../design/components/EmptyState.tsx';
-import { Toaster } from '../design/components/Toast.tsx';
-import { NavigationProgress } from '../motion/PageTransition.tsx';
-import { ScrambleText } from '../motion/ScrambleText.tsx';
 import { hideSplash } from '../app/splash.ts';
-import { LanguageSwitcher } from '../storefront/layout/LanguageSwitcher.tsx';
-import '../design/layout.css';
+import { AdminShell, RequireStaff } from '../staff/index.ts';
+import './manufacturer.css';
 
+export function Brand() {
+  return <span className="staff-shell__logo">Saunaklar</span>;
+}
+
+/**
+ * Manufacturer admin on the admin host. Everything below `/` needs a
+ * manufacturer staff session; without one the staff sign-in renders in place,
+ * so a deep link survives signing in.
+ */
 export function ManufacturerLayout() {
   const { t } = useT();
   useEffect(() => {
     applyTheme(null);
     hideSplash();
-    document.title = t('manufacturer.title');
-  }, [t]);
+  }, []);
   return (
-    <div className="admin-shell">
-      <NavigationProgress />
-      <header className="admin-shell__head container">
-        <span className="pf__logo" style={{ fontFamily: 'var(--font-display)', fontWeight: 650, letterSpacing: '-0.04em' }}>
-          {t('manufacturer.title')}
-        </span>
-        <nav aria-label={t('nav.primary')}>
-          <ul className="cluster" style={{ ['--cluster' as string]: '1.5rem', fontSize: 'var(--step--1)' }}>
-            <li><TextNavLink to="/resellers">{t('manufacturer.resellers')}</TextNavLink></li>
-            <li><TextNavLink to="/saunas">{t('manufacturer.saunas')}</TextNavLink></li>
-            <li><TextNavLink to="/audit">{t('manufacturer.audit')}</TextNavLink></li>
-          </ul>
-        </nav>
-        <LanguageSwitcher compact />
-      </header>
-      <main id="main" className="container" style={{ paddingBlock: 'var(--space-7)' }}>
-        <Outlet />
-      </main>
-      <Toaster />
-    </div>
+    <RequireStaff scope="MANUFACTURER" title={t('manufacturer.loginTitle')} brand={<Brand />}>
+      {session => (
+        <AdminShell
+          brand={<Brand />}
+          area={t('manufacturer.title')}
+          session={session}
+          nav={[
+            { to: '/resellers', label: t('manufacturer.resellers'), icon: Store },
+            { to: '/saunas', label: t('manufacturer.saunas'), icon: Boxes },
+            { to: '/analytics', label: t('manufacturer.analytics'), icon: Activity },
+            { to: '/audit', label: t('manufacturer.audit'), icon: ScrollText },
+          ]}
+        >
+          <Outlet />
+        </AdminShell>
+      )}
+    </RequireStaff>
   );
 }
 
-export function Placeholder() {
+/** `/login` once signed in (and `/`): straight to the resellers. */
+export function Home() {
+  return <Navigate to="/resellers" replace />;
+}
+
+export function NotFound() {
   const { t } = useT();
-  const { pathname } = useLocation();
-  return (
-    <>
-      <ScrambleText as="h1" className="page-title" text={pathname === '/' ? t('manufacturer.title') : pathname.slice(1)} />
-      <EmptyState title={t('manufacturer.placeholder')} />
-    </>
-  );
+  return <EmptyState icon={SearchX} title={t('notFound.title')} body={t('notFound.body')} action={<ButtonLink to="/resellers">{t('manufacturer.resellers')}</ButtonLink>} />;
 }

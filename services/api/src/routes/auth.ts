@@ -15,7 +15,7 @@ import { templates } from '../adapters/mail/templates.ts';
 export const CONSENT_VERSIONS = { TERMS: '2026-10', PRIVACY: '2026-10', MARKETING: '2026-10' } as const;
 const PENDING_REPLACE_AFTER_MS = 24 * 3600 * 1000;
 
-interface CustomerRow { id: string; status: 'PENDING' | 'ACTIVE'; created_at: Date }
+interface CustomerRow { id: string; status: 'PENDING' | 'ACTIVE'; created_at: Date; locale: string }
 
 export function sessionBody(c: Ctx, principal: Principal = c.get('principal')): Session {
   const csrfToken = csrfTokenFor(c);
@@ -46,7 +46,7 @@ export async function clientMetadata(c: Ctx, db: Db, locale?: string): Promise<C
 
 async function findCustomer(db: Db, email: string): Promise<CustomerRow | undefined> {
   const { rows } = await db.query<CustomerRow>(
-    `select id, status, created_at from customers where lower(email) = lower($1) and status in ('PENDING', 'ACTIVE')`, [email]);
+    `select id, status, created_at, locale from customers where lower(email) = lower($1) and status in ('PENDING', 'ACTIVE')`, [email]);
   return rows[0];
 }
 
@@ -90,7 +90,7 @@ export function registerAuth(app: Hono<AppEnv>): void {
       }
       // Username is the customer id, not the e-mail: the same e-mail may exist at
       // another reseller (design 6.1). If the IdP rejects, the transaction rolls back.
-      await identity.signUp({ pool: 'CUSTOMER', username: id, email: body.email, password: body.password, attributes: { reseller_id: c.get('tenant')!.id }, clientMetadata: meta });
+      await identity.signUp({ pool: 'CUSTOMER', username: id, email: body.email, password: body.password, attributes: { 'custom:reseller_id': c.get('tenant')!.id, locale: body.locale ?? 'en' }, clientMetadata: meta });
       return { kind: 'created' as const, meta, id };
     });
     if (outcome.kind === 'exists') {
@@ -105,7 +105,7 @@ export function registerAuth(app: Hono<AppEnv>): void {
   });
 
   mount(app, routes.resendCode, async ({ c, body }) => {
-    const found = await tenantTx(c, async db => ({ customer: await findCustomer(db, body.email), meta: await clientMetadata(c, db) }));
+    const found = await tenantTx(c, async db => (async customer => ({ customer, meta: await clientMetadata(c, db, customer?.locale) }))(await findCustomer(db, body.email)));
     if (found.customer?.status === 'PENDING') await c.get('deps').adapters.identity.resendConfirmationCode('CUSTOMER', found.customer.id, found.meta);
     return { accepted: true as const };
   });
@@ -138,7 +138,7 @@ export function registerAuth(app: Hono<AppEnv>): void {
   });
 
   mount(app, routes.forgotPassword, async ({ c, body }) => {
-    const found = await tenantTx(c, async db => ({ customer: await findCustomer(db, body.email), meta: await clientMetadata(c, db) }));
+    const found = await tenantTx(c, async db => (async customer => ({ customer, meta: await clientMetadata(c, db, customer?.locale) }))(await findCustomer(db, body.email)));
     if (found.customer?.status === 'ACTIVE') await c.get('deps').adapters.identity.forgotPassword('CUSTOMER', found.customer.id, found.meta);
     return { accepted: true as const };
   });

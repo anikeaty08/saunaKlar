@@ -12,18 +12,23 @@
  * app.reseller_id = alpha, the largest tenant; app_platform for manufacturer queries),
  * once to warm the cache and then `--runs` times under EXPLAIN (ANALYZE, BUFFERS).
  */
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { parseArgs } from 'node:util';
-import pg from 'pg';
-import { migrate } from '../../packages/db/src/migrate.ts';
-import { createScaleDatabase, tableCounts } from './seed-scale.ts';
-import { QUERIES, loadContext, type PerfContext, type PerfQuery } from './queries.ts';
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { parseArgs } from "node:util";
+import pg from "pg";
+import { migrate } from "../../packages/db/src/migrate.ts";
+import { createScaleDatabase, tableCounts } from "./seed-scale.ts";
+import {
+  QUERIES,
+  loadContext,
+  type PerfContext,
+  type PerfQuery,
+} from "./queries.ts";
 
 interface PlanNode {
-  'Node Type': string;
-  'Relation Name'?: string;
-  'Index Name'?: string;
+  "Node Type": string;
+  "Relation Name"?: string;
+  "Index Name"?: string;
   Plans?: PlanNode[];
 }
 
@@ -35,6 +40,8 @@ export interface Timing {
   sharedRead: number;
   rows: number;
   scans: string;
+  /** Set when the query hit the per-query statement_timeout; medianMs is then the timeout. */
+  timedOut?: boolean;
 }
 
 const median = (xs: number[]) => {
@@ -44,25 +51,54 @@ const median = (xs: number[]) => {
 
 /** Distinct scan nodes of a plan, e.g. "Index Scan customers_reseller_created_idx". */
 function scans(node: PlanNode, out = new Set<string>()): Set<string> {
-  if (/Scan/.test(node['Node Type'])) out.add(`${node['Node Type']} ${node['Index Name'] ?? node['Relation Name'] ?? ''}`.trim());
+  if (/Scan/.test(node["Node Type"]))
+    out.add(
+      `${node["Node Type"]} ${node["Index Name"] ?? node["Relation Name"] ?? ""}`.trim(),
+    );
   for (const child of node.Plans ?? []) scans(child, out);
   return out;
 }
 
-async function inRole<T>(client: pg.Client, q: PerfQuery, ctx: PerfContext, fn: () => Promise<T>): Promise<T> {
-  await client.query('BEGIN');
+async function inRole<T>(
+  client: pg.Client,
+  q: PerfQuery,
+  ctx: PerfContext,
+  fn: () => Promise<T>,
+  timeoutMs = 0,
+): Promise<T> {
+  await client.query("BEGIN");
   try {
+    if (timeoutMs)
+      await client.query(
+        `SET LOCAL statement_timeout = ${Math.floor(timeoutMs)}`,
+      );
     await client.query(`SET LOCAL ROLE ${q.role}`);
-    if (q.role === 'app_tenant') await client.query(`select set_config('app.reseller_id', $1, true)`, [ctx.alphaId]);
-    if (q.asCustomer) await client.query(`select set_config('app.actor_customer_id', $1, true)`, [ctx.customerId]);
+    if (q.role === "app_tenant")
+      await client.query(`select set_config('app.reseller_id', $1, true)`, [
+        ctx.alphaId,
+      ]);
+    if (q.asCustomer)
+      await client.query(
+        `select set_config('app.actor_customer_id', $1, true)`,
+        [ctx.customerId],
+      );
     return await fn();
   } finally {
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
   }
 }
 
-export async function explainAll(url: string, opts: { runs?: number; plansDir?: string; only?: RegExp } = {}): Promise<Timing[]> {
+export async function explainAll(
+  url: string,
+  opts: {
+    runs?: number;
+    plansDir?: string;
+    only?: RegExp;
+    timeoutMs?: number;
+  } = {},
+): Promise<Timing[]> {
   const runs = opts.runs ?? 3;
+  const timeoutMs = opts.timeoutMs ?? 0;
   const client = new pg.Client({ connectionString: url });
   await client.connect();
   try {
@@ -74,27 +110,105 @@ export async function explainAll(url: string, opts: { runs?: number; plansDir?: 
       if (opts.only && !opts.only.test(q.name)) continue;
       const params = q.params(ctx);
       const started = Date.now();
-      const result = await inRole(client, q, ctx, async () => {
-        const warm = await client.query(q.sql, params);
-        const times: number[] = [];
-        let last: { Plan: PlanNode; 'Execution Time': number } | undefined;
-        let buffers = { hit: 0, read: 0 };
-        for (let i = 0; i < runs; i++) {
-          const { rows } = await client.query(`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${q.sql}`, params);
-          last = (rows[0]['QUERY PLAN'] as { Plan: PlanNode & { 'Shared Hit Blocks': number; 'Shared Read Blocks': number }; 'Execution Time': number }[])[0]!;
-          times.push(last['Execution Time']);
-          const p = last.Plan as PlanNode & { 'Shared Hit Blocks': number; 'Shared Read Blocks': number };
-          buffers = { hit: p['Shared Hit Blocks'], read: p['Shared Read Blocks'] };
-        }
+      const file = q.name
+        .replace(/[^a-z0-9]+/gi, "-")
+        .replace(/^-|-$/g, "")
+        .toLowerCase();
+      let result;
+      try {
+        result = await inRole(
+          client,
+          q,
+          ctx,
+          async () => {
+            const warm = await client.query(q.sql, params);
+            const times: number[] = [];
+            let last: { Plan: PlanNode; "Execution Time": number } | undefined;
+            let buffers = { hit: 0, read: 0 };
+            for (let i = 0; i < runs; i++) {
+              const { rows } = await client.query(
+                `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${q.sql}`,
+                params,
+              );
+              last = (
+                rows[0]["QUERY PLAN"] as {
+                  Plan: PlanNode & {
+                    "Shared Hit Blocks": number;
+                    "Shared Read Blocks": number;
+                  };
+                  "Execution Time": number;
+                }[]
+              )[0]!;
+              times.push(last["Execution Time"]);
+              const p = last.Plan as PlanNode & {
+                "Shared Hit Blocks": number;
+                "Shared Read Blocks": number;
+              };
+              buffers = {
+                hit: p["Shared Hit Blocks"],
+                read: p["Shared Read Blocks"],
+              };
+            }
+            if (opts.plansDir) {
+              const { rows } = await client.query(
+                `EXPLAIN (ANALYZE, BUFFERS) ${q.sql}`,
+                params,
+              );
+              const text = rows
+                .map((r: Record<string, string>) => r["QUERY PLAN"])
+                .join("\n");
+              await writeFile(
+                join(opts.plansDir, `${file}.txt`),
+                `${q.name}\n\n${q.sql.trim()}\n\n${text}\n`,
+              );
+            }
+            return {
+              times,
+              plan: last!.Plan,
+              buffers,
+              rows: warm.rowCount ?? 0,
+            };
+          },
+          timeoutMs,
+        );
+      } catch (err) {
+        if ((err as { code?: string }).code !== "57014") throw err;
+        // Timed out: record the estimated plan instead, so the report still shows what the planner chose.
+        const plan = await inRole(client, q, ctx, async () => {
+          const { rows } = await client.query(
+            `EXPLAIN (FORMAT JSON) ${q.sql}`,
+            params,
+          );
+          return (rows[0]["QUERY PLAN"] as { Plan: PlanNode }[])[0]!.Plan;
+        });
         if (opts.plansDir) {
-          const { rows } = await client.query(`EXPLAIN (ANALYZE, BUFFERS) ${q.sql}`, params);
-          const text = rows.map((r: Record<string, string>) => r['QUERY PLAN']).join('\n');
-          const file = q.name.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
-          await writeFile(join(opts.plansDir, `${file}.txt`), `${q.name}\n\n${q.sql.trim()}\n\n${text}\n`);
+          const text = await inRole(client, q, ctx, async () => {
+            const { rows } = await client.query(`EXPLAIN ${q.sql}`, params);
+            return rows
+              .map((r: Record<string, string>) => r["QUERY PLAN"])
+              .join("\n");
+          });
+          await writeFile(
+            join(opts.plansDir, `${file}.txt`),
+            `${q.name}\n\n${q.sql.trim()}\n\nTIMED OUT after ${timeoutMs} ms; estimated plan:\n${text}\n`,
+          );
         }
-        return { times, plan: last!.Plan, buffers, rows: warm.rowCount ?? 0 };
-      });
-      console.error(`  ${q.name}: ${((Date.now() - started) / 1000).toFixed(1)} s`);
+        console.error(`  ${q.name}: timed out after ${timeoutMs / 1000} s`);
+        out.push({
+          name: q.name,
+          medianMs: timeoutMs,
+          minMs: timeoutMs,
+          sharedHit: 0,
+          sharedRead: 0,
+          rows: 0,
+          scans: [...scans(plan)].join(", "),
+          timedOut: true,
+        });
+        continue;
+      }
+      console.error(
+        `  ${q.name}: ${((Date.now() - started) / 1000).toFixed(1)} s`,
+      );
       out.push({
         name: q.name,
         medianMs: median(result.times),
@@ -102,7 +216,7 @@ export async function explainAll(url: string, opts: { runs?: number; plansDir?: 
         sharedHit: result.buffers.hit,
         sharedRead: result.buffers.read,
         rows: result.rows,
-        scans: [...scans(result.plan)].join(', '),
+        scans: [...scans(result.plan)].join(", "),
       });
     }
     return out;
@@ -112,22 +226,29 @@ export async function explainAll(url: string, opts: { runs?: number; plansDir?: 
 }
 
 export function markdown(timings: Timing[]): string {
-  const lines = ['| Query | median ms | buffers (hit) | rows | scans |', '|---|---:|---:|---:|---|'];
-  for (const t of timings) lines.push(`| ${t.name} | ${t.medianMs.toFixed(2)} | ${t.sharedHit} | ${t.rows} | ${t.scans} |`);
-  return lines.join('\n');
+  const lines = [
+    "| Query | median ms | buffers (hit) | rows | scans |",
+    "|---|---:|---:|---:|---|",
+  ];
+  for (const t of timings)
+    lines.push(
+      `| ${t.name} | ${t.timedOut ? `> ${t.medianMs.toFixed(0)} (timeout)` : t.medianMs.toFixed(2)} | ${t.sharedHit} | ${t.rows} | ${t.scans} |`,
+    );
+  return lines.join("\n");
 }
 
 async function main() {
   const { values } = parseArgs({
     options: {
-      url: { type: 'string' },
-      keep: { type: 'boolean', default: false },
-      migrate: { type: 'boolean', default: false },
-      scale: { type: 'string', default: '1' },
-      runs: { type: 'string', default: '3' },
-      plans: { type: 'string' },
-      json: { type: 'string' },
-      only: { type: 'string' },
+      url: { type: "string" },
+      keep: { type: "boolean", default: false },
+      migrate: { type: "boolean", default: false },
+      scale: { type: "string", default: "1" },
+      runs: { type: "string", default: "3" },
+      plans: { type: "string" },
+      json: { type: "string" },
+      only: { type: "string" },
+      timeout: { type: "string", default: "30" },
     },
   });
   const log = (m: string) => console.error(m);
@@ -141,17 +262,23 @@ async function main() {
     else log(`kept database: ${db.url}`);
   } else if (values.migrate) {
     const applied = await migrate(url, { local: true });
-    log(`applied: ${applied.join(', ') || 'nothing'}`);
+    log(`applied: ${applied.join(", ") || "nothing"}`);
     const c = new pg.Client({ connectionString: url });
     await c.connect();
-    await c.query('ANALYZE');
+    await c.query("ANALYZE");
     await c.end();
   }
   try {
     log(JSON.stringify(await tableCounts(url)));
-    const timings = await explainAll(url, { runs: Number(values.runs), ...(values.plans ? { plansDir: values.plans } : {}), ...(values.only ? { only: new RegExp(values.only, 'i') } : {}) });
+    const timings = await explainAll(url, {
+      runs: Number(values.runs),
+      ...(values.plans ? { plansDir: values.plans } : {}),
+      ...(values.only ? { only: new RegExp(values.only, "i") } : {}),
+      timeoutMs: Number(values.timeout) * 1000,
+    });
     console.log(markdown(timings));
-    if (values.json) await writeFile(values.json, JSON.stringify(timings, null, 2));
+    if (values.json)
+      await writeFile(values.json, JSON.stringify(timings, null, 2));
   } finally {
     await drop?.();
   }

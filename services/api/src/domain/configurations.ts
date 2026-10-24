@@ -261,29 +261,54 @@ export async function listConfigurationSummaries(db: Db, tenant: TenantInfo, loc
     params.push(cursor.at, cursor.id);
     where += ` and (c.updated_at, c.id) < ($${params.length - 1}::timestamptz, $${params.length}::uuid)`;
   }
+  // Page first, then decorate: the keyset walk reads limit+1 rows of
+  // configurations_reseller_updated_idx (or configurations_customer_updated_idx), and the
+  // joins, the thumbnail subquery (assets RLS) and the request/snapshot lookups run only for
+  // the rows on the page. Joining sauna_models inside the page keeps the old semantics: a
+  // configuration of a model the reseller no longer offers stays hidden (RLS on sauna_models).
   const { rows } = await db.query<{ id: string; name: string | null; locked_at: Date | null; customer_id: string | null; created_at: Date; updated_at: Date; model_id: string; slug: string; model_name: string; thumb: string | null; final_price_minor: string | null; request_id: string | null; status_code: RequestStatus | null }>(
-    `select c.id, c.name, c.locked_at, c.customer_id, c.created_at, c.updated_at,
+    `with page as materialized (
+       select c.id, c.name, c.locked_at, c.customer_id, c.created_at, c.updated_at, c.sauna_model_id
+         from configurations c
+         join sauna_models m on m.id = c.sauna_model_id
+        where ${where}
+        order by c.updated_at desc, c.id desc
+        limit $3)
+     select p.id, p.name, p.locked_at, p.customer_id, p.created_at, p.updated_at,
             m.id as model_id, m.slug, coalesce(t.name, m.name) as model_name,
-            (select a.storage_key from sauna_model_assets x join assets a on a.id = x.asset_id where x.sauna_model_id = m.id and x.asset_role = 'MODEL_THUMBNAIL' order by x.position limit 1) as thumb,
+            th.storage_key as thumb,
             s.final_price_minor, r.id as request_id, r.status_code
-       from configurations c
-       join sauna_models m on m.id = c.sauna_model_id
+       from page p
+       join sauna_models m on m.id = p.sauna_model_id
        left join sauna_model_translations t on t.sauna_model_id = m.id and t.locale = $2
-       left join configuration_price_snapshots s on s.configuration_id = c.id
-       left join configuration_requests r on r.configuration_id = c.id
-      where ${where}
-      order by c.updated_at desc, c.id desc
-      limit $3`,
+       left join lateral (
+         select a.storage_key from sauna_model_assets x join assets a on a.id = x.asset_id
+          where x.sauna_model_id = m.id and x.asset_role = 'MODEL_THUMBNAIL' order by x.position limit 1) th on true
+       left join configuration_price_snapshots s on s.configuration_id = p.id
+       left join configuration_requests r on r.configuration_id = p.id
+      order by p.updated_at desc, p.id desc`,
     params);
-  // Drafts have no snapshot: price them live (one model load per distinct model).
+  // Drafts have no snapshot: price them live (one model load per distinct model, one
+  // selections query for the whole page).
   const models = new Map<string, LoadedModel | null>();
+  const drafts = rows.filter(r => r.final_price_minor === null);
+  const selections = new Map<string, string[]>();
+  if (drafts.length) {
+    const { rows: sel } = await db.query<{ configuration_id: string; option_id: string }>(
+      'select configuration_id, option_id from configuration_selections where configuration_id = any($1::uuid[]) order by configuration_id, created_at, option_id',
+      [drafts.map(r => r.id)]);
+    for (const s of sel) {
+      const list = selections.get(s.configuration_id);
+      if (list) list.push(s.option_id); else selections.set(s.configuration_id, [s.option_id]);
+    }
+  }
   const out: (ConfigurationSummary & { _at: string })[] = [];
   for (const r of rows) {
     let final = r.final_price_minor === null ? null : Number(r.final_price_minor);
     if (final === null) {
       if (!models.has(r.model_id)) models.set(r.model_id, await loadModel(db, tenant, locale, { id: r.model_id }, true));
       const model = models.get(r.model_id);
-      final = model ? livePrice(model, await getSelections(db, r.id)).finalPriceMinor : 0;
+      final = model ? livePrice(model, selections.get(r.id) ?? []).finalPriceMinor : 0;
     }
     out.push({
       id: r.id,

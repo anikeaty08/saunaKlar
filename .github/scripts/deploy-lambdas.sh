@@ -3,7 +3,8 @@
 #
 #   1. Publishes the native-modules layer (sharp, aws-crt) if its content key is new.
 #   2. For every function in FUNCTIONS_JSON that has artifacts/lambda/<key>.zip: attaches the
-#      layer, uploads the code and publishes a new version. Nothing takes traffic yet.
+#      layer, uploads the code and publishes a new version. Nothing takes traffic yet, except the
+#      Cognito trigger (Cognito invokes its $LATEST; it has no layer and no alias).
 #   3. Runs database migrations by invoking the NEW worker version with {"task":"migrate"}.
 #      Migrations are expand-only, so the old API versions keep working against the new schema.
 #   4. Moves the `live` alias: worker at once, then the API functions, either through CodeDeploy
@@ -59,8 +60,12 @@ for key in $(keys); do
     log "WARNING: no bundle for $key ($zip); leaving $fn unchanged"
     continue
   fi
-  aws lambda update-function-configuration --function-name "$fn" --layers "$layer_arn" >/dev/null
-  aws lambda wait function-updated-v2 --function-name "$fn"
+  # The Cognito trigger has no native dependencies and Cognito invokes $LATEST, so its new code
+  # is live as soon as it is uploaded (it needs no DB, so migration order does not matter).
+  if [ "$key" != "cognito-custom-message" ]; then
+    aws lambda update-function-configuration --function-name "$fn" --layers "$layer_arn" >/dev/null
+    aws lambda wait function-updated-v2 --function-name "$fn"
+  fi
   aws lambda update-function-code --function-name "$fn" --zip-file "fileb://$zip" >/dev/null
   aws lambda wait function-updated-v2 --function-name "$fn"
   new_version[$key]="$(aws lambda publish-version --function-name "$fn" --query Version --output text)"
