@@ -73,38 +73,52 @@ async function detail(c: Ctx, db: Db, manufacturerId: string, id: string): Promi
   };
 }
 
+interface PendingIdpUser { staffId: string; email: string; displayName: string; reseller: ResellerRow }
+
 /**
- * Invites a reseller admin. The staff row and the IdP user are created in
- * the same transaction (IdP last), so a failed IdP call leaves no half
- * account. A person who already administers another reseller is reused.
+ * Invites a reseller admin, in two steps so a rollback never leaves an IdP
+ * user or a sent invitation behind: `invite` writes the staff rows inside the
+ * transaction and returns the IdP work, which `provisionIdp` does after the
+ * commit. If the IdP call then fails, the staff row stays without a subject
+ * and inviting the same address again retries the provisioning.
+ * A person who already administers another reseller is reused.
  */
-async function invite(c: Ctx, db: Db, reseller: ResellerRow, input: { email: string; displayName: string; role: 'OWNER' | 'ADMIN' }): Promise<void> {
+async function invite(db: Db, reseller: ResellerRow, input: { email: string; displayName: string; role: 'OWNER' | 'ADMIN' }): Promise<PendingIdpUser | null> {
   const email = input.email.toLowerCase();
-  const { rows: existing } = await db.query<{ id: string; status: string }>('select id, status from staff_users where lower(email) = $1', [email]);
-  let staffId = existing[0]?.id;
-  if (existing[0]?.status === 'DISABLED') throw new ApiError('CONFLICT', 'This person is disabled. Re-enable them first.');
+  const { rows: existing } = await db.query<{ id: string; status: string; idp_subject: string | null }>(
+    'select id, status, idp_subject from staff_users where lower(email) = $1', [email]);
+  const found = existing[0];
+  if (found?.status === 'DISABLED') throw new ApiError('CONFLICT', 'This person is disabled. Re-enable them first.');
+  let staffId = found?.id;
   const { rows: already } = staffId
     ? await db.query('select 1 from reseller_admins where reseller_id = $1 and staff_user_id = $2', [reseller.id, staffId])
     : { rows: [] };
-  if (already.length) throw new ApiError('EMAIL_TAKEN', 'This person already administers the reseller.');
+  if (already.length) {
+    if (found && !found.idp_subject) return { staffId: found.id, email, displayName: input.displayName, reseller };
+    throw new ApiError('EMAIL_TAKEN', 'This person already administers the reseller.');
+  }
   if (!staffId) {
     const { rows } = await db.query<{ id: string }>(`insert into staff_users (email, display_name) values ($1, $2) returning id`, [email, input.displayName]);
     staffId = rows[0]!.id;
   }
   await db.query('insert into reseller_admins (reseller_id, staff_user_id, role) values ($1, $2, $3)', [reseller.id, staffId, input.role]);
-  if (!existing[0]) {
-    try {
-      const { sub } = await c.get('deps').adapters.identity.adminCreateUser('STAFF', {
-        username: email,
-        email,
-        attributes: { name: input.displayName },
-        clientMetadata: { resellerId: reseller.id, brandName: reseller.name, storefrontUrl: `${storefrontUrl(c, reseller.slug)}/admin` },
-      });
-      await db.query('update staff_users set idp_subject = $2 where id = $1', [staffId, sub]);
-    } catch (err) {
-      if (err instanceof IdpError) throw new ApiError(err.code === 'EMAIL_TAKEN' ? 'EMAIL_TAKEN' : err.code, err.message);
-      throw err;
-    }
+  return found?.idp_subject ? null : { staffId, email, displayName: input.displayName, reseller };
+}
+
+async function provisionIdp(c: Ctx, pending: PendingIdpUser | null): Promise<void> {
+  if (!pending) return;
+  const { reseller } = pending;
+  try {
+    const { sub } = await c.get('deps').adapters.identity.adminCreateUser('STAFF', {
+      username: pending.email,
+      email: pending.email,
+      attributes: { name: pending.displayName },
+      clientMetadata: { resellerId: reseller.id, brandName: reseller.name, storefrontUrl: `${storefrontUrl(c, reseller.slug)}/admin` },
+    });
+    await platformTx(c, db => db.query('update staff_users set idp_subject = $2 where id = $1', [pending.staffId, sub]));
+  } catch (err) {
+    if (err instanceof IdpError) throw new ApiError(err.code, `The account was saved but the invitation failed: ${err.message} Invite the same address again to retry.`);
+    throw err;
   }
 }
 
@@ -201,8 +215,10 @@ export function registerManufacturer(app: Hono<AppEnv>): void {
       await db.query(
         `insert into reseller_room_scenes (reseller_id, room_scene_id, sort_order)
          select $1, id, sort_order from room_scenes where manufacturer_id = $2 and status = 'ACTIVE'`, [reseller.id, m]);
-      await invite(c, db, reseller, { ...body.owner, role: 'OWNER' });
-      return detail(c, db, m, reseller.id);
+      return { id: reseller.id, pending: await invite(db, reseller, { ...body.owner, role: 'OWNER' }) };
+    }).then(async ({ id, pending }) => {
+      await provisionIdp(c, pending);
+      return platformTx(c, db => detail(c, db, m, id));
     });
   });
 
@@ -224,10 +240,9 @@ export function registerManufacturer(app: Hono<AppEnv>): void {
 
   mount(app, routes.mInviteAdmin, async ({ c, params, body }) => {
     const m = manufacturerOf(c);
-    return platformTx(c, async db => {
-      await invite(c, db, await getReseller(db, m, params.id!), body);
-      return detail(c, db, m, params.id!);
-    });
+    const pending = await platformTx(c, async db => invite(db, await getReseller(db, m, params.id!), body));
+    await provisionIdp(c, pending);
+    return platformTx(c, db => detail(c, db, m, params.id!));
   });
 
   mount(app, routes.mAssignments, async ({ c, params }) => {

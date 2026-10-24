@@ -93,6 +93,11 @@ export const adminRequestListQuery = z.object({
 });
 
 export const transitionRequest = z.object({ toStatus: requestStatus, note: z.string().trim().max(2000).optional() });
+/**
+ * POST /api/me/requests/:id/accept. `quoteId` is the quote the customer saw; when it is no
+ * longer the active one (staff re-quoted meanwhile) the API answers 409. The body is optional.
+ */
+export const acceptRequestBody = z.object({ quoteId: uuid.optional() }).optional();
 export const noteRequest = z.object({ body: z.string().trim().min(1).max(4000) });
 export const quoteRequest = z.object({
   amountMinor: minorUnits,

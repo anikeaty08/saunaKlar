@@ -54,12 +54,16 @@ export function mount<R extends RouteDef>(app: Hono<AppEnv>, def: R, handler: Ha
       const len = Number(c.req.header('content-length') ?? 0);
       if (len > MAX_JSON_BYTES) throw new ApiError('PAYLOAD_TOO_LARGE');
       const type = c.req.header('content-type') ?? '';
-      if (!type.startsWith('application/json')) throw new ApiError('UNSUPPORTED_MEDIA_TYPE', 'Send JSON.');
+      // An optional body (e.g. accept's `{quoteId?}`) may be omitted entirely.
+      const omitted = !type && !len && def.body.safeParse(undefined).success;
+      if (!omitted && !type.startsWith('application/json')) throw new ApiError('UNSUPPORTED_MEDIA_TYPE', 'Send JSON.');
       let raw: unknown;
-      try {
-        raw = await c.req.json();
-      } catch {
-        throw new ApiError('BAD_REQUEST', 'Malformed JSON.');
+      if (!omitted) {
+        try {
+          raw = await c.req.json();
+        } catch {
+          throw new ApiError('BAD_REQUEST', 'Malformed JSON.');
+        }
       }
       const parsed = def.body.safeParse(raw);
       if (!parsed.success) throw new ApiError('VALIDATION_FAILED', undefined, { errors: zodErrors(parsed.error) });

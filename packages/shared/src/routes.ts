@@ -88,7 +88,7 @@ export const routes = {
   myRequests: r({ method: 'GET', path: '/api/me/requests', fn: 'customer', access: 'customer', host: 'storefront', query: pageQuery, response: page(req.requestSummarySchema) }),
   myRequest: r({ method: 'GET', path: '/api/me/requests/:id', fn: 'customer', access: 'customer', host: 'storefront', response: req.requestSchema }),
   cancelRequest: r({ method: 'POST', path: '/api/me/requests/:id/cancel', fn: 'customer', access: 'customer', host: 'storefront', response: req.requestSchema }),
-  acceptRequest: r({ method: 'POST', path: '/api/me/requests/:id/accept', fn: 'customer', access: 'customer', host: 'storefront', response: req.requestSchema }),
+  acceptRequest: r({ method: 'POST', path: '/api/me/requests/:id/accept', fn: 'customer', access: 'customer', host: 'storefront', body: req.acceptRequestBody, response: req.requestSchema }),
 
   // ---- reseller admin -----------------------------------------------------
   adminBranding: r({ method: 'GET', path: '/api/admin/branding', fn: 'reseller-admin', access: 'reseller-staff', host: 'storefront', response: admin.brandingSchema }),

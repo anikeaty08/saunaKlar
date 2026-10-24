@@ -7,7 +7,7 @@ import { requestLocale } from '../lib/locale.ts';
 import { ApiError } from '../lib/problem.ts';
 import { asCustomer, mount } from '../lib/route.ts';
 import {
-  cloneConfiguration, createConfiguration, getConfigRow, getSelections, listConfigurationSummaries, livePrice, replacePlacement, replaceSelections,
+  cloneConfiguration, createConfiguration, lockConfiguration, getConfigRow, getSelections, listConfigurationSummaries, livePrice, replacePlacement, replaceSelections,
   toBreakdownDto, toConfigurationDto,
 } from '../domain/configurations.ts';
 import { loadModel } from '../domain/catalog.ts';
@@ -131,7 +131,10 @@ export function registerConfigurations(app: Hono<AppEnv>): void {
     return tenantTx(c, async db => {
       const link = await resolveShareToken(db, params.token!, now);
       const source = await getConfigRow(db, link.configuration_id, { staff: true });
-      const row = await cloneConfiguration(db, tenant!, locale, source, { customerId: me.customerId, staffId: null });
+      // Review C5: the copy is locked with a fresh price snapshot, so it can be requested as is
+      // (and cloned again to edit).
+      const draft = await cloneConfiguration(db, tenant!, locale, source, { customerId: me.customerId, staffId: null });
+      const row = await lockConfiguration(db, tenant!, locale, draft, c.get('deps').config.SHARE_PRICE_VALID_DAYS);
       return { configurationId: row.id };
     });
   });
@@ -151,14 +154,21 @@ export function registerConfigurations(app: Hono<AppEnv>): void {
     return tenantTx(c, db => buildRequestDto(db, tenant!, requestLocale(c), params.id!, me.customerId));
   });
 
-  for (const [def, to] of [[routes.cancelRequest, 'CANCELLED'], [routes.acceptRequest, 'ACCEPTED']] as const) {
-    mount(app, def, async ({ c, params, principal, tenant }) => {
-      const me = asCustomer(principal);
-      const now = c.get('deps').now();
-      return tenantTx(c, async db => {
-        await customerTransition(db, params.id!, me.customerId, to, now);
-        return buildRequestDto(db, tenant!, requestLocale(c), params.id!, me.customerId);
-      });
+  mount(app, routes.cancelRequest, async ({ c, params, principal, tenant }) => {
+    const me = asCustomer(principal);
+    const now = c.get('deps').now();
+    return tenantTx(c, async db => {
+      await customerTransition(db, params.id!, me.customerId, 'CANCELLED', now);
+      return buildRequestDto(db, tenant!, requestLocale(c), params.id!, me.customerId);
     });
-  }
+  });
+
+  mount(app, routes.acceptRequest, async ({ c, params, body, principal, tenant }) => {
+    const me = asCustomer(principal);
+    const now = c.get('deps').now();
+    return tenantTx(c, async db => {
+      await customerTransition(db, params.id!, me.customerId, 'ACCEPTED', now, body?.quoteId);
+      return buildRequestDto(db, tenant!, requestLocale(c), params.id!, me.customerId);
+    });
+  });
 }

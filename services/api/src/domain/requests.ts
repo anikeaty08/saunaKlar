@@ -145,13 +145,17 @@ async function setStatus(db: Db, id: string, to: RequestStatus, note: string | u
   await db.query('update configuration_requests set status_code = $2 where id = $1', [id, to]);
 }
 
-export async function customerTransition(db: Db, id: string, customerId: string, to: 'ACCEPTED' | 'CANCELLED', now: Date): Promise<void> {
+/** `quoteId` (accept only): the quote the customer saw; a different active quote means staff re-quoted meanwhile. */
+export async function customerTransition(db: Db, id: string, customerId: string, to: 'ACCEPTED' | 'CANCELLED', now: Date, quoteId?: string): Promise<void> {
   // Serialised with putQuote: an accept never applies to a quote that replaced the one checked here.
   const row = await getRequestRow(db, id, customerId, true);
   if (!CUSTOMER_TRANSITIONS[row.status_code].includes(to)) throw new ApiError('INVALID_TRANSITION', `Cannot change ${row.status_code} to ${to}.`);
   if (to === 'ACCEPTED') {
     const active = (await loadQuotes(db, id)).find(q => !q.supersededAt);
     if (!active) throw new ApiError('QUOTE_MISSING');
+    if (quoteId && active.id !== quoteId) {
+      throw new ApiError('CONFLICT', 'The quote changed, please review the new one.', { meta: { activeQuoteId: active.id } });
+    }
     if (new Date(active.validUntil) <= now) throw new ApiError('QUOTE_EXPIRED', 'This quote has expired. Ask for a new one.');
   }
   await setStatus(db, id, to, undefined);
