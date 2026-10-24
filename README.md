@@ -188,3 +188,5 @@ To work with an environment by hand:
 terraform -chdir=infra/envs/dev init -backend-config="bucket=<state-bucket>"
 terraform -chdir=infra/envs/dev plan
 ```
+
+API reference: [docs/api.md](docs/api.md) (sessions, CSRF, hosts, errors, pagination, catalog versioning) and the generated OpenAPI 3.1 document [docs/openapi.json](docs/openapi.json) (`npm run openapi`).

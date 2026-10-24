@@ -93,8 +93,8 @@ describe('follow-ups', () => {
 
     const stale = await c.post(`/api/me/requests/${id}/accept`, { quoteId: '00000000-0000-4000-8000-000000000000' });
     expect(stale.status).toBe(409);
-    expect(stale.body.error.code).toBe('CONFLICT');
-    expect(stale.body.error.message).toMatch(/quote changed/i);
+    expect(stale.body.code).toBe('CONFLICT');
+    expect(stale.body.message).toMatch(/quote changed/i);
     expect((await c.get(`/api/me/requests/${id}`)).body.status).toBe('QUOTED');
 
     const ok = await c.post(`/api/me/requests/${id}/accept`, { quoteId: active });

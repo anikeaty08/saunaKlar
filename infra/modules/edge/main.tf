@@ -3,7 +3,8 @@
 # CloudFront Function + KeyValueStore, Route 53 aliases, security response headers.
 #
 # Behaviours (first match wins):
-#   /api/*        → API Gateway  (no cache unless the API sends Cache-Control; key includes x-tenant-host)
+#   /api/*        → storefront API Gateway; on the admin host the router selects the admin API
+#                   (no cache unless the API sends Cache-Control; key includes x-tenant-host)
 #   /assets/*     → assets bucket (signed cookies/URLs via trusted key group; key WITHOUT Host, G1).
 #                   LOW cookies cover https://{host}/assets/lo/*, FULL cookies https://{host}/assets/*,
 #                   AR files use signed URLs. No URI rewriting: S3 key = URL path without leading "/".
@@ -30,11 +31,18 @@ locals {
 
   kvs_id = element(split("/", aws_cloudfront_key_value_store.tenants.arn), 1)
 
-  router_code = replace(replace(replace(
+  router_code = replace(replace(replace(replace(
     file("${path.module}/functions/tenant-router.js"),
     "__PLATFORM_DOMAIN__", var.platform_domain),
     "__ADMIN_HOST__", var.admin_host),
+    "__ADMIN_API_ORIGIN_ID__", local.origin_ids.admin),
   "__KVS_ID__", local.kvs_id)
+
+  # Both API origins carry the origin secret; the tenant router picks the admin one on ADMIN_HOST.
+  api_origins = {
+    (local.origin_ids.api)   = var.api_origin_domain
+    (local.origin_ids.admin) = var.admin_api_origin_domain
+  }
 }
 
 # ---------------------------------------------------------------------------------------------
@@ -370,25 +378,30 @@ resource "aws_cloudfront_distribution" "this" {
     }
   }
 
-  origin {
-    origin_id   = local.origin_ids.api
-    domain_name = var.api_origin_domain
+  dynamic "origin" {
+    for_each = local.api_origins
+    content {
+      origin_id   = origin.key
+      domain_name = origin.value
 
-    custom_origin_config {
-      http_port                = 80
-      https_port               = 443
-      origin_protocol_policy   = "https-only"
-      origin_ssl_protocols     = ["TLSv1.2"]
-      origin_read_timeout      = 30
-      origin_keepalive_timeout = 5
-    }
+      custom_origin_config {
+        http_port                = 80
+        https_port               = 443
+        origin_protocol_policy   = "https-only"
+        origin_ssl_protocols     = ["TLSv1.2"]
+        origin_read_timeout      = 30
+        origin_keepalive_timeout = 5
+      }
 
-    custom_header {
-      name  = var.origin_secret_header
-      value = var.origin_secret_value
+      custom_header {
+        name  = var.origin_secret_header
+        value = var.origin_secret_value
+      }
     }
   }
 
+  # /api/* targets the storefront API; on ADMIN_HOST the tenant router switches the request to
+  # the admin API origin (cf.selectRequestOriginById).
   ordered_cache_behavior {
     path_pattern               = "/api/*"
     target_origin_id           = local.origin_ids.api

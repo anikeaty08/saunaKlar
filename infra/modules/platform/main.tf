@@ -26,6 +26,7 @@ module "observability" {
 
   function_names         = module.api.function_names
   api_id                 = module.api.api_id
+  admin_api_id           = module.api.admin_api_id
   db_instance_identifier = module.database.instance_identifier
   db_proxy_name          = module.database.proxy_name
   jobs_queue_name        = module.api.jobs_queue_name
@@ -156,6 +157,7 @@ module "edge" {
 
   bucket_regional_domain_names = module.storage.bucket_regional_domain_names
   api_origin_domain            = module.api.api_origin_domain
+  admin_api_origin_domain      = module.api.admin_api_origin_domain
   origin_secret_header         = module.api.origin_secret_header
   origin_secret_value          = module.api.origin_secret_value
 

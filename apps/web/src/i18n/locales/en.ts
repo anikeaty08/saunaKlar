@@ -302,6 +302,7 @@ const messages = {
     quote: 'Quote',
     quoteValid: 'Valid until {date}',
     accept: 'Accept quote',
+    quoteChanged: 'The quote changed, please review the new one.',
     cancelRequest: 'Cancel request',
     cancelConfirm: 'Cancel this request? This cannot be undone.',
     snapshot: 'Locked price',

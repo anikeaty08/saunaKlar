@@ -259,15 +259,28 @@ export function RequestDetail() {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const q = useQuery({ queryKey: ['request', id], queryFn: () => api('myRequest', { params: { id } }) });
   useDocumentTitle(q.data?.configuration.name);
-  const act = useMutation({
-    mutationFn: (kind: 'cancel' | 'accept') => api(kind === 'cancel' ? 'cancelRequest' : 'acceptRequest', { params: { id } }),
-    onSuccess: r => {
-      qc.setQueryData(['request', id], r);
-      void qc.invalidateQueries({ queryKey: ['requests'] });
-      setConfirmCancel(false);
-      toast(t(`status.${r.status}` as TKey));
-    },
+  const onDone = (r: Awaited<ReturnType<typeof api<'myRequest'>>>) => {
+    qc.setQueryData(['request', id], r);
+    void qc.invalidateQueries({ queryKey: ['requests'] });
+    setConfirmCancel(false);
+    toast(t(`status.${r.status}` as TKey));
+  };
+  const cancel = useMutation({
+    mutationFn: () => api('cancelRequest', { params: { id } }),
+    onSuccess: onDone,
     onError: e => toast.error(t('errors.title'), errorText(t, e)),
+  });
+  // The quote the customer is looking at is sent along; if staff re-quoted in
+  // the meantime the API answers 409 and the new quote is shown for review.
+  const accept = useMutation({
+    mutationFn: (quoteId: string) => api('acceptRequest', { params: { id }, body: { quoteId } }),
+    onSuccess: onDone,
+    onError: e => {
+      if (isApiError(e, 'CONFLICT') || isApiError(e, 'QUOTE_MISSING')) {
+        void q.refetch();
+        toast.error(t('account.quoteChanged'));
+      } else toast.error(t('errors.title'), errorText(t, e));
+    },
   });
   if (q.isPending) return <Skeleton lines={8} />;
   if (q.error) return <ErrorPage error={q.error} />;
@@ -291,7 +304,7 @@ export function RequestDetail() {
             <p className="muted">{t('account.quoteValid', { date: fmt.date(r.activeQuote.validUntil) })}</p>
             {r.activeQuote.note && <p>{r.activeQuote.note}</p>}
             {canAccept && (
-              <Button onClick={() => act.mutate('accept')} loading={act.isPending && act.variables === 'accept'}>
+              <Button onClick={() => accept.mutate(r.activeQuote!.id)} loading={accept.isPending}>
                 {t('account.accept')}
               </Button>
             )}
@@ -354,7 +367,7 @@ export function RequestDetail() {
             <Button variant="quiet" onClick={() => setConfirmCancel(false)}>
               {t('common.back')}
             </Button>
-            <Button onClick={() => act.mutate('cancel')} loading={act.isPending && act.variables === 'cancel'}>
+            <Button onClick={() => cancel.mutate()} loading={cancel.isPending}>
               {t('common.confirm')}
             </Button>
           </>

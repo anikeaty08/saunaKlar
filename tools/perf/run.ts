@@ -73,6 +73,7 @@ export async function explainAll(url: string, opts: { runs?: number; plansDir?: 
     for (const q of QUERIES) {
       if (opts.only && !opts.only.test(q.name)) continue;
       const params = q.params(ctx);
+      const started = Date.now();
       const result = await inRole(client, q, ctx, async () => {
         const warm = await client.query(q.sql, params);
         const times: number[] = [];
@@ -93,6 +94,7 @@ export async function explainAll(url: string, opts: { runs?: number; plansDir?: 
         }
         return { times, plan: last!.Plan, buffers, rows: warm.rowCount ?? 0 };
       });
+      console.error(`  ${q.name}: ${((Date.now() - started) / 1000).toFixed(1)} s`);
       out.push({
         name: q.name,
         medianMs: median(result.times),

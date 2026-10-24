@@ -67,7 +67,7 @@ Errors use `application/problem+json` (RFC 9457):
 ## Pagination
 
 List endpoints return `{ "items": [...], "nextCursor": "…" | null }` and take `?limit=` (default 25,
-maximum 100) and `?cursor=`. To get the next page, pass `nextCursor` back unchanged. The cursor is
+50 for the audit log; maximum 100) and `?cursor=`. To get the next page, pass `nextCursor` back unchanged. The cursor is
 signed and opaque (keyset pagination on sort value + id). An edited cursor returns `400 BAD_REQUEST`.
 
 ## Catalog versioning (review C1)

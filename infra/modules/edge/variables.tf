@@ -33,6 +33,11 @@ variable "api_origin_domain" {
   type        = string
 }
 
+variable "admin_api_origin_domain" {
+  description = "Admin-host API Gateway host name (manufacturer-admin only)."
+  type        = string
+}
+
 variable "origin_secret_header" {
   type = string
 }

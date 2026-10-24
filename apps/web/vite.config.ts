@@ -11,7 +11,8 @@ import react from '@vitejs/plugin-react';
  */
 function dracoDecoder(): Plugin {
   const require = createRequire(import.meta.url);
-  const dir = join(dirname(require.resolve('three/package.json')), 'examples/jsm/libs/draco/gltf');
+  // three's exports map hides package.json; its main entry lives in build/.
+  const dir = join(dirname(require.resolve('three')), '..', 'examples/jsm/libs/draco/gltf');
   const files = readdirSync(dir).filter(f => /^draco_(decoder\.(js|wasm)|wasm_wrapper\.js)$/.test(f));
   return {
     name: 'saunaklar-draco',

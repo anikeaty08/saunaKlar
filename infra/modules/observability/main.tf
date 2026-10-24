@@ -17,7 +17,7 @@ locals {
   alarm_actions      = [aws_sns_topic.alarms.arn]
   alarm_actions_use1 = [aws_sns_topic.alarms_us_east_1.arn]
 
-  api_function_keys = [for k in var.function_keys : k if k != "worker"]
+  apis = { api = var.api_id, admin-api = var.admin_api_id }
 }
 
 # ---------------------------------------------------------------------------------------------
@@ -68,8 +68,9 @@ resource "aws_sns_topic_subscription" "alarms_email_us_east_1" {
 # ---------------------------------------------------------------------------------------------
 
 resource "aws_cloudwatch_metric_alarm" "api_5xx_rate" {
-  alarm_name          = "${var.name}-api-5xx-rate"
-  alarm_description   = "More than ${var.api_5xx_rate_percent}% of API requests fail with 5xx."
+  for_each            = local.apis
+  alarm_name          = "${var.name}-${each.key}-5xx-rate"
+  alarm_description   = "More than ${var.api_5xx_rate_percent}% of ${each.key} requests fail with 5xx."
   comparison_operator = "GreaterThanThreshold"
   threshold           = var.api_5xx_rate_percent
   evaluation_periods  = 3
@@ -90,7 +91,7 @@ resource "aws_cloudwatch_metric_alarm" "api_5xx_rate" {
     metric {
       namespace   = "AWS/ApiGateway"
       metric_name = "5xx"
-      dimensions  = { ApiId = var.api_id, Stage = "$default" }
+      dimensions  = { ApiId = each.value, Stage = "$default" }
       period      = 60
       stat        = "Sum"
     }
@@ -101,7 +102,7 @@ resource "aws_cloudwatch_metric_alarm" "api_5xx_rate" {
     metric {
       namespace   = "AWS/ApiGateway"
       metric_name = "Count"
-      dimensions  = { ApiId = var.api_id, Stage = "$default" }
+      dimensions  = { ApiId = each.value, Stage = "$default" }
       period      = 60
       stat        = "Sum"
     }
@@ -109,11 +110,12 @@ resource "aws_cloudwatch_metric_alarm" "api_5xx_rate" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "api_latency_p95" {
-  alarm_name          = "${var.name}-api-latency-p95"
-  alarm_description   = "API p95 latency above ${var.api_p95_latency_ms} ms (target < 300 ms)."
+  for_each            = local.apis
+  alarm_name          = "${var.name}-${each.key}-latency-p95"
+  alarm_description   = "${each.key} p95 latency above ${var.api_p95_latency_ms} ms (target < 300 ms)."
   namespace           = "AWS/ApiGateway"
   metric_name         = "Latency"
-  dimensions          = { ApiId = var.api_id, Stage = "$default" }
+  dimensions          = { ApiId = each.value, Stage = "$default" }
   extended_statistic  = "p95"
   period              = 300
   evaluation_periods  = 3
@@ -390,6 +392,8 @@ resource "aws_cloudwatch_dashboard" "this" {
             ["AWS/ApiGateway", "Count", "ApiId", var.api_id, "Stage", "$default"],
             [".", "4xx", ".", ".", ".", "."],
             [".", "5xx", ".", ".", ".", "."],
+            ["AWS/ApiGateway", "Count", "ApiId", var.admin_api_id, "Stage", "$default", { label = "admin Count" }],
+            [".", "5xx", ".", ".", ".", ".", { label = "admin 5xx" }],
           ]
         }
       },

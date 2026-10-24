@@ -139,10 +139,19 @@ async function readProblem(res: Response): Promise<ApiError> {
   return new ApiError(res.status, fallback, res.statusText || 'Request failed', null, requestId);
 }
 
+/**
+ * Translated public catalogue responses are cached at the CDN per URL, so the
+ * language travels in the query string (`?v=…&lang=…`) as well as in
+ * Accept-Language.
+ */
+const LANGUAGE_IN_QUERY: ReadonlySet<RouteName> = new Set<RouteName>(['catalog', 'sauna', 'rooms']);
+
 export async function api<N extends RouteName>(name: N, ...args: MaybeOptions<N>): Promise<ResponseOf<N>> {
   const opts = (args[0] ?? {}) as { params?: Record<string, string>; query?: Record<string, unknown>; body?: unknown; signal?: AbortSignal };
   const def = routes[name];
-  const url = buildPath(def.path, opts.params) + queryString(opts.query);
+  const lang = LANGUAGE_IN_QUERY.has(name) ? language() : null;
+  const query = lang ? { ...opts.query, lang } : opts.query;
+  const url = buildPath(def.path, opts.params) + queryString(query);
   const method = def.method;
 
   const send = async (): Promise<Response> => {

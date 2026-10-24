@@ -6,13 +6,15 @@
 //      <admin-host>              → manufacturer admin (no tenant).
 //      anything else             → 404.
 //    Unknown or suspended tenants get a 404 straight from the edge (JSON for /api/*).
-// 2. Copies the host into `x-tenant-host` (API Gateway needs its own Host, so the API reads the
+// 2. On the admin host, routes /api/* to the admin API origin (manufacturer-admin only).
+// 3. Copies the host into `x-tenant-host` (API Gateway needs its own Host, so the API reads the
 //    tenant from this header; any client-supplied value is overwritten).
-// 3. Rewrites /favicon.ico and /branding/favicon-*.png to the tenant's branding files.
-// 4. Rewrites SPA routes (no file extension, outside /api, /assets, /media, /static, /branding) to /index.html.
+// 4. Rewrites /favicon.ico and /branding/favicon-*.png to the tenant's branding files.
+// 5. Rewrites SPA routes (no file extension, outside /api, /assets, /media, /static, /branding) to /index.html.
 //    Asset and media URIs are never rewritten (S3 key = URL path without the leading slash).
 //
-// Placeholders (__PLATFORM_DOMAIN__, __ADMIN_HOST__, __KVS_ID__) are substituted by Terraform.
+// Placeholders (__PLATFORM_DOMAIN__, __ADMIN_HOST__, __KVS_ID__, __ADMIN_API_ORIGIN_ID__) are
+// substituted by Terraform.
 // Size limit for CloudFront Functions is 10 KB: keep this file small.
 
 import cf from 'cloudfront';
@@ -23,6 +25,7 @@ const SUFFIX = '.' + PLATFORM_DOMAIN;
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/;
 const BRAND_FAVICON_RE = /^\/branding\/(favicon-[a-z0-9-]+\.png)$/;
 const ADMIN_BRAND_DIR = '_platform';
+const ADMIN_API_ORIGIN_ID = '__ADMIN_API_ORIGIN_ID__';
 
 const kvs = cf.kvs('__KVS_ID__');
 
@@ -96,6 +99,13 @@ async function handler(event) {
   }
 
   request.headers['x-tenant-host'] = { value: host };
+
+  // C6: the admin host talks only to the admin API (manufacturer-admin); tenant hosts only to
+  // the storefront API, which has no manufacturer routes at all.
+  if (brandDir === ADMIN_BRAND_DIR && uri.startsWith('/api/')) {
+    cf.selectRequestOriginById(ADMIN_API_ORIGIN_ID);
+    return request;
+  }
 
   if (uri === '/favicon.ico') {
     request.uri = '/branding/' + brandDir + '/favicon.ico';

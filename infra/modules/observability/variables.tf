@@ -26,7 +26,13 @@ variable "function_names" {
 }
 
 variable "api_id" {
-  type = string
+  description = "Storefront HTTP API."
+  type        = string
+}
+
+variable "admin_api_id" {
+  description = "Admin-host HTTP API (manufacturer-admin)."
+  type        = string
 }
 
 variable "db_instance_identifier" {
