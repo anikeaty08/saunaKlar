@@ -40,10 +40,11 @@ async function getReseller(db: Db, manufacturerId: string, id: string): Promise<
 
 async function summaries(c: Ctx, db: Db, manufacturerId: string, onlyId?: string): Promise<ResellerSummary[]> {
   const { rows } = await db.query<ResellerRow & { saunas: string; customers: string | null; requests_open: string | null }>(
+    // reseller_overview() computes only the two counts shown (reseller_stats() computes nine).
     `select r.*, (select count(*) from reseller_saunas rs where rs.reseller_id = r.id) as saunas,
             st.customers, st.requests_open
        from resellers r
-       left join lateral reseller_stats(r.id) st on true
+       left join reseller_overview($1, $2) st on st.reseller_id = r.id
       where r.manufacturer_id = $1 and ($2::uuid is null or r.id = $2)
       order by r.name, r.slug`, [manufacturerId, onlyId ?? null]);
   return rows.map(r => ({

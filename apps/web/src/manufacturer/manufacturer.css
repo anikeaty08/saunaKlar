@@ -1,0 +1,335 @@
+/* Manufacturer admin: only what the shared staff styles (staff/staff.css) do not cover. */
+
+.mfr-ext {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: var(--step--1);
+  color: var(--ink-2);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.mfr-ext:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.mfr-skeleton-rows {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.mfr-page-skeleton {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.mfr-note {
+  font-size: var(--step--1);
+  align-self: center;
+}
+
+/* ---- create reseller -------------------------------------------------------- */
+
+.mfr-slug {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.mfr-slug__preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: var(--step--1);
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+/* ---- reseller detail -------------------------------------------------------- */
+
+.mfr-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--hair);
+  margin-bottom: var(--space-6);
+  background: var(--line);
+  border: var(--hair) solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.mfr-facts > div {
+  padding: var(--space-3) var(--space-4);
+  background: var(--paper);
+}
+
+.mfr-facts dt {
+  font-size: var(--step--2);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.mfr-facts dd {
+  font-size: var(--step-2);
+  letter-spacing: -0.03em;
+}
+
+.mfr-people {
+  display: grid;
+}
+
+.mfr-people li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  border-top: var(--hair) solid var(--line);
+}
+
+.mfr-people li:first-child {
+  border-top: 0;
+}
+
+.mfr-people__avatar {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: var(--hair) solid var(--ink);
+  font-family: var(--font-display);
+  font-weight: 600;
+  flex: none;
+}
+
+.mfr-people__who {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 10rem;
+  overflow-wrap: anywhere;
+}
+
+.mfr-people__tags {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.mfr-blocked {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.mfr-state {
+  display: inline-grid;
+  justify-items: start;
+  gap: 0.2rem;
+}
+
+.mfr-rooms {
+  display: grid;
+  gap: var(--space-3);
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+@media (min-width: 700px) {
+  .mfr-rooms {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* A switch on a real checkbox (role="switch"): keyboard and forms for free. */
+.mfr-switch {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.mfr-switch input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: inherit;
+}
+
+.mfr-switch__track {
+  width: 2.5rem;
+  height: 1.4rem;
+  padding: 0.15rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--ink);
+  background: var(--paper);
+  transition: background-color 0.25s var(--ease-out);
+}
+
+.mfr-switch__thumb {
+  display: block;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  background: var(--ink);
+  transition: transform 0.35s var(--ease-out), background-color 0.25s var(--ease-out);
+}
+
+.mfr-switch input:checked + .mfr-switch__track {
+  background: var(--ink);
+}
+
+.mfr-switch input:checked + .mfr-switch__track .mfr-switch__thumb {
+  background: var(--paper);
+  transform: translateX(1.05rem);
+}
+
+.mfr-switch input:focus-visible + .mfr-switch__track {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.mfr-switch.is-disabled,
+.mfr-switch input:disabled {
+  cursor: not-allowed;
+}
+
+.mfr-switch input:disabled + .mfr-switch__track {
+  opacity: 0.4;
+}
+
+/* ---- catalogue -------------------------------------------------------------- */
+
+.mfr-model {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.mfr-model__thumb {
+  width: 3rem;
+  height: 3rem;
+  flex: none;
+  border-radius: var(--radius);
+  background: var(--paper-2);
+  overflow: hidden;
+}
+
+.mfr-model__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mfr-grid th[scope='row'] {
+  font-weight: 500;
+  text-align: start;
+}
+
+.mfr-grid__group th {
+  padding-top: var(--space-5);
+  font-size: var(--step--1);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: start;
+}
+
+.mfr-grid__group .staff-sub {
+  display: inline;
+  margin-left: var(--space-2);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Inline-edit cell: reads as text until focused. */
+.mfr-cell {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.3rem;
+}
+
+.mfr-cell__input {
+  width: 8.5rem;
+  max-width: 100%;
+  padding: 0.35rem 0.5rem;
+  border: var(--hair) solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--step--1);
+  text-align: end;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.mfr-cell__input:hover {
+  border-color: var(--line);
+}
+
+.mfr-cell__input:focus {
+  outline: none;
+  border-color: var(--ink);
+  background: var(--paper);
+}
+
+.mfr-cell.is-invalid .mfr-cell__input {
+  border: 1.5px dashed var(--ink);
+}
+
+.mfr-cell.is-empty .mfr-cell__input::placeholder {
+  color: var(--ink-4);
+}
+
+.mfr-cell__suffix {
+  font-size: var(--step--2);
+  color: var(--ink-3);
+  min-width: 2.2em;
+  text-align: start;
+}
+
+/* ---- audit ------------------------------------------------------------------ */
+
+.mfr-disclose {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.4rem;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--step--1);
+  color: var(--ink-2);
+  cursor: pointer;
+  border-radius: var(--radius);
+}
+
+
+
+.mfr-details {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--paper-2);
+}
+
+.mfr-details header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font-size: var(--step--1);
+}
+
+.mfr-details pre {
+  font-size: var(--step--2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 24rem;
+  overflow: auto;
+}

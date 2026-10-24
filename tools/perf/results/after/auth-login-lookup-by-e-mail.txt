@@ -1,0 +1,21 @@
+auth: login lookup by e-mail
+
+select id, status, created_at, locale from customers where lower(email) = lower($1) and status in ('PENDING', 'ACTIVE')
+
+Bitmap Heap Scan on customers  (cost=16.20..1181.87 rows=1 width=34) (actual time=8.399..13.715 rows=1 loops=1)
+  Recheck Cond: (reseller_id = $0)
+  Filter: ((($1 IS NULL) OR (id = $2)) AND (status = ANY ('{PENDING,ACTIVE}'::text[])) AND (lower(email) = 'sven.nieminen.1.9868@example.test'::text))
+  Rows Removed by Filter: 20001
+  Heap Blocks: exact=374
+  Buffers: shared hit=520
+  InitPlan 1 (returns $0)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.079..0.079 rows=1 loops=1)
+  InitPlan 2 (returns $1)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.086..0.087 rows=1 loops=1)
+  InitPlan 3 (returns $2)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  ->  Bitmap Index Scan on customers_reseller_created_id_idx  (cost=0.00..15.42 rows=400 width=0) (actual time=0.852..0.853 rows=20002 loops=1)
+        Index Cond: (reseller_id = $0)
+        Buffers: shared hit=146
+Planning Time: 0.122 ms
+Execution Time: 13.740 ms

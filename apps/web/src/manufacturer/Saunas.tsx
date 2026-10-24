@@ -28,7 +28,7 @@ export function Saunas() {
       cell: s => (
         <span className="mfr-model">
           <span className="mfr-model__thumb" aria-hidden="true">
-            {s.thumbnailUrl && <LazyImage src={s.thumbnailUrl} alt="" />}
+            {s.thumbnailUrl && <LazyImage src={s.thumbnailUrl} alt="" width={96} height={96} sizes="48px" />}
           </span>
           <span>
             <Link to={`/saunas/${s.id}`} className="staff-strong" onClick={e => e.stopPropagation()}>

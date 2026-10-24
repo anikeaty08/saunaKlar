@@ -13,8 +13,7 @@ test.fixme('reseller admin logs in at /admin and sees the requests list', async 
   await expect(rows.filter({ hasText: en.status.ACCEPTED })).toHaveCount(0);
 });
 
-// FIXME: the manufacturer admin is still a placeholder (manufacturer/ManufacturerApp.tsx). Remove `.fixme` once it lands.
-test.fixme('manufacturer admin logs in at admin.localhost and sees the resellers', async ({ page }) => {
+test('manufacturer admin logs in at admin.localhost and sees the resellers', async ({ page }) => {
   await page.goto(`${ADMIN}/login`);
   await page.getByLabel(/^E-mail/).fill('admin@nordlicht.test');
   await page.getByLabel(/^Password/).fill('Sauna!2026');

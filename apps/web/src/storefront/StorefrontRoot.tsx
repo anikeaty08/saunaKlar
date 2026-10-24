@@ -66,6 +66,14 @@ export function StorefrontRoot() {
     return <ErrorPage error={tenant.error} onRetry={() => void tenant.refetch()} />;
   }
   const data = tenant.data;
+  // The reseller admin brings its own frame (sidebar, toasts, progress bar).
+  if (pathname === '/admin' || pathname.startsWith('/admin/'))
+    return (
+      <>
+        <Outlet />
+        <ScrollRestoration />
+      </>
+    );
   const label = pathname.split('/')[1] || data.branding.displayName;
 
   return (

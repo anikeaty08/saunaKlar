@@ -43,8 +43,8 @@ export const useAnalytics = (days: number) =>
 export function useStoreReseller() {
   const qc = useQueryClient();
   return (r: ResellerDetail) => {
-    qc.setQueryData(keys.reseller(r.id), r);
-    qc.setQueryData(keys.resellers, old => (old ? { items: old.items.map(x => (x.id === r.id ? { ...x, ...pickSummary(r) } : x)) } : old));
+    qc.setQueryData<ResellerDetail>(keys.reseller(r.id), r);
+    qc.setQueryData<ResponseOf<'mResellers'>>(keys.resellers, old => (old ? { items: old.items.map(x => (x.id === r.id ? { ...x, ...pickSummary(r) } : x)) } : old));
   };
 }
 
@@ -62,8 +62,8 @@ export function useToggleAssignment(resellerId: string) {
       assign ? api('mAssign', { params: { id: resellerId, saunaId } }) : api('mUnassign', { params: { id: resellerId, saunaId } }),
     onMutate: async ({ saunaId, assign }) => {
       await qc.cancelQueries({ queryKey: key });
-      const prev = qc.getQueryData(key);
-      qc.setQueryData(key, old => (old ? { items: old.items.map(a => (a.saunaModelId === saunaId ? { ...a, assigned: assign } : a)) } : old));
+      const prev = qc.getQueryData<ResponseOf<'mAssignments'>>(key);
+      qc.setQueryData<ResponseOf<'mAssignments'>>(key, old => (old ? { items: old.items.map(a => (a.saunaModelId === saunaId ? { ...a, assigned: assign } : a)) } : old));
       return { prev };
     },
     onError: (_e, _v, ctx) => qc.setQueryData(key, ctx?.prev),
@@ -112,8 +112,8 @@ export function useSavePrice(saunaId: string) {
         : api('mPutOptionPrice', { params: { id: saunaId, optionId: e.optionId, currency: e.currency }, body: { priceDeltaMinor: e.priceDeltaMinor } }),
     onMutate: async e => {
       await qc.cancelQueries({ queryKey: key });
-      const prev = qc.getQueryData(key);
-      if (prev) qc.setQueryData(key, applyPriceEdit(prev, e));
+      const prev = qc.getQueryData<SaunaDetail>(key);
+      if (prev) qc.setQueryData<SaunaDetail>(key, applyPriceEdit(prev, e));
       return { prev };
     },
     onError: (_e, _v, ctx) => {
@@ -121,7 +121,7 @@ export function useSavePrice(saunaId: string) {
     },
     onSuccess: data => {
       qc.setQueryData(key, data);
-      qc.setQueryData(keys.saunas, old => (old ? { items: old.items.map(s => (s.id === data.id ? { ...s, prices: data.prices } : s)) } : old));
+      qc.setQueryData<ResponseOf<'mSaunas'>>(keys.saunas, old => (old ? { items: old.items.map(s => (s.id === data.id ? { ...s, prices: data.prices } : s)) } : old));
     },
   });
 }

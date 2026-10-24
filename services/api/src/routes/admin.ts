@@ -164,21 +164,37 @@ async function analytics(db: Db, tenant: TenantInfo, locale: string, days: numbe
     db.query<{ status_code: string; n: string }>(
       `select status_code, count(*) as n from configuration_requests where reseller_id = $1 and created_at >= ${since} group by status_code`, [tenant.id, days]),
     db.query<{ day: string; requests: string; configurations: string; views: string }>(
-      `select to_char(d, 'YYYY-MM-DD') as day,
-              (select count(*) from configuration_requests r where r.reseller_id = $1 and r.created_at >= d and r.created_at < d + interval '1 day') as requests,
-              (select count(*) from configurations c where c.reseller_id = $1 and c.created_at >= d and c.created_at < d + interval '1 day') as configurations,
-              (select count(*) from share_link_views v where v.reseller_id = $1 and v.viewed_at >= d and v.viewed_at < d + interval '1 day') as views
-         from generate_series(date_trunc('day', now()) - make_interval(days => $2 - 1), date_trunc('day', now()), interval '1 day') as d
-        order by d`, [tenant.id, days]),
+      // One range scan per table, grouped by day (date_trunc in the session time zone, like the
+      // series), instead of three correlated counts per day.
+      `with days as (
+         select d from generate_series(date_trunc('day', now()) - make_interval(days => $2 - 1), date_trunc('day', now()), interval '1 day') as d),
+       r as (select date_trunc('day', created_at) as d, count(*) as n from configuration_requests
+              where reseller_id = $1 and created_at >= date_trunc('day', now()) - make_interval(days => $2 - 1) group by 1),
+       c as (select date_trunc('day', created_at) as d, count(*) as n from configurations
+              where reseller_id = $1 and created_at >= date_trunc('day', now()) - make_interval(days => $2 - 1) group by 1),
+       v as (select date_trunc('day', viewed_at) as d, count(*) as n from share_link_views
+              where reseller_id = $1 and viewed_at >= date_trunc('day', now()) - make_interval(days => $2 - 1) group by 1)
+       select to_char(days.d, 'YYYY-MM-DD') as day, coalesce(r.n, 0) as requests, coalesce(c.n, 0) as configurations, coalesce(v.n, 0) as views
+         from days left join r on r.d = days.d left join c on c.d = days.d left join v on v.d = days.d
+        order by days.d`, [tenant.id, days]),
     db.query<{ id: string; name: string; configurations: string; requests: string }>(
-      `select m.id, coalesce(t.name, m.name) as name, count(distinct c.id) as configurations, count(distinct r.id) as requests
-         from configurations c
-         join sauna_models m on m.id = c.sauna_model_id
+      // Configurations created in the window, and the requests on them (at most one each), counted
+      // per model separately: the old configuration-to-request join was planned as a nested loop
+      // over all of the reseller's requests per configuration, because RLS on
+      // configuration_requests makes the planner expect a handful of rows. A request is created
+      // after its configuration, so r.created_at >= since only narrows the range scan.
+      `with cfg as (
+         select c.sauna_model_id, count(*) as n from configurations c
+          where c.reseller_id = $1 and c.created_at >= ${since} group by c.sauna_model_id),
+       req as (
+         select c.sauna_model_id, count(*) as n from configuration_requests r join configurations c on c.id = r.configuration_id
+          where r.reseller_id = $1 and r.created_at >= ${since} and c.created_at >= ${since} group by c.sauna_model_id)
+       select m.id, coalesce(t.name, m.name) as name, cfg.n as configurations, coalesce(req.n, 0) as requests
+         from cfg
+         join sauna_models m on m.id = cfg.sauna_model_id
          left join sauna_model_translations t on t.sauna_model_id = m.id and t.locale = $3
-         left join configuration_requests r on r.configuration_id = c.id
-        where c.reseller_id = $1 and c.created_at >= ${since}
-        group by m.id, t.name, m.name
-        order by count(distinct r.id) desc, count(distinct c.id) desc
+         left join req on req.sauna_model_id = cfg.sauna_model_id
+        order by coalesce(req.n, 0) desc, cfg.n desc
         limit 10`, [tenant.id, days, locale]),
   ]);
   const t = totals.rows[0]!;

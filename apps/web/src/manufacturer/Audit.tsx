@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { ChevronDown, ScrollText } from 'lucide-react';
+import { PanelRightOpen, ScrollText } from 'lucide-react';
 import { api } from '../api/client.ts';
 import { useT } from '../i18n/i18n.ts';
 import { useFormat } from '../i18n/format.ts';
@@ -11,6 +11,7 @@ import { Button } from '../design/components/Button.tsx';
 import { EmptyState } from '../design/components/EmptyState.tsx';
 import { ErrorPage } from '../design/components/ErrorBoundary.tsx';
 import { Icon } from '../design/components/Icon.tsx';
+import { Drawer } from '../design/components/Dialog.tsx';
 import { LoadMore } from '../design/components/LoadMore.tsx';
 import { Table, type Column } from '../design/components/Table.tsx';
 import { PageHead, useCursorList } from '../staff/index.ts';
@@ -69,9 +70,9 @@ export function Audit() {
       align: 'end',
       cell: e =>
         e.details ? (
-          <button type="button" className="mfr-disclose" aria-expanded={open === e.id} onClick={() => setOpen(o => (o === e.id ? null : e.id))}>
+          <button type="button" className="mfr-disclose" aria-haspopup="dialog" onClick={() => setOpen(o => (o === e.id ? null : e.id))}>
             {t('manufacturer.showDetails')}
-            <Icon icon={ChevronDown} size="xs" />
+            <Icon icon={PanelRightOpen} size="xs" />
           </button>
         ) : (
           <span className="staff-muted">—</span>
@@ -115,15 +116,17 @@ export function Audit() {
             empty={<EmptyState icon={ScrollText} title={t('manufacturer.noEvents')} body={resellerId || entityType ? t('manufacturer.noEventsFiltered') : undefined} compact />}
           />
           {q.isPending && <TableSkeletonRows rows={8} />}
-          {detail?.details && (
-            <section className="mfr-details" aria-label={t('manufacturer.details')}>
-              <header>
-                <span className="mono">{detail.action} · {detail.entityType}</span>
-                <span className="staff-muted mono">{fmt.dateTime(detail.occurredAt)}</span>
-              </header>
-              <pre className="mono">{JSON.stringify(detail.details, null, 2)}</pre>
-            </section>
-          )}
+          <Drawer open={Boolean(detail)} onClose={() => setOpen(null)} title={detail ? `${detail.action}` : t('manufacturer.details')} description={detail ? `${fmt.dateTime(detail.occurredAt)} · ${detail.actorName ?? t('manufacturer.system')}` : undefined}>
+            {detail && (
+              <div className="mfr-details">
+                <header>
+                  <span className="mono">{detail.entityType}</span>
+                  <span className="staff-muted mono">{detail.entityId}</span>
+                </header>
+                <pre className="mono">{JSON.stringify(detail.details, null, 2)}</pre>
+              </div>
+            )}
+          </Drawer>
           {q.rows.length > 0 && <LoadMore hasMore={Boolean(q.hasNextPage)} loading={q.isFetchingNextPage} onLoad={() => void q.fetchNextPage()} shown={q.rows.length} />}
         </>
       )}

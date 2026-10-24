@@ -37,32 +37,45 @@ const like = (q: string) => `%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`;
 
 // services/api/src/domain/configurations.ts listConfigurationSummaries
 const CONFIG_LIST = (extra: string) => `
-  select c.id, c.name, c.locked_at, c.customer_id, c.created_at, c.updated_at,
+  with page as materialized (
+    select c.id, c.name, c.locked_at, c.customer_id, c.created_at, c.updated_at, c.sauna_model_id
+      from configurations c
+      join sauna_models m on m.id = c.sauna_model_id
+     where c.reseller_id = $1 ${extra}
+     order by c.updated_at desc, c.id desc
+     limit $3)
+  select p.id, p.name, p.locked_at, p.customer_id, p.created_at, p.updated_at,
          m.id as model_id, m.slug, coalesce(t.name, m.name) as model_name,
-         (select a.storage_key from sauna_model_assets x join assets a on a.id = x.asset_id where x.sauna_model_id = m.id and x.asset_role = 'MODEL_THUMBNAIL' order by x.position limit 1) as thumb,
+         th.storage_key as thumb,
          s.final_price_minor, r.id as request_id, r.status_code
-    from configurations c
-    join sauna_models m on m.id = c.sauna_model_id
+    from page p
+    join sauna_models m on m.id = p.sauna_model_id
     left join sauna_model_translations t on t.sauna_model_id = m.id and t.locale = $2
-    left join configuration_price_snapshots s on s.configuration_id = c.id
-    left join configuration_requests r on r.configuration_id = c.id
-   where c.reseller_id = $1 ${extra}
-   order by c.updated_at desc, c.id desc
-   limit $3`;
+    left join lateral (
+      select a.storage_key from sauna_model_assets x join assets a on a.id = x.asset_id
+       where x.sauna_model_id = m.id and x.asset_role = 'MODEL_THUMBNAIL' order by x.position limit 1) th on true
+    left join configuration_price_snapshots s on s.configuration_id = p.id
+    left join configuration_requests r on r.configuration_id = p.id
+   order by p.updated_at desc, p.id desc`;
 
 // services/api/src/domain/requests.ts listRequestSummaries
 const REQUEST_LIST = (extra: string) => `
-  select r.id, r.status_code, coalesce(t.name, m.name) as model_name, c.name as config_name, s.final_price_minor, s.currency_code,
-         r.created_at, r.updated_at, cu.first_name, cu.last_name, cu.email
-    from configuration_requests r
-    join configurations c on c.id = r.configuration_id
-    join sauna_models m on m.id = c.sauna_model_id
+  with page as materialized (
+    select r.id, r.status_code, r.created_at, r.updated_at, r.customer_id, r.configuration_id, c.name as config_name, c.sauna_model_id
+      from configuration_requests r
+      join configurations c on c.id = r.configuration_id
+      join sauna_models m on m.id = c.sauna_model_id
+     where r.reseller_id = $1 ${extra}
+     order by r.created_at desc, r.id desc
+     limit $3)
+  select p.id, p.status_code, coalesce(t.name, m.name) as model_name, p.config_name, s.final_price_minor, s.currency_code,
+         p.created_at, p.updated_at, cu.first_name, cu.last_name, cu.email
+    from page p
+    join sauna_models m on m.id = p.sauna_model_id
     left join sauna_model_translations t on t.sauna_model_id = m.id and t.locale = $2
-    join configuration_price_snapshots s on s.configuration_id = c.id
-    join customers cu on cu.id = r.customer_id
-   where r.reseller_id = $1 ${extra}
-   order by r.created_at desc, r.id desc
-   limit $3`;
+    join configuration_price_snapshots s on s.configuration_id = p.configuration_id
+    join customers cu on cu.id = p.customer_id
+   order by p.created_at desc, p.id desc`;
 
 // services/api/src/routes/admin.ts adminCustomers
 const CUSTOMER_LIST = (extra: string) => `
@@ -85,21 +98,30 @@ const ANALYTICS_TOTALS = `
          (select count(*) from configuration_requests where reseller_id = $1 and status_code = 'ACCEPTED' and created_at >= ${SINCE}) as accepted`;
 const ANALYTICS_BY_STATUS = `select status_code, count(*) as n from configuration_requests where reseller_id = $1 and created_at >= ${SINCE} group by status_code`;
 const ANALYTICS_DAILY = `
-  select to_char(d, 'YYYY-MM-DD') as day,
-         (select count(*) from configuration_requests r where r.reseller_id = $1 and r.created_at >= d and r.created_at < d + interval '1 day') as requests,
-         (select count(*) from configurations c where c.reseller_id = $1 and c.created_at >= d and c.created_at < d + interval '1 day') as configurations,
-         (select count(*) from share_link_views v where v.reseller_id = $1 and v.viewed_at >= d and v.viewed_at < d + interval '1 day') as views
-    from generate_series(date_trunc('day', now()) - make_interval(days => $2 - 1), date_trunc('day', now()), interval '1 day') as d
-   order by d`;
+  with days as (
+    select d from generate_series(date_trunc('day', now()) - make_interval(days => $2 - 1), date_trunc('day', now()), interval '1 day') as d),
+  r as (select date_trunc('day', created_at) as d, count(*) as n from configuration_requests
+         where reseller_id = $1 and created_at >= date_trunc('day', now()) - make_interval(days => $2 - 1) group by 1),
+  c as (select date_trunc('day', created_at) as d, count(*) as n from configurations
+         where reseller_id = $1 and created_at >= date_trunc('day', now()) - make_interval(days => $2 - 1) group by 1),
+  v as (select date_trunc('day', viewed_at) as d, count(*) as n from share_link_views
+         where reseller_id = $1 and viewed_at >= date_trunc('day', now()) - make_interval(days => $2 - 1) group by 1)
+  select to_char(days.d, 'YYYY-MM-DD') as day, coalesce(r.n, 0) as requests, coalesce(c.n, 0) as configurations, coalesce(v.n, 0) as views
+    from days left join r on r.d = days.d left join c on c.d = days.d left join v on v.d = days.d
+   order by days.d`;
 const ANALYTICS_TOP = `
-  select m.id, coalesce(t.name, m.name) as name, count(distinct c.id) as configurations, count(distinct r.id) as requests
-    from configurations c
-    join sauna_models m on m.id = c.sauna_model_id
+  with cfg as (
+    select c.sauna_model_id, count(*) as n from configurations c
+     where c.reseller_id = $1 and c.created_at >= ${SINCE} group by c.sauna_model_id),
+  req as (
+    select c.sauna_model_id, count(*) as n from configuration_requests r join configurations c on c.id = r.configuration_id
+     where r.reseller_id = $1 and r.created_at >= ${SINCE} and c.created_at >= ${SINCE} group by c.sauna_model_id)
+  select m.id, coalesce(t.name, m.name) as name, cfg.n as configurations, coalesce(req.n, 0) as requests
+    from cfg
+    join sauna_models m on m.id = cfg.sauna_model_id
     left join sauna_model_translations t on t.sauna_model_id = m.id and t.locale = $3
-    left join configuration_requests r on r.configuration_id = c.id
-   where c.reseller_id = $1 and c.created_at >= ${SINCE}
-   group by m.id, t.name, m.name
-   order by count(distinct r.id) desc, count(distinct c.id) desc
+    left join req on req.sauna_model_id = cfg.sauna_model_id
+   order by coalesce(req.n, 0) desc, cfg.n desc
    limit 10`;
 
 // services/api/src/routes/admin.ts LINK_SQL
@@ -126,7 +148,7 @@ const CATALOG = `
 const M_RESELLERS = `
   select r.*, (select count(*) from reseller_saunas rs where rs.reseller_id = r.id) as saunas, st.customers, st.requests_open
     from resellers r
-    left join lateral reseller_stats(r.id) st on true
+    left join reseller_overview($1, $2) st on st.reseller_id = r.id
    where r.manufacturer_id = $1 and ($2::uuid is null or r.id = $2)
    order by r.name, r.slug`;
 const M_ANALYTICS = `
@@ -152,7 +174,9 @@ export const QUERIES: PerfQuery[] = [
   { name: 'requests: status SUBMITTED', role: 'app_tenant', sql: REQUEST_LIST('and r.status_code = $4'), params: (c) => [c.alphaId, 'de', 26, 'SUBMITTED'] },
   {
     name: 'requests: search "virtanen"', role: 'app_tenant',
-    sql: REQUEST_LIST(`and (cu.email ilike $4 or (cu.first_name || ' ' || cu.last_name) ilike $4 or c.name ilike $4)`),
+    sql: REQUEST_LIST(
+      `and (c.name ilike $4 or exists (select 1 from customers cu where cu.id = r.customer_id and (cu.email ilike $4 or (coalesce(cu.first_name, '') || ' ' || coalesce(cu.last_name, '')) ilike $4)))`,
+    ),
     params: (c) => [c.alphaId, 'de', 26, like('virtanen')],
   },
   {
@@ -169,7 +193,7 @@ export const QUERIES: PerfQuery[] = [
   { name: 'customers: search "zzqx" (no match)', role: 'app_tenant', sql: CUSTOMER_LIST(CUSTOMER_SEARCH), params: (c) => [c.alphaId, 26, like('zzqx')] },
   {
     name: 'auth: login lookup by e-mail', role: 'app_tenant',
-    sql: `select id, status, created_at from customers where lower(email) = lower($1) and status in ('PENDING', 'ACTIVE')`,
+    sql: `select id, status, created_at, locale from customers where lower(email) = lower($1) and status in ('PENDING', 'ACTIVE')`,
     params: (c) => [c.loginEmail],
   },
   { name: 'analytics: totals 30 d', role: 'app_tenant', sql: ANALYTICS_TOTALS, params: (c) => [c.alphaId, 30] },
