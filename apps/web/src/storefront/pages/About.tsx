@@ -8,15 +8,17 @@ import './Content.css';
 
 export default function About() {
   const { t, m, f } = useT();
-  const name = useTenantData().branding.displayName;
+  const tenant = useTenantData();
+  const name = tenant.branding.displayName;
+  const vars = { name, manufacturer: tenant.manufacturer.name };
   useDocumentTitle(t('about.eyebrow'));
   return (
     <div className="page container">
-      <PageHero eyebrow={t('about.eyebrow')} title={t('about.title')} lede={t('about.lede', { name })} />
+      <PageHero eyebrow={t('about.eyebrow')} title={t('about.title')} lede={t('about.lede', vars)} />
       <Reveal as="dl" className="numbers">
         {m.about.numbers.map(n => (
           <div key={n.label}>
-            <dt>{n.label}</dt>
+            <dt>{f(n.label, vars)}</dt>
             <dd>{n.value}</dd>
           </div>
         ))}
@@ -26,7 +28,7 @@ export default function About() {
           <li key={s.title} className="chapter">
             <span className="chapter__num mono">{String(i + 1).padStart(2, '0')}</span>
             <h2 className="chapter__title">{s.title}</h2>
-            <p className="chapter__body">{f(s.body, { name })}</p>
+            <p className="chapter__body">{f(s.body, vars)}</p>
           </li>
         ))}
       </Reveal>

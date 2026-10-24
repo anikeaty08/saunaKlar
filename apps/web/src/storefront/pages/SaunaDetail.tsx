@@ -196,7 +196,7 @@ export default function SaunaDetail() {
               </Magnetic>
               {!signedIn && <p className="pricecard__hint">{t('detail.loginHint')}</p>}
               <p className="pricecard__hint">
-                <Icon icon={ArrowRight} size="xs" /> {t('detail.delivery', { name: tenant.branding.displayName })}
+                <Icon icon={ArrowRight} size="xs" /> {t('detail.delivery', { name: tenant.branding.displayName, manufacturer: tenant.manufacturer.name })}
               </p>
             </div>
           </div>

@@ -23,6 +23,7 @@ export default function Home() {
   const tenant = useTenantData();
   const catalog = useCatalog();
   const name = tenant.branding.displayName;
+  const vars = { name, manufacturer: tenant.manufacturer.name };
   useDocumentTitle(null);
   const hero = useRef<HTMLElement>(null);
 
@@ -60,7 +61,7 @@ export default function Home() {
 
         <div className="home-hero__center container">
           <LogoMark className="home-hero__mark" size={44} draw delay={document.getElementById('splash') ? 1 : 0.2} />
-          <ScrambleText as="p" className="eyebrow home-hero__after" text={`${t('home.eyebrow')} — ${name}`} />
+          <ScrambleText as="p" className="eyebrow home-hero__after" text={t('home.eyebrow', vars)} />
           <h1 className="home-hero__title">
             <span className="sr-only">{`${t('home.heroTitleA')} ${t('home.heroTitleB')} ${t('home.heroTitleC')}`}</span>
             {[t('home.heroTitleA'), t('home.heroTitleB'), t('home.heroTitleC')].map((line, i) => (
@@ -69,7 +70,7 @@ export default function Home() {
               </span>
             ))}
           </h1>
-          <p className="lede home-hero__lede home-hero__after">{t('home.heroLede', { name })}</p>
+          <p className="lede home-hero__lede home-hero__after">{t('home.heroLede', vars)}</p>
           <div className="home-hero__ctas home-hero__after">
             <Magnetic>
               <ButtonLink to="/saunas" size="lg" iconAfter={ArrowRight}>
@@ -122,7 +123,7 @@ export default function Home() {
             eyebrow={t('home.featuredEyebrow')}
             title={t('home.featuredTitle')}
             id="featured"
-            lede={t('home.featuredLede')}
+            lede={t('home.featuredLede', vars)}
             action={
               <TextLink to="/saunas" tone="underline">
                 {t('home.viewAll')}

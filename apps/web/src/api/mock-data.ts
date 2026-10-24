@@ -21,8 +21,12 @@ export function fid(seed: string): string {
 
 // ---- tenants -------------------------------------------------------------------
 
+/** The one manufacturer behind every mock storefront. */
+export const MANUFACTURER_NAME = 'Saunaklar';
+
 interface MockTenant {
   slug: string;
+  layout: Tenant['branding']['storefrontLayout'];
   name: string;
   tagline: string;
   primaryColor: string;
@@ -39,6 +43,7 @@ interface MockTenant {
 export const MOCK_TENANTS: Record<string, MockTenant> = {
   nordic: {
     slug: 'nordic',
+    layout: 'atelier',
     name: 'Nordic Heat',
     tagline: 'Finnish saunas, built to order and delivered across Europe.',
     primaryColor: '#1c1c1a',
@@ -53,6 +58,7 @@ export const MOCK_TENANTS: Record<string, MockTenant> = {
   },
   fjord: {
     slug: 'fjord',
+    layout: 'showroom',
     name: 'Fjord Bad',
     tagline: 'Saunas for Norwegian coasts and cabins.',
     primaryColor: '#1f3a5f',
@@ -67,6 +73,7 @@ export const MOCK_TENANTS: Record<string, MockTenant> = {
   },
   kelo: {
     slug: 'kelo',
+    layout: 'nordic',
     name: 'Kelo & Kiuas',
     tagline: 'Outdoor saunas for gardens and lakesides.',
     primaryColor: '#5a3e2b',
@@ -80,7 +87,7 @@ export const MOCK_TENANTS: Record<string, MockTenant> = {
     hidden: [],
   },
 };
-MOCK_TENANTS['alpha-spa'] = { ...MOCK_TENANTS.nordic!, slug: 'alpha-spa', name: 'Alpha Spa', legalName: 'Alpha Spa Ltd', primaryColor: '#2f4f3a' };
+MOCK_TENANTS['alpha-spa'] = { ...MOCK_TENANTS.nordic!, slug: 'alpha-spa', layout: 'catalogue', name: 'Alpha Spa', legalName: 'Alpha Spa Ltd', primaryColor: '#2f4f3a' };
 
 export function tenantDto(t: MockTenant, catalogVersion: number): Tenant {
   return {
@@ -101,7 +108,9 @@ export function tenantDto(t: MockTenant, catalogVersion: number): Tenant {
       legalName: t.legalName,
       legalAddress: t.legalAddress,
       vatDisplay: t.vatDisplay,
+      storefrontLayout: t.layout,
     },
+    manufacturer: { name: MANUFACTURER_NAME, website: 'https://saunaklar.example' },
   };
 }
 

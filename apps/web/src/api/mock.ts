@@ -653,6 +653,7 @@ Object.assign(handlers, {
     if ('legalName' in body) t.legalName = (body.legalName as string) ?? '';
     if ('legalAddress' in body) t.legalAddress = (body.legalAddress as string) ?? '';
     if (body.vatDisplay) t.vatDisplay = body.vatDisplay as typeof t.vatDisplay;
+    if (body.storefrontLayout) t.layout = body.storefrontLayout as typeof t.layout;
     catalogVersion++;
     return brandingDto();
   },

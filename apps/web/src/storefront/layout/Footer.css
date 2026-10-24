@@ -1,15 +1,21 @@
-/* Footer: a dark band "under" the page. The main sheet (layout.css) overlaps it
-   by --sheet-overlap with rounded bottom corners and a lifting shadow. */
+/* Footer: an ink band under the page sheet (.main--sheet in layout.css).
+   .sfoot--reveal (set in JS when it fits the viewport) makes it sticky at the
+   bottom, so the sheet slides off and uncovers it in place. */
 
 .sfoot {
   position: relative;
   z-index: 0;
-  margin-top: calc(-1 * var(--sheet-overlap, 28px));
-  padding-top: var(--sheet-overlap, 28px);
+  margin-top: calc(-1 * var(--sheet-overlap, 32px));
+  padding-top: var(--sheet-overlap, 32px);
   overflow: hidden;
   background: var(--night);
   color: var(--night-muted);
   --focus: var(--on-night);
+}
+
+.sfoot--reveal {
+  position: sticky;
+  bottom: 0;
 }
 
 .sfoot ::selection {
@@ -19,6 +25,17 @@
 
 .sfoot__inner {
   will-change: transform;
+}
+
+/* Paper veil: fades out as the footer is uncovered, so the colour shifts from
+   paper to ink across the sheet's edge. Hidden unless the scrub drives it. */
+.sfoot__veil {
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .sfoot__cap {
@@ -31,82 +48,118 @@
   color: var(--night-muted);
 }
 
-/* CTA */
-.sfoot__cta {
+/* CTA and reseller card */
+.sfoot__top-row {
   display: grid;
-  justify-items: start;
-  padding-top: clamp(4.5rem, 3rem + 6vw, 8rem);
+  grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
+  gap: var(--space-6) var(--gutter);
+  align-items: end;
+  padding-top: clamp(2.5rem, 1.5rem + 3vw, 4.5rem);
 }
 
 .sfoot__title {
-  margin-top: var(--space-6);
-  max-width: 17ch;
+  margin-top: var(--space-4);
+  max-width: 16ch;
   font-family: var(--font-serif);
-  font-size: clamp(2.4rem, 1.4rem + 4.4vw, 5.2rem);
+  font-size: clamp(2.3rem, 1.3rem + 3.6vw, 4.6rem);
   font-weight: 400;
-  line-height: 1.04;
-  letter-spacing: -0.02em;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
   color: var(--on-night);
-  perspective: 600px;
 }
 
-.sfoot__cta .btn {
-  margin-top: var(--space-7);
+.sfoot__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+  margin-top: var(--space-6);
 }
 
-/* Columns */
-.sfoot__grid {
+.sfoot__ghost {
+  color: var(--on-night);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.35em;
+}
+
+.sfoot__card {
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--space-7) var(--gutter);
-  margin-top: clamp(4rem, 3rem + 4vw, 6rem);
-  padding-top: var(--space-7);
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: var(--hair) solid var(--night-line);
+  border-radius: 20px;
+  background: var(--night-2);
+  font-style: normal;
+  font-size: var(--step--1);
+  line-height: 1.5;
+}
+
+.sfoot__card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--on-night);
+}
+
+.sfoot__logo {
+  height: 1.75rem;
+  width: auto;
+}
+
+.sfoot__card-name {
+  font-size: var(--step-1);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.sfoot__badge {
+  justify-self: start;
+  padding: 0.3rem 0.7rem;
+  border: var(--hair) solid var(--night-line);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  color: var(--on-night);
+}
+
+.sfoot__addr,
+.sfoot__reach {
+  display: grid;
+}
+
+.sfoot__reach a {
+  color: var(--on-night);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.sfoot__reach a:hover {
+  text-decoration: underline;
+}
+
+/* Link columns */
+.sfoot__cols {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-6) var(--gutter);
+  margin-top: clamp(2rem, 1.5rem + 2vw, 3.25rem);
+  padding-top: var(--space-5);
   border-top: var(--hair) solid var(--night-line);
 }
 
-.sfoot__about {
-  grid-column: span 4;
-}
-
-.sfoot__c2 {
-  grid-column: span 2;
-}
-
-.sfoot__col > :not(.sfoot__cap) {
-  margin-top: var(--space-5);
-}
-
-.sfoot__col ul {
+.sfoot__cols ul {
   display: grid;
-  gap: 0.7rem;
-}
-
-.sfoot__text {
-  max-width: 34ch;
-  line-height: 1.6;
-  color: color-mix(in oklab, var(--on-night) 78%, var(--night));
-}
-
-.sfoot__address {
-  display: grid;
-  gap: 0.1rem;
-  font-style: normal;
-  font-size: var(--step--1);
-}
-
-.sfoot__col .sfoot__inline {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem 1.25rem;
+  gap: 0.55rem;
+  margin-top: var(--space-4);
   font-size: var(--step--1);
 }
 
 .sfoot__link {
   display: inline-block;
-  max-width: 100%;
-  color: color-mix(in oklab, var(--on-night) 80%, var(--night));
+  color: color-mix(in oklab, var(--on-night) 82%, var(--night));
   text-decoration: none;
-  overflow-wrap: anywhere;
   transition: color var(--dur-2) var(--ease-out);
 }
 
@@ -114,10 +167,63 @@
   color: var(--on-night);
 }
 
-/* Wordmark */
-.sfoot__word {
-  margin-top: clamp(4rem, 3rem + 4vw, 6rem);
+.sfoot__langs {
+  grid-template-columns: repeat(2, max-content);
+  column-gap: var(--space-5);
+}
+
+.sfoot__lang {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: color-mix(in oklab, var(--on-night) 70%, var(--night));
+  font: inherit;
+}
+
+.sfoot__lang:hover,
+.sfoot__lang[aria-pressed='true'] {
   color: var(--on-night);
+}
+
+.sfoot__lang[aria-pressed='true']::before {
+  content: '';
+  display: inline-block;
+  width: 0.4em;
+  height: 0.4em;
+  margin-right: 0.5em;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: 0.15em;
+}
+
+/* The big name, cut by the bottom bar; rises out of it while uncovered. */
+.sfoot__name {
+  margin-top: clamp(1.5rem, 1rem + 2vw, 3rem);
+  overflow: hidden;
+  padding-inline: var(--gutter);
+  line-height: 0.8;
+  color: var(--on-night);
+}
+
+.sfoot__name-in {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: min(15vw, 19svh);
+  font-weight: 400;
+  letter-spacing: -0.045em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  transform-origin: 50% 100%;
+}
+
+.sfoot__dot {
+  display: inline-block;
+  width: 0.12em;
+  height: 0.12em;
+  margin-left: 0.04em;
+  border-radius: 50%;
+  background: var(--accent-on-night, var(--night-muted));
 }
 
 /* Bottom bar */
@@ -125,78 +231,56 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-4) var(--space-6);
-  margin-top: var(--space-7);
-  padding-block: var(--space-5) var(--space-6);
+  gap: var(--space-3) var(--space-5);
+  padding-block: var(--space-4) var(--space-5);
   border-top: var(--hair) solid var(--night-line);
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
 }
 
 .sfoot__legal {
   margin-right: auto;
 }
 
-.sfoot__bar .credit {
-  text-transform: none;
-  letter-spacing: 0.02em;
+.sfoot__legal-links {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.sfoot__legal-links a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.sfoot__legal-links a:hover {
+  color: var(--on-night);
 }
 
 .sfoot__top {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
   padding: 0.25rem 0;
   border: 0;
   background: none;
   color: inherit;
   font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  transition: color var(--dur-2);
 }
 
 .sfoot__top:hover {
   color: var(--on-night);
 }
 
-.sfoot__chev {
-  transition: transform var(--dur-3) var(--ease-out-soft);
-}
-
-.sfoot__top:hover .sfoot__chev {
-  transform: translateY(-3px);
-}
-
-.sfoot__lang .menu__trigger {
-  color: var(--on-night);
-  border-color: var(--night-line);
-}
-
-.sfoot__lang .menu__list {
-  top: auto;
-  bottom: calc(100% + 0.5rem);
-  color: var(--ink);
-  --focus: var(--ink);
-}
-
-@media (max-width: 1000px) {
-  .sfoot__about {
-    grid-column: 1 / -1;
+@media (max-width: 900px) {
+  .sfoot__top-row {
+    grid-template-columns: 1fr;
   }
 
-  .sfoot__c2 {
-    grid-column: span 3;
+  .sfoot__cols {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 640px) {
-  .sfoot__c2 {
-    grid-column: span 6;
-  }
-
   .sfoot__bar {
     flex-direction: column;
     align-items: flex-start;
