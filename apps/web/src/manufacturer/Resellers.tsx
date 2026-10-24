@@ -57,6 +57,7 @@ export function Resellers() {
           <Icon icon={ExternalIcon} size="xs" />
         </a>
       ),
+      align: 'end',
       hideOnMobile: true,
     },
   ];

@@ -1,0 +1,88 @@
+analytics: top saunas 365 d
+
+with cfg as (
+    select c.sauna_model_id, count(*) as n from configurations c
+     where c.reseller_id = $1 and c.created_at >= now() - make_interval(days => $2) group by c.sauna_model_id),
+  req as (
+    select c.sauna_model_id, count(*) as n from configuration_requests r join configurations c on c.id = r.configuration_id
+     where r.reseller_id = $1 and r.created_at >= now() - make_interval(days => $2) and c.created_at >= now() - make_interval(days => $2) group by c.sauna_model_id)
+  select m.id, coalesce(t.name, m.name) as name, cfg.n as configurations, coalesce(req.n, 0) as requests
+    from cfg
+    join sauna_models m on m.id = cfg.sauna_model_id
+    left join sauna_model_translations t on t.sauna_model_id = m.id and t.locale = $3
+    left join req on req.sauna_model_id = cfg.sauna_model_id
+   order by coalesce(req.n, 0) desc, cfg.n desc
+   limit 10
+
+Limit  (cost=13264.97..13264.98 rows=2 width=64) (actual time=137.949..137.960 rows=5 loops=1)
+  Buffers: shared hit=97566
+  ->  Sort  (cost=13264.97..13264.98 rows=2 width=64) (actual time=137.946..137.956 rows=5 loops=1)
+        Sort Key: (COALESCE((count(*)), '0'::bigint)) DESC, (count(*)) DESC
+        Sort Method: quicksort  Memory: 25kB
+        Buffers: shared hit=97566
+        ->  Merge Left Join  (cost=2266.05..13264.96 rows=2 width=64) (actual time=94.939..137.942 rows=5 loops=1)
+              Merge Cond: (c.sauna_model_id = c_1.sauna_model_id)
+              Buffers: shared hit=97566
+              ->  Merge Left Join  (cost=0.82..10999.69 rows=2 width=66) (actual time=14.483..55.868 rows=5 loops=1)
+                    Merge Cond: (m.id = t.sauna_model_id)
+                    Buffers: shared hit=7441
+                    ->  Nested Loop  (cost=0.69..10994.54 rows=2 width=53) (actual time=14.128..54.710 rows=5 loops=1)
+                          Join Filter: (m.id = c.sauna_model_id)
+                          Rows Removed by Join Filter: 10
+                          Buffers: shared hit=7422
+                          ->  GroupAggregate  (cost=0.69..10991.74 rows=6 width=24) (actual time=13.492..53.505 rows=5 loops=1)
+                                Group Key: c.sauna_model_id
+                                Buffers: shared hit=7406
+                                InitPlan 1 (returns $0)
+                                  ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.107..0.107 rows=1 loops=1)
+                                ->  Result  (cost=0.42..10493.56 rows=99572 width=16) (actual time=0.123..45.783 rows=99892 loops=1)
+                                      One-Time Filter: ($0 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                                      Buffers: shared hit=7406
+                                      ->  Index Scan using configurations_offered_idx on configurations c  (cost=0.42..10493.56 rows=99572 width=16) (actual time=0.015..36.546 rows=99892 loops=1)
+                                            Index Cond: (reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                                            Filter: (created_at >= (now() - '365 days'::interval))
+                                            Rows Removed by Filter: 113
+                                            Buffers: shared hit=7406
+                          ->  Materialize  (cost=0.00..2.57 rows=2 width=29) (actual time=0.094..0.237 rows=3 loops=5)
+                                Buffers: shared hit=16
+                                ->  Seq Scan on sauna_models m  (cost=0.00..2.56 rows=2 width=29) (actual time=0.462..1.171 rows=5 loops=1)
+                                      Filter: app_offers_model(id)
+                                      Buffers: shared hit=16
+                    ->  Index Scan using sauna_model_translations_pkey on sauna_model_translations t  (cost=0.14..5.13 rows=2 width=29) (actual time=0.352..1.138 rows=5 loops=1)
+                          Index Cond: (locale = 'de'::text)
+                          Filter: app_offers_model(sauna_model_id)
+                          Rows Removed by Filter: 1
+                          Buffers: shared hit=19
+              ->  GroupAggregate  (cost=2265.23..2265.25 rows=1 width=24) (actual time=80.450..82.055 rows=4 loops=1)
+                    Group Key: c_1.sauna_model_id
+                    Buffers: shared hit=90125
+                    InitPlan 2 (returns $1)
+                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.036..0.037 rows=1 loops=1)
+                    InitPlan 3 (returns $2)
+                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.038..0.038 rows=1 loops=1)
+                    InitPlan 4 (returns $3)
+                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                    InitPlan 5 (returns $4)
+                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.046..0.046 rows=1 loops=1)
+                    ->  Sort  (cost=2264.19..2264.19 rows=1 width=16) (actual time=79.669..80.561 rows=17994 loops=1)
+                          Sort Key: c_1.sauna_model_id
+                          Sort Method: quicksort  Memory: 1190kB
+                          Buffers: shared hit=90125
+                          ->  Result  (cost=0.85..2264.18 rows=1 width=16) (actual time=0.155..77.019 rows=17994 loops=1)
+                                One-Time Filter: ($1 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                                Buffers: shared hit=90125
+                                ->  Nested Loop  (cost=0.85..2264.18 rows=1 width=16) (actual time=0.117..75.223 rows=17994 loops=1)
+                                      Buffers: shared hit=90125
+                                      ->  Index Scan using configuration_requests_reseller_created_id_idx on configuration_requests r  (cost=0.42..2019.22 rows=92 width=16) (actual time=0.054..9.768 rows=17999 loops=1)
+                                            Index Cond: ((reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid) AND (created_at >= (now() - '365 days'::interval)))
+                                            Filter: (($2 IS NULL) OR (customer_id = $3))
+                                            Buffers: shared hit=18129
+                                      ->  Index Scan using configurations_id_reseller_customer_key on configurations c_1  (cost=0.42..2.65 rows=1 width=32) (actual time=0.003..0.003 rows=1 loops=17999)
+                                            Index Cond: ((id = r.configuration_id) AND (reseller_id = $4))
+                                            Filter: (created_at >= (now() - '365 days'::interval))
+                                            Rows Removed by Filter: 0
+                                            Buffers: shared hit=71996
+Planning:
+  Buffers: shared hit=22
+Planning Time: 0.727 ms
+Execution Time: 138.046 ms

@@ -61,17 +61,17 @@ const CONFIG_LIST = (extra: string) => `
 // services/api/src/domain/requests.ts listRequestSummaries
 const REQUEST_LIST = (extra: string) => `
   with page as materialized (
-    select r.id, r.status_code, r.created_at, r.updated_at, r.customer_id, r.configuration_id, c.name as config_name, c.sauna_model_id
+    select r.id, r.status_code, r.created_at, r.updated_at, r.customer_id, r.configuration_id
       from configuration_requests r
-      join configurations c on c.id = r.configuration_id
-      join sauna_models m on m.id = c.sauna_model_id
      where r.reseller_id = $1 ${extra}
+       and (select c.sauna_model_id from configurations c where c.id = r.configuration_id) = any (array(select m.id from sauna_models m))
      order by r.created_at desc, r.id desc
      limit $3)
-  select p.id, p.status_code, coalesce(t.name, m.name) as model_name, p.config_name, s.final_price_minor, s.currency_code,
+  select p.id, p.status_code, coalesce(t.name, m.name) as model_name, c.name as config_name, s.final_price_minor, s.currency_code,
          p.created_at, p.updated_at, cu.first_name, cu.last_name, cu.email
     from page p
-    join sauna_models m on m.id = p.sauna_model_id
+    join configurations c on c.id = p.configuration_id
+    join sauna_models m on m.id = c.sauna_model_id
     left join sauna_model_translations t on t.sauna_model_id = m.id and t.locale = $2
     join configuration_price_snapshots s on s.configuration_id = p.configuration_id
     join customers cu on cu.id = p.customer_id
@@ -98,17 +98,12 @@ const ANALYTICS_TOTALS = `
          (select count(*) from configuration_requests where reseller_id = $1 and status_code = 'ACCEPTED' and created_at >= ${SINCE}) as accepted`;
 const ANALYTICS_BY_STATUS = `select status_code, count(*) as n from configuration_requests where reseller_id = $1 and created_at >= ${SINCE} group by status_code`;
 const ANALYTICS_DAILY = `
-  with days as (
-    select d from generate_series(date_trunc('day', now()) - make_interval(days => $2 - 1), date_trunc('day', now()), interval '1 day') as d),
-  r as (select date_trunc('day', created_at) as d, count(*) as n from configuration_requests
-         where reseller_id = $1 and created_at >= date_trunc('day', now()) - make_interval(days => $2 - 1) group by 1),
-  c as (select date_trunc('day', created_at) as d, count(*) as n from configurations
-         where reseller_id = $1 and created_at >= date_trunc('day', now()) - make_interval(days => $2 - 1) group by 1),
-  v as (select date_trunc('day', viewed_at) as d, count(*) as n from share_link_views
-         where reseller_id = $1 and viewed_at >= date_trunc('day', now()) - make_interval(days => $2 - 1) group by 1)
-  select to_char(days.d, 'YYYY-MM-DD') as day, coalesce(r.n, 0) as requests, coalesce(c.n, 0) as configurations, coalesce(v.n, 0) as views
-    from days left join r on r.d = days.d left join c on c.d = days.d left join v on v.d = days.d
-   order by days.d`;
+  select to_char(d, 'YYYY-MM-DD') as day,
+         (select count(*) from configuration_requests r where r.reseller_id = $1 and r.created_at >= d and r.created_at < d + interval '1 day') as requests,
+         (select count(*) from configurations c where c.reseller_id = $1 and c.created_at >= d and c.created_at < d + interval '1 day') as configurations,
+         (select count(*) from share_link_views v where v.reseller_id = $1 and v.viewed_at >= d and v.viewed_at < d + interval '1 day') as views
+    from generate_series(date_trunc('day', now()) - make_interval(days => $2 - 1), date_trunc('day', now()), interval '1 day') as d
+   order by d`;
 const ANALYTICS_TOP = `
   with cfg as (
     select c.sauna_model_id, count(*) as n from configurations c
@@ -175,7 +170,7 @@ export const QUERIES: PerfQuery[] = [
   {
     name: 'requests: search "virtanen"', role: 'app_tenant',
     sql: REQUEST_LIST(
-      `and (c.name ilike $4 or exists (select 1 from customers cu where cu.id = r.customer_id and (cu.email ilike $4 or (coalesce(cu.first_name, '') || ' ' || coalesce(cu.last_name, '')) ilike $4)))`,
+      `and ((select c.name from configurations c where c.id = r.configuration_id) ilike $4 or exists (select 1 from customers cu where cu.id = r.customer_id and (cu.email ilike $4 or (coalesce(cu.first_name, '') || ' ' || coalesce(cu.last_name, '')) ilike $4)))`,
     ),
     params: (c) => [c.alphaId, 'de', 26, like('virtanen')],
   },

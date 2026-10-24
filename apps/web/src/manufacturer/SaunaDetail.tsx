@@ -10,6 +10,7 @@ import { ErrorPage } from '../design/components/ErrorBoundary.tsx';
 import { toast } from '../design/components/Toast.tsx';
 import { PageHead, Panel } from '../staff/index.ts';
 import { CURRENCIES, useSaunaDetail, useSavePrice, type SaunaDetail as Detail } from './data.ts';
+import '../design/components/Table.css';
 import { MODEL_TONE, PageSkeleton, parseMajor, parsePercent, toMajor } from './ui.tsx';
 
 export function SaunaDetail() {

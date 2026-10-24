@@ -1,0 +1,32 @@
+manufacturer: reseller list (500)
+
+select r.*, (select count(*) from reseller_saunas rs where rs.reseller_id = r.id) as saunas, st.customers, st.requests_open
+    from resellers r
+    left join reseller_overview($1, $2) st on st.reseller_id = r.id
+   where r.manufacturer_id = $1 and ($2::uuid is null or r.id = $2)
+   order by r.name, r.slug
+
+Sort  (cost=1594.23..1596.73 rows=1000 width=124) (actual time=42.126..42.163 rows=500 loops=1)
+  Sort Key: r.name, r.slug
+  Sort Method: quicksort  Memory: 99kB
+  Buffers: shared hit=10903
+  ->  Hash Right Join  (cost=21.75..1544.40 rows=1000 width=124) (actual time=40.200..41.717 rows=500 loops=1)
+        Hash Cond: (st.reseller_id = r.id)
+        Buffers: shared hit=10903
+        ->  Function Scan on reseller_overview st  (cost=0.25..10.25 rows=1000 width=32) (actual time=40.033..40.071 rows=500 loops=1)
+              Buffers: shared hit=9893
+        ->  Hash  (cost=15.25..15.25 rows=500 width=100) (actual time=0.139..0.140 rows=500 loops=1)
+              Buckets: 1024  Batches: 1  Memory Usage: 75kB
+              Buffers: shared hit=9
+              ->  Seq Scan on resellers r  (cost=0.00..15.25 rows=500 width=100) (actual time=0.007..0.076 rows=500 loops=1)
+                    Filter: (manufacturer_id = '9205fe63-9eb6-58a2-815b-4ecb42d82aed'::uuid)
+                    Buffers: shared hit=9
+        SubPlan 1
+          ->  Aggregate  (cost=1.50..1.51 rows=1 width=8) (actual time=0.002..0.002 rows=1 loops=500)
+                Buffers: shared hit=1001
+                ->  Index Only Scan using reseller_saunas_pkey on reseller_saunas rs  (cost=0.28..1.49 rows=6 width=0) (actual time=0.001..0.002 rows=6 loops=500)
+                      Index Cond: (reseller_id = r.id)
+                      Heap Fetches: 0
+                      Buffers: shared hit=1001
+Planning Time: 0.250 ms
+Execution Time: 42.264 ms

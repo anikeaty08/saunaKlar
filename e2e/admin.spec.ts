@@ -18,6 +18,8 @@ test('manufacturer admin logs in at admin.localhost and sees the resellers', asy
   await page.getByLabel(/^E-mail/).fill('admin@nordlicht.test');
   await page.getByLabel(/^Password/).fill('Sauna!2026');
   await page.getByRole('button', { name: new RegExp(`^(${en.manufacturer.login}|${en.auth.login})$`) }).click();
+  // Wait for the signed-in shell: navigating right after the click would abort the login request.
+  await expect(page.getByRole('navigation', { name: en.manufacturer.title })).toBeVisible();
   await page.goto(`${ADMIN}/resellers`);
   await expect(page.getByRole('heading', { name: en.manufacturer.resellers })).toBeVisible();
   for (const name of ['Alpha Spa & Sauna GmbH', 'Beta Wellness AG', 'Gamma Bastu AB']) {

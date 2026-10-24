@@ -1,0 +1,37 @@
+share links of a configuration (view counts)
+
+select s.id, s.configuration_id, s.expires_at, s.revoked_at, s.created_at,
+         (select count(*) from share_link_views v where v.share_link_id = s.id) as views,
+         (select max(v.viewed_at) from share_link_views v where v.share_link_id = s.id) as last_viewed_at
+    from share_links s where s.configuration_id = $1 order by s.created_at desc
+
+Sort  (cost=7.51..7.51 rows=1 width=72) (actual time=0.281..0.282 rows=1 loops=1)
+  Sort Key: s.created_at DESC
+  Sort Method: quicksort  Memory: 25kB
+  Buffers: shared hit=12
+  InitPlan 5 (returns $5)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.095..0.095 rows=1 loops=1)
+  ->  Index Scan using share_links_configuration_idx on share_links s  (cost=0.29..7.24 rows=1 width=72) (actual time=0.276..0.277 rows=1 loops=1)
+        Index Cond: ((configuration_id = '23dc0f92-ff55-4b30-be91-3a5436efaab6'::uuid) AND (reseller_id = $5))
+        Buffers: shared hit=12
+        SubPlan 2
+          ->  Aggregate  (cost=1.81..1.82 rows=1 width=8) (actual time=0.079..0.080 rows=1 loops=1)
+                Buffers: shared hit=4
+                InitPlan 1 (returns $1)
+                  ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.050..0.050 rows=1 loops=1)
+                ->  Index Only Scan using share_link_views_link_idx on share_link_views v  (cost=0.42..1.55 rows=1 width=0) (actual time=0.008..0.018 rows=113 loops=1)
+                      Index Cond: ((share_link_id = s.id) AND (reseller_id = $1))
+                      Heap Fetches: 0
+                      Buffers: shared hit=4
+        SubPlan 4
+          ->  Aggregate  (cost=2.91..2.92 rows=1 width=8) (actual time=0.086..0.086 rows=1 loops=1)
+                Buffers: shared hit=5
+                InitPlan 3 (returns $3)
+                  ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.040..0.040 rows=1 loops=1)
+                ->  Index Scan using share_link_views_link_idx on share_link_views v_1  (cost=0.42..2.64 rows=1 width=8) (actual time=0.012..0.031 rows=113 loops=1)
+                      Index Cond: ((share_link_id = s.id) AND (reseller_id = $3))
+                      Buffers: shared hit=5
+Planning:
+  Buffers: shared hit=1
+Planning Time: 0.160 ms
+Execution Time: 0.321 ms

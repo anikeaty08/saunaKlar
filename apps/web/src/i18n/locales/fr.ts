@@ -1,6 +1,6 @@
 /**
- * Français (Suisse) : « offre » pour le devis, TVA, vouvoiement. Espace insécable ( )
- * devant les deux-points et dans les guillemets ; pas d’espace devant ? ! ; (usage suisse).
+ * Français (Suisse) : « offre » pour le devis, TVA, vouvoiement. Espace insécable devant
+ * : ; ? et à l’intérieur des guillemets « ».
  * Must have exactly the shape of en.ts (the type fails on a missing key).
  */
 import type { Messages } from './en.ts';

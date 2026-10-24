@@ -8,30 +8,30 @@ select cu.id, cu.email, cu.first_name, cu.last_name, cu.status, cu.created_at,
    order by cu.created_at desc, cu.id desc
    limit $2
 
-Limit  (cost=4973.03..5040.59 rows=2 width=92) (actual time=27.457..27.463 rows=0 loops=1)
+Limit  (cost=4973.03..5040.59 rows=2 width=92) (actual time=37.059..37.067 rows=0 loops=1)
   Buffers: shared hit=520
   InitPlan 7 (returns $6)
-    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.109..0.110 rows=1 loops=1)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.138..0.139 rows=1 loops=1)
   InitPlan 8 (returns $7)
-    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.113..0.113 rows=1 loops=1)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.130..0.130 rows=1 loops=1)
   InitPlan 9 (returns $8)
     ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
-  ->  Result  (cost=4972.25..5039.81 rows=2 width=92) (actual time=27.455..27.459 rows=0 loops=1)
+  ->  Result  (cost=4972.25..5039.81 rows=2 width=92) (actual time=37.057..37.062 rows=0 loops=1)
         Buffers: shared hit=520
-        ->  Sort  (cost=4972.25..4972.25 rows=2 width=76) (actual time=27.454..27.456 rows=0 loops=1)
+        ->  Sort  (cost=4972.25..4972.25 rows=2 width=76) (actual time=37.056..37.058 rows=0 loops=1)
               Sort Key: cu.created_at DESC, cu.id DESC
               Sort Method: quicksort  Memory: 25kB
               Buffers: shared hit=520
-              ->  Result  (cost=730.61..4972.24 rows=2 width=76) (actual time=27.447..27.449 rows=0 loops=1)
+              ->  Result  (cost=730.61..4972.24 rows=2 width=76) (actual time=37.048..37.049 rows=0 loops=1)
                     One-Time Filter: ($6 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
                     Buffers: shared hit=520
-                    ->  Bitmap Heap Scan on customers cu  (cost=730.61..4972.24 rows=2 width=76) (actual time=27.334..27.335 rows=0 loops=1)
+                    ->  Bitmap Heap Scan on customers cu  (cost=730.61..4972.24 rows=2 width=76) (actual time=36.905..36.906 rows=0 loops=1)
                           Recheck Cond: (reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
                           Filter: ((($7 IS NULL) OR (id = $8)) AND ((email ~~* '%zzqx%'::text) OR (((COALESCE(first_name, ''::text) || ' '::text) || COALESCE(last_name, ''::text)) ~~* '%zzqx%'::text)))
                           Rows Removed by Filter: 20002
                           Heap Blocks: exact=374
                           Buffers: shared hit=520
-                          ->  Bitmap Index Scan on customers_reseller_created_id_idx  (cost=0.00..730.61 rows=20025 width=0) (actual time=1.030..1.030 rows=20002 loops=1)
+                          ->  Bitmap Index Scan on customers_reseller_created_id_idx  (cost=0.00..730.61 rows=20025 width=0) (actual time=1.122..1.123 rows=20002 loops=1)
                                 Index Cond: (reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
                                 Buffers: shared hit=146
         SubPlan 2
@@ -57,5 +57,5 @@ Limit  (cost=4973.03..5040.59 rows=2 width=92) (actual time=27.457..27.463 rows=
                       Heap Fetches: 0
 Planning:
   Buffers: shared hit=1
-Planning Time: 0.293 ms
-Execution Time: 27.546 ms
+Planning Time: 0.378 ms
+Execution Time: 37.191 ms

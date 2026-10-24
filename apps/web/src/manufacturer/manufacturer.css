@@ -226,24 +226,34 @@
   object-fit: cover;
 }
 
-.mfr-grid th[scope='row'] {
+.mfr-grid tbody th {
+  font-family: inherit;
+  font-size: var(--step--1);
   font-weight: 500;
-  text-align: start;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+  white-space: normal;
+  border-bottom: var(--hair) solid var(--line);
+  padding-block: 0.6rem;
 }
 
-.mfr-grid__group th {
+.mfr-grid td {
+  padding-block: 0.35rem;
+}
+
+.mfr-grid tbody .mfr-grid__group th {
   padding-top: var(--space-5);
-  font-size: var(--step--1);
-  letter-spacing: 0.06em;
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  text-align: start;
+  border-bottom: var(--hair) solid var(--ink);
 }
 
 .mfr-grid__group .staff-sub {
   display: inline;
   margin-left: var(--space-2);
-  text-transform: none;
-  letter-spacing: 0;
 }
 
 /* Inline-edit cell: reads as text until focused. */

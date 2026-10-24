@@ -164,19 +164,14 @@ async function analytics(db: Db, tenant: TenantInfo, locale: string, days: numbe
     db.query<{ status_code: string; n: string }>(
       `select status_code, count(*) as n from configuration_requests where reseller_id = $1 and created_at >= ${since} group by status_code`, [tenant.id, days]),
     db.query<{ day: string; requests: string; configurations: string; views: string }>(
-      // One range scan per table, grouped by day (date_trunc in the session time zone, like the
-      // series), instead of three correlated counts per day.
-      `with days as (
-         select d from generate_series(date_trunc('day', now()) - make_interval(days => $2 - 1), date_trunc('day', now()), interval '1 day') as d),
-       r as (select date_trunc('day', created_at) as d, count(*) as n from configuration_requests
-              where reseller_id = $1 and created_at >= date_trunc('day', now()) - make_interval(days => $2 - 1) group by 1),
-       c as (select date_trunc('day', created_at) as d, count(*) as n from configurations
-              where reseller_id = $1 and created_at >= date_trunc('day', now()) - make_interval(days => $2 - 1) group by 1),
-       v as (select date_trunc('day', viewed_at) as d, count(*) as n from share_link_views
-              where reseller_id = $1 and viewed_at >= date_trunc('day', now()) - make_interval(days => $2 - 1) group by 1)
-       select to_char(days.d, 'YYYY-MM-DD') as day, coalesce(r.n, 0) as requests, coalesce(c.n, 0) as configurations, coalesce(v.n, 0) as views
-         from days left join r on r.d = days.d left join c on c.d = days.d left join v on v.d = days.d
-        order by days.d`, [tenant.id, days]),
+      // Correlated counts per day stay: each is an index(-only) range scan, and measured at
+      // design scale they beat one grouped scan per table (tools/perf).
+      `select to_char(d, 'YYYY-MM-DD') as day,
+              (select count(*) from configuration_requests r where r.reseller_id = $1 and r.created_at >= d and r.created_at < d + interval '1 day') as requests,
+              (select count(*) from configurations c where c.reseller_id = $1 and c.created_at >= d and c.created_at < d + interval '1 day') as configurations,
+              (select count(*) from share_link_views v where v.reseller_id = $1 and v.viewed_at >= d and v.viewed_at < d + interval '1 day') as views
+         from generate_series(date_trunc('day', now()) - make_interval(days => $2 - 1), date_trunc('day', now()), interval '1 day') as d
+        order by d`, [tenant.id, days]),
     db.query<{ id: string; name: string; configurations: string; requests: string }>(
       // Configurations created in the window, and the requests on them (at most one each), counted
       // per model separately: the old configuration-to-request join was planned as a nested loop

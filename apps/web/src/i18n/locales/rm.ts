@@ -814,7 +814,7 @@ export const rm: Messages = {
     network: 'La connexiun n’ha betg funcziunà. Controllai Vossa rait ed empruvai anc ina giada.',
     codes: {
       UNAUTHENTICATED: 'As annunziai per plaschair per cuntinuar.',
-      INVALID_CREDENTIALS: 'L’e-mail u il pled-clav è nunfallibel.',
+      INVALID_CREDENTIALS: 'L’e-mail u il pled-clav è sbaglià.',
       EMAIL_NOT_VERIFIED: 'Confermai per plaschair l’emprim Vossa adressa d’e-mail.',
       CODE_INVALID: 'Quest code n’è betg valaivel.',
       CODE_EXPIRED: 'Quest code è scadì. Dumandai in nov.',
