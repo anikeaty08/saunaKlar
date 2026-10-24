@@ -298,17 +298,54 @@ async function seedCatalog(db: Db): Promise<void> {
     }
   }
 
-  // Sample asset set for Espoo Compact (files provided separately). URL = '/' + storage_key.
+  // Sample assets (URL = '/' + storage_key). Espoo Compact keeps its historical keys; every
+  // model, option and room gets a thumbnail too. The files themselves are written into the
+  // local object store by scripts/seed-media.mjs (placeholder art, and the Espoo GLBs for
+  // every model's 3D roles).
   const espoo = SEED.models('espoo-compact');
-  const assets: [string, string, string, string][] = [
+  const espooAssets: [string, string, string, string][] = [
     ['MODEL_GLB_HIGH', 'assets/hi/catalog/espoo-compact/high-9f3c2a.glb', 'model/gltf-binary', 'asset:espoo:high'],
     ['MODEL_AR_GLB', 'assets/hi/catalog/espoo-compact/ar-9f3c2a.glb', 'model/gltf-binary', 'asset:espoo:ar'],
     ['MODEL_GLB_LOW', 'assets/lo/catalog/espoo-compact/low-4b1e7d.glb', 'model/gltf-binary', 'asset:espoo:low'],
     ['MODEL_THUMBNAIL', 'media/catalog/espoo-compact/thumb-1a2b3c.webp', 'image/webp', 'asset:espoo:thumb'],
   ];
-  for (const [role, key, type, label] of assets) {
+  const asset = async (key: string, type: string, label: string) => {
     await q(db, `INSERT INTO assets (id, storage_key, content_type) VALUES ($1, $2, $3)`, [seedId(label), key, type]);
-    await q(db, `INSERT INTO sauna_model_assets (sauna_model_id, asset_role, asset_id) VALUES ($1, $2, $3)`, [espoo, role, seedId(label)]);
+    return seedId(label);
+  };
+  /** Stable short content-hash stand-in, so keys look like the import CLI's. */
+  const tag = (label: string) => createHash('sha256').update(label).digest('hex').slice(0, 6);
+  for (const [role, key, type, label] of espooAssets) {
+    await q(db, `INSERT INTO sauna_model_assets (sauna_model_id, asset_role, asset_id) VALUES ($1, $2, $3)`, [espoo, role, await asset(key, type, label)]);
+  }
+  for (const m of MODELS) {
+    const id = SEED.models(m.slug);
+    const roles: [string, number, string, string][] = [
+      ['MODEL_GALLERY', 0, `media/catalog/${m.slug}/gallery-1-${tag(`${m.slug}:g1`)}.webp`, 'image/webp'],
+      ['MODEL_GALLERY', 1, `media/catalog/${m.slug}/gallery-2-${tag(`${m.slug}:g2`)}.webp`, 'image/webp'],
+    ];
+    if (m.slug !== 'espoo-compact') {
+      roles.push(
+        ['MODEL_THUMBNAIL', 0, `media/catalog/${m.slug}/thumb-${tag(`${m.slug}:thumb`)}.webp`, 'image/webp'],
+        ['MODEL_GLB_LOW', 0, `assets/lo/catalog/${m.slug}/low-${tag(`${m.slug}:low`)}.glb`, 'model/gltf-binary'],
+        ['MODEL_GLB_HIGH', 0, `assets/hi/catalog/${m.slug}/high-${tag(`${m.slug}:high`)}.glb`, 'model/gltf-binary'],
+        ['MODEL_AR_GLB', 0, `assets/hi/catalog/${m.slug}/ar-${tag(`${m.slug}:ar`)}.glb`, 'model/gltf-binary'],
+      );
+    }
+    for (const [role, position, key, type] of roles) {
+      await q(db, `INSERT INTO sauna_model_assets (sauna_model_id, asset_role, position, asset_id) VALUES ($1, $2, $3, $4)`,
+        [id, role, position, await asset(key, type, `asset:${m.slug}:${role}:${position}`)]);
+    }
+  }
+  for (const o of OPTIONS) {
+    const key = `media/options/${o.code}/thumb-${tag(`option:${o.code}`)}.webp`;
+    await q(db, `INSERT INTO option_assets (option_id, asset_role, asset_id) VALUES ($1, 'OPTION_THUMBNAIL', $2)`,
+      [SEED.options(o.code), await asset(key, 'image/webp', `asset:option:${o.code}`)]);
+  }
+  for (const r of ROOMS) {
+    const key = `media/rooms/${r.code}/thumb-${tag(`room:${r.code}`)}.webp`;
+    await q(db, `INSERT INTO room_scene_assets (room_scene_id, asset_role, asset_id) VALUES ($1, 'ROOM_THUMBNAIL', $2)`,
+      [SEED.rooms(r.code), await asset(key, 'image/webp', `asset:room:${r.code}`)]);
   }
 }
 

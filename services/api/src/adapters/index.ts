@@ -17,7 +17,7 @@
  *   LOCAL_IDP_JWT_SECRET          HS256 key of the local IdP (>= 32 bytes; dev default)
  *   LOCAL_ASSET_SIGNING_SECRET    HMAC key of local asset cookies/URLs (>= 32 bytes; dev default)
  *   LOCAL_UPLOAD_SIGNING_SECRET   HMAC key of /dev/uploads tokens (>= 32 bytes; dev default)
- *   LOCAL_OBJECTS_DIR             object store root (default var/objects)
+ *   LOCAL_OBJECTS_DIR             object store root (default <repo>/var/objects)
  *   LOCAL_ASSET_URL_SCHEME        scheme of signed AR URLs locally (default http)
  *   COOKIE_SECURE                 Secure attribute on local asset cookies (default true)
  *   aws only:
@@ -30,6 +30,8 @@
  *   EDGE_TENANT_KVS_ARN           CloudFront KeyValueStore ARN of the tenant directory
  *   SQS_QUEUE_URL                 notification queue
  */
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import type { Pool as PgPool } from 'pg';
 import { CloudFrontAssetSigner } from './assets/cloudfront.ts';
 import { LocalAssetSigner, verifyLocalAssetRequest, type LocalAssetRequest } from './assets/local.ts';
@@ -142,9 +144,26 @@ function localSecret(env: Env, name: keyof typeof DEV_SECRETS): string {
   return DEV_SECRETS[name];
 }
 
+/**
+ * `var/objects` at the monorepo root, whatever the working directory: `npm run dev -w
+ * @saunaklar/api` runs in services/api, while the seed-media script and the import CLI run at
+ * the root, and all of them must see the same files.
+ */
+export function defaultObjectsDir(from: string = process.cwd()): string {
+  for (let dir = from; ; dir = dirname(dir)) {
+    const pkg = join(dir, 'package.json');
+    try {
+      if (existsSync(pkg) && 'workspaces' in (JSON.parse(readFileSync(pkg, 'utf8')) as object)) return join(dir, 'var', 'objects');
+    } catch {
+      // unreadable package.json: keep walking up
+    }
+    if (dirname(dir) === dir) return join(from, 'var', 'objects');
+  }
+}
+
 function localObjectStore(env: Env): LocalObjectStore {
   return new LocalObjectStore(env.S3_ASSETS_BUCKET || 'assets', {
-    rootDir: env.LOCAL_OBJECTS_DIR || 'var/objects',
+    rootDir: env.LOCAL_OBJECTS_DIR || defaultObjectsDir(),
     secret: localSecret(env, 'LOCAL_UPLOAD_SIGNING_SECRET'),
   });
 }

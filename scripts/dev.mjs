@@ -4,7 +4,9 @@
  *
  * 1. Checks that Postgres is reachable (DATABASE_URL, default the docker-compose database).
  * 2. Applies pending migrations including the local IdP schema (LOCAL_IDP=1).
- * 3. Seeds the database when it holds no resellers or no local IdP users yet.
+ * 3. Seeds the database when it holds no resellers or no local IdP users yet, and writes the
+ *    seed's images and sample 3D models into var/objects (scripts/seed-media.mjs; it keeps
+ *    files that already exist, so it only fills gaps).
  * 4. Starts the API (tsx watch, port 8787) and Vite (port 5173) with prefixed, coloured output.
  *
  * Ctrl+C stops both; if either exits, the other is stopped too.
@@ -161,9 +163,13 @@ async function main() {
     await checkPostgres();
     say('applying migrations (with the local IdP schema)…');
     await runNpm('db:migrate');
-    if (!args.has('--no-seed') && (await needsSeed())) {
-      say('database is empty: seeding demo data…');
-      await runNpm('db:seed');
+    if (!args.has('--no-seed')) {
+      if (await needsSeed()) {
+        say('database is empty: seeding demo data…');
+        await runNpm('db:seed'); // includes the media files
+      } else {
+        await runNpm('db:media');
+      }
     }
   }
 
