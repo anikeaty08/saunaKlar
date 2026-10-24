@@ -339,7 +339,7 @@
 
 @media (min-width: 900px) {
   .sauna-admin__row {
-    grid-template-columns: auto 2rem 4rem minmax(0, 1fr) 10rem 9rem 12rem auto;
+    grid-template-columns: auto 2rem 4rem minmax(9rem, 1fr) 8.5rem 8.5rem 11rem auto;
     grid-template-areas: 'handle pos thumb name switch price discount arrows';
     gap: var(--space-4);
   }

@@ -170,6 +170,8 @@ export default function RoomScene({ preset, specs, options, value, onChange, rea
     e.preventDefault();
     onChange(clampPlacement(next, preset, specs));
   };
+  // The room sits on the tenant's paper tone (light or dark), read from the theme tokens.
+  const paper = useMemo(() => (typeof document === 'undefined' ? '#f1f0ec' : getComputedStyle(document.documentElement).getPropertyValue('--paper-2').trim() || '#f1f0ec'), []);
   return (
     <div className="room-scene" tabIndex={0} role="application" aria-label={label} onKeyDown={onKey} style={{ position: 'absolute', inset: 0, outlineOffset: -3 }}>
       <Canvas
@@ -181,7 +183,7 @@ export default function RoomScene({ preset, specs, options, value, onChange, rea
           gl.toneMapping = THREE.ACESFilmicToneMapping;
         }}
       >
-        <color attach="background" args={['#f1f0ec']} />
+        <color attach="background" args={[paper]} />
         <hemisphereLight args={['#ffffff', '#c9c3b8', 0.7]} />
         <directionalLight position={[span, span * 1.6, span * 0.8]} intensity={1.5} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} />
         <Suspense fallback={null}>

@@ -1,7 +1,6 @@
 import { ADMIN, en, expect, loginWithForm, test } from './fixtures.ts';
 
-// FIXME: the reseller admin (storefront/admin/AdminApp.tsx) does not exist yet. Remove `.fixme` once it lands.
-test.fixme('reseller admin logs in at /admin and sees the requests list', async ({ page }) => {
+test('reseller admin logs in at /admin and sees the requests list', async ({ page }) => {
   await loginWithForm(page, '/admin', 'owner@alpha.test');
   await expect(page.getByRole('heading', { name: en.admin.title }).or(page.getByRole('navigation').getByText(en.admin.nav.dashboard))).toBeVisible();
   await page.getByRole('link', { name: en.admin.nav.requests }).click();

@@ -26,4 +26,5 @@ async function boot() {
   createRoot(document.getElementById('root')!).render(<App router={router} />);
 }
 
-void boot();
+// The splash never outlives a failed or very slow boot: error screens render under it.
+void boot().finally(() => setTimeout(() => void import('./app/splash.ts').then(m => m.hideSplash()), 6000));

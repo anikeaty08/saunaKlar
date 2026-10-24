@@ -13,8 +13,26 @@
       href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,300..800&family=JetBrains+Mono:wght@300..600&display=swap"
     />
     <title>Saunas</title>
+    <style>
+      #splash { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: #f6f5f1; color: #1c1c1a; will-change: transform; }
+      #splash .splash__mark { display: grid; gap: 14px; justify-items: center; font: 600 13px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: 0.3em; text-transform: uppercase; }
+      #splash .splash__track { width: 120px; height: 2px; background: rgba(28, 28, 26, 0.12); overflow: hidden; }
+      #splash .splash__bar { display: block; height: 100%; background: currentColor; transform-origin: 0 50%; transform: scaleX(0.15); animation: splash-load 2.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      @keyframes splash-load { to { transform: scaleX(0.85); } }
+      @media (prefers-color-scheme: dark) {
+        #splash { background: #141413; color: #ecebe6; }
+        #splash .splash__track { background: rgba(236, 235, 230, 0.16); }
+      }
+      @media (prefers-reduced-motion: reduce) { #splash .splash__bar { animation: none; transform: scaleX(0.6); } }
+    </style>
   </head>
   <body>
+    <div id="splash" aria-hidden="true">
+      <div class="splash__mark">
+        <span>Sauna</span>
+        <span class="splash__track"><span class="splash__bar"></span></span>
+      </div>
+    </div>
     <div id="root"></div>
     <noscript>This site needs JavaScript to show the sauna catalogue.</noscript>
     <script type="module" src="/src/main.tsx"></script>

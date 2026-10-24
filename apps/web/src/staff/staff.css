@@ -187,6 +187,13 @@
   max-width: 88rem;
 }
 
+@media (max-width: 999px) {
+  .staff-shell__link > svg,
+  .staff-shell__link > .icon {
+    display: none;
+  }
+}
+
 @media (max-width: 599px) {
   .staff-shell__logout {
     font-size: 0;
