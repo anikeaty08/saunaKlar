@@ -100,6 +100,7 @@ jobs:
   # ------------------------------------------------------------------------------------------
   e2e:
     name: End-to-end (Playwright)
+    needs: [typecheck-unit]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -118,28 +119,18 @@ jobs:
       CI: 'true'
     steps:
       - uses: actions/checkout@v4
-      - id: detect
-        name: Detect Playwright config
-        run: |
-          if ls playwright.config.* >/dev/null 2>&1; then echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else echo "enabled=false" >> "$GITHUB_OUTPUT"; echo "No playwright.config.* yet; skipping E2E." >> "$GITHUB_STEP_SUMMARY"; fi
       - uses: actions/setup-node@v4
-        if: steps.detect.outputs.enabled == 'true'
         with:
           node-version-file: .nvmrc
           cache: npm
-      - if: steps.detect.outputs.enabled == 'true'
-        run: npm ci
-      - if: steps.detect.outputs.enabled == 'true'
-        name: Install Chromium
+      - run: npm ci
+      - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - if: steps.detect.outputs.enabled == 'true'
-        name: Reset and seed the database (local IdP)
-        run: npm run db:reset
-      - if: steps.detect.outputs.enabled == 'true'
-        name: Playwright
-        run: npx playwright test
-      - if: failure() && steps.detect.outputs.enabled == 'true'
+      # e2e/global-setup.ts builds the SPA, creates a fresh seeded database from DATABASE_URL
+      # (createTestDatabase) and starts the local server against it; no db:reset needed.
+      - name: Playwright
+        run: npm run test:e2e
+      - if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report

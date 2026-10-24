@@ -65,7 +65,7 @@ export default defineConfig(({ mode }) => {
             if (/[\\/]node_modules[\\/](three|three-stdlib|@react-three|three-mesh-bvh|troika-[^\\/]+|camera-controls|maath|meshline|stats-gl|@monogrid|detect-gpu|hls\.js)[\\/]/.test(id)) return 'three';
             if (/[\\/]node_modules[\\/](gsap|@gsap)[\\/]/.test(id)) return 'gsap';
             if (/[\\/]node_modules[\\/]@google[\\/]model-viewer[\\/]/.test(id)) return 'model-viewer';
-            if (/[\\/]node_modules[\\/](react|react-dom|scheduler|react-router)[\\/]/.test(id)) return 'react';
+            if (/[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|zustand|use-sync-external-store)[\\/]/.test(id)) return 'react';
             if (/[\\/]node_modules[\\/]@tanstack[\\/]/.test(id)) return 'query';
             return undefined;
           },

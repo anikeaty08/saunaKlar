@@ -27,6 +27,7 @@ locals {
     public = "s3-public"
     assets = "s3-assets"
     api    = "api"
+    admin  = "api-admin"
   }
 
   kvs_id = element(split("/", aws_cloudfront_key_value_store.tenants.arn), 1)

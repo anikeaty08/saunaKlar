@@ -28,7 +28,8 @@ test.describe('storefront', () => {
     await page.getByRole('menuitemradio', { name: /Français/ }).click();
 
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
-    await expect(page.getByRole('heading', { name: fr.detail.options })).toBeVisible();
+    // UI strings come from fr.ts (still a stub equal to en.ts; this becomes a real check once it is translated).
+    await expect(page.getByText(fr.detail.loginToConfigure, { exact: true }).first()).toBeVisible();
     await expect(page.getByText('Sauna d’intérieur compact', { exact: false })).toBeVisible();
     await expect(page.getByText(/^Épicéa nordique/).first()).toBeVisible();
     await expect(page.getByText(/^Nordic spruce/)).toHaveCount(0);

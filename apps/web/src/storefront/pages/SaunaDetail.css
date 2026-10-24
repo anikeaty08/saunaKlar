@@ -193,3 +193,14 @@
     grid-column: 2;
   }
 }
+
+.pricecard__claimed {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+.pricecard__claimed-title {
+  font-weight: 600;
+  color: var(--ink);
+}

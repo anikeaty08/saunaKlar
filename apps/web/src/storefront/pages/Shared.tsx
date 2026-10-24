@@ -1,6 +1,8 @@
 import { useParams, useNavigate } from 'react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Clock, Download } from 'lucide-react';
+import { Clock, Copy, Download, Send } from 'lucide-react';
+import { errorText } from '../../i18n/errorText.ts';
+import { useSubmitRequest } from '../configurator/useSubmitRequest.ts';
 import { api, isApiError } from '../../api/client.ts';
 import { useSession, useTenantData } from '../../api/queries.ts';
 import { useT } from '../../i18n/i18n.ts';
@@ -28,12 +30,19 @@ export default function Shared() {
   const navigate = useNavigate();
   const shared = useQuery({ queryKey: ['shared', token], queryFn: () => api('shared', { params: { token } }), retry: false });
   useDocumentTitle(shared.data?.configuration.name ?? t('shared.eyebrow'));
+  // A claimed copy is locked at a fresh price: offer the request straight away,
+  // or a clone for customers who want to change options first.
   const claim = useMutation({
     mutationFn: () => api('claimShared', { params: { token } }),
-    onSuccess: r => {
-      toast(t('shared.claimed'));
-      navigate(`/account/configurations/${r.configurationId}`);
-    },
+    onSuccess: () => toast(t('shared.claimed')),
+    onError: e => toast.error(t('errors.title'), errorText(t, e)),
+  });
+  const claimedId = claim.data?.configurationId;
+  const submit = useSubmitRequest();
+  const clone = useMutation({
+    mutationFn: (id: string) => api('clone', { params: { id } }),
+    onSuccess: c => navigate(`/saunas/${c.sauna.slug}/configure?id=${c.id}`),
+    onError: e => toast.error(t('errors.title'), errorText(t, e)),
   });
 
   if (shared.isPending)
@@ -91,7 +100,21 @@ export default function Shared() {
               <Price minor={d.snapshot.finalPriceMinor} currency={d.snapshot.currency} listMinor={d.snapshot.discountMinor > 0 ? d.snapshot.subtotalMinor : null} size="lg" />
               <p className="pricecard__vat">{t('shared.priceAsOf', { date: fmt.date(d.snapshot.computedAt) })} · {t('shared.validUntil', { date: fmt.date(d.snapshot.priceValidUntil) })}</p>
               <p className="pricecard__vat">{t('shared.expires', { date: fmt.date(d.expiresAt) })}</p>
-              {signedIn ? (
+              {claimedId ? (
+                <div className="pricecard__claimed" role="status">
+                  <p className="pricecard__claimed-title">{t('shared.claimedTitle')}</p>
+                  <p className="pricecard__hint">{t('shared.claimedBody')}</p>
+                  <Button icon={Send} size="lg" block onClick={() => submit.mutate({ id: claimedId })} loading={submit.isPending}>
+                    {t('shared.requestQuote')}
+                  </Button>
+                  <Button variant="ghost" icon={Copy} block onClick={() => clone.mutate(claimedId)} loading={clone.isPending}>
+                    {t('configure.clone')}
+                  </Button>
+                  <ButtonLink to={`/account/configurations/${claimedId}`} variant="link" block>
+                    {t('shared.viewSaved')}
+                  </ButtonLink>
+                </div>
+              ) : signedIn ? (
                 <Button icon={Download} size="lg" block onClick={() => claim.mutate()} loading={claim.isPending}>
                   {t('shared.claim')}
                 </Button>

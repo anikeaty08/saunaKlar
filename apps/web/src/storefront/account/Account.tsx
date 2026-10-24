@@ -1,3 +1,4 @@
+import { errorText } from '../../i18n/errorText.ts';
 import { useState, type FormEvent } from 'react';
 import { Link, NavLink, Outlet, useNavigate, useParams } from 'react-router';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -24,15 +25,6 @@ import { toast } from '../../design/components/Toast.tsx';
 import { useDocumentTitle } from '../../app/useDocumentTitle.ts';
 import { RequireCustomer } from './RequireCustomer.tsx';
 import './Account.css';
-
-function errorText(t: (k: TKey) => string, e: unknown) {
-  if (isApiError(e)) {
-    const key = `errors.codes.${e.code}` as TKey;
-    const m = t(key);
-    return m === key ? e.message : m;
-  }
-  return t('errors.body');
-}
 
 function AccountSkeleton() {
   return (
@@ -257,6 +249,9 @@ export function RequestDetail() {
   const fmt = useFormat();
   const qc = useQueryClient();
   const [confirmCancel, setConfirmCancel] = useState(false);
+  // Set when accepting answered 409: the quote on screen was replaced. The new
+  // one (meta.activeQuoteId) is refetched and flagged for review.
+  const [changedQuoteId, setChangedQuoteId] = useState<string | null>(null);
   const q = useQuery({ queryKey: ['request', id], queryFn: () => api('myRequest', { params: { id } }) });
   useDocumentTitle(q.data?.configuration.name);
   const onDone = (r: Awaited<ReturnType<typeof api<'myRequest'>>>) => {
@@ -277,6 +272,8 @@ export function RequestDetail() {
     onSuccess: onDone,
     onError: e => {
       if (isApiError(e, 'CONFLICT') || isApiError(e, 'QUOTE_MISSING')) {
+        const next = e.meta.activeQuoteId;
+        setChangedQuoteId(typeof next === 'string' ? next : '');
         void q.refetch();
         toast.error(t('account.quoteChanged'));
       } else toast.error(t('errors.title'), errorText(t, e));
@@ -300,6 +297,11 @@ export function RequestDetail() {
         {r.activeQuote && (
           <div className="account__quote">
             <p className="eyebrow">{t('account.quote')}</p>
+            {changedQuoteId !== null && (changedQuoteId === '' || changedQuoteId === r.activeQuote.id) && (
+              <p className="account__quote-changed" role="status">
+                {t('account.quoteChanged')}
+              </p>
+            )}
             <Price minor={r.activeQuote.amountMinor} currency={r.activeQuote.currency} size="lg" />
             <p className="muted">{t('account.quoteValid', { date: fmt.date(r.activeQuote.validUntil) })}</p>
             {r.activeQuote.note && <p>{r.activeQuote.note}</p>}

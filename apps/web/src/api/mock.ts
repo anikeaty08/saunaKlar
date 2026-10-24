@@ -370,10 +370,13 @@ const handlers: Partial<Record<RouteName, Handler>> = {
     transition(r, 'CANCELLED');
     return requestDto(r);
   },
-  acceptRequest: ({ params }) => {
+  acceptRequest: ({ params, body }) => {
     const r = state.requests.find(x => x.id === params.id);
     if (!r) throw new Problem('NOT_FOUND', 'Request not found.');
     if (!r.quote) throw new Problem('QUOTE_MISSING', 'There is no quote to accept yet.');
+    // quoteId is optional; when sent it must be the active quote, else 409 with the new id.
+    const quoteId = (body as Json | undefined)?.quoteId;
+    if (typeof quoteId === 'string' && quoteId !== r.quote.id) throw new Problem('CONFLICT', 'The quote changed. Review the new one.', { meta: { activeQuoteId: r.quote.id } });
     transition(r, 'ACCEPTED');
     return requestDto(r);
   },
@@ -449,10 +452,24 @@ export function installMock(): void {
   setTransport(mockFetch);
   (window as unknown as { __mock: unknown }).__mock = {
     bumpCatalog: () => ++catalogVersion,
+    /** Staff quotes (or re-quotes) the latest request: `__mock.quote()` then accept to exercise the 409 path. */
+    quote: (amountMinor = 1_890_000, requestId?: string) => {
+      const r = requestId ? state.requests.find(x => x.id === requestId) : state.requests.at(-1);
+      if (!r) return 'no request';
+      const at = now();
+      r.quote = { id: crypto.randomUUID(), amountMinor, currency: 'CHF', validUntil: plusDays(at, 30), note: null, createdAt: at, supersededAt: null };
+      if (r.status !== 'QUOTED') {
+        r.history.push({ fromStatus: r.status, toStatus: 'QUOTED', actor: 'STAFF', actorName: 'Showroom', note: null, at });
+        r.status = 'QUOTED';
+      }
+      r.updatedAt = at;
+      save();
+      return r.quote.id;
+    },
     reset: () => {
       sessionStorage.removeItem(KEY);
       state = load();
     },
   };
-  console.info('%cMock API active', 'font-weight:bold', '— any e-mail logs in; share token "demo"; __mock.bumpCatalog()');
+  console.info('%cMock API active', 'font-weight:bold', '— any e-mail logs in; share token "demo"; __mock.bumpCatalog(); __mock.quote()');
 }

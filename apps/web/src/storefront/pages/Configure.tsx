@@ -1,3 +1,5 @@
+import { useSubmitRequest } from '../configurator/useSubmitRequest.ts';
+import { errorText } from '../../i18n/errorText.ts';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -44,15 +46,6 @@ function ConfigureSkeleton() {
       </div>
     </div>
   );
-}
-
-function errorText(t: (k: TKey, p?: Record<string, string | number>) => string, e: unknown): string {
-  if (isApiError(e)) {
-    const key = `errors.codes.${e.code}` as TKey;
-    const msg = t(key);
-    return msg === key ? e.message : msg;
-  }
-  return t('errors.body');
 }
 
 function GroupEditor({ group, sauna, currency }: { group: OptionGroupDto; sauna: SaunaDetail; currency: string }) {
@@ -242,19 +235,11 @@ function Configurator({ sauna }: { sauna: SaunaDetail }) {
     },
   });
 
-  const send = useMutation({
-    mutationFn: async () => {
-      const id = st.dirty || !st.configurationId ? await save.mutateAsync() : st.configurationId;
-      return api('submitRequest', { params: { id }, body: message.trim() ? { message: message.trim() } : {} });
-    },
-    onSuccess: req => {
-      setSendOpen(false);
-      toast(t('configure.requestSent'), t('configure.requestSentBody'));
-      void qc.invalidateQueries({ queryKey: ['requests'] });
-      navigate(`/account/requests/${req.id}`);
-    },
-    onError: e => toast.error(t('errors.title'), errorText(t, e)),
-  });
+  const submit = useSubmitRequest({ onSent: () => setSendOpen(false) });
+  const send = {
+    isPending: submit.isPending,
+    mutate: () => submit.mutate({ id: st.dirty || !st.configurationId ? save.mutateAsync() : Promise.resolve(st.configurationId), message }),
+  };
 
   const clone = useMutation({
     mutationFn: () => api('clone', { params: { id: st.configurationId! } }),
