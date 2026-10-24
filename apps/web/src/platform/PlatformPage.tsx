@@ -10,6 +10,10 @@ import { Icon } from '../design/components/Icon.tsx';
 import { applyTheme } from '../design/theme.ts';
 import { hideSplash } from '../app/splash.ts';
 import { LanguageSwitcher } from '../storefront/layout/LanguageSwitcher.tsx';
+import { BackToTop, FooterFrame } from '../storefront/layout/Footer.tsx';
+import { FlipChars } from '../motion/FlipChars.tsx';
+import { Logo } from '../design/brand/Logo.tsx';
+import { Credit } from '../design/components/Credit.tsx';
 import './Platform.css';
 
 const EXAMPLES = ['nordic', 'fjord', 'kelo'];
@@ -30,8 +34,7 @@ function PlatformFrame({ children }: { children: React.ReactNode }) {
     <div className="pf">
       <header className="pf__head container">
         <span className="pf__logo">
-          <span className="brand__mark" aria-hidden="true" />
-          Saunaklar
+          <Logo size={28} draw />
         </span>
         <div className="cluster">
           <a href={adminUrl} className="tlink tlink--plain pf__admin">
@@ -41,10 +44,56 @@ function PlatformFrame({ children }: { children: React.ReactNode }) {
           <LanguageSwitcher compact />
         </div>
       </header>
-      <main id="main">{children}</main>
-      <footer className="pf__foot container">
-        <span>{t('platform.footer', { year: String(new Date().getFullYear()) })}</span>
-      </footer>
+      <main id="main" className="main main--sheet">
+        {children}
+      </main>
+      <FooterFrame
+        wordmark="Saunaklar"
+        label={t('footer.wordmark', { name: 'Saunaklar' })}
+        cta={
+          <>
+            <p className="sfoot__cap">{t('platform.ctaEyebrow')}</p>
+            <FlipChars as="p" text={t('platform.ctaTitle')} onScroll className="sfoot__title" />
+            <a href={adminUrl} className="btn btn--light btn--lg">
+              {t('platform.ctaButton')}
+            </a>
+          </>
+        }
+        bar={
+          <>
+            <p className="sfoot__legal">{t('platform.footer', { year: String(new Date().getFullYear()) })}</p>
+            <Credit tone="on-ink" copyright={false} />
+            <BackToTop />
+          </>
+        }
+      >
+        <section className="sfoot__col sfoot__about">
+          <h2 className="sfoot__cap">{t('platform.about')}</h2>
+          <p className="sfoot__text">{t('platform.lede')}</p>
+        </section>
+        <section className="sfoot__col sfoot__c2">
+          <h2 className="sfoot__cap">{t('platform.examples')}</h2>
+          <ul>
+            {EXAMPLES.map(s => (
+              <li key={s}>
+                <a className="sfoot__link" href={storefrontUrl(s)}>
+                  <FlipText text={s} />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+        <section className="sfoot__col sfoot__c2">
+          <h2 className="sfoot__cap">{t('platform.staff')}</h2>
+          <ul>
+            <li>
+              <a className="sfoot__link" href={adminUrl}>
+                <FlipText text={t('platform.admin')} />
+              </a>
+            </li>
+          </ul>
+        </section>
+      </FooterFrame>
     </div>
   );
 }

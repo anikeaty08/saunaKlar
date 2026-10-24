@@ -5,7 +5,7 @@ import { FlipText } from '../../motion/FlipText.tsx';
 import { Icon } from './Icon.tsx';
 import './Button.css';
 
-export type ButtonVariant = 'primary' | 'ghost' | 'link' | 'quiet';
+export type ButtonVariant = 'primary' | 'ghost' | 'link' | 'quiet' | 'light';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface Common {

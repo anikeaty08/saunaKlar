@@ -77,7 +77,7 @@ export default function Shared() {
       <p className="eyebrow">{t('shared.eyebrow')}</p>
       <div className="detail">
         <div className="detail__stage">
-          <ViewerSlot name={d.sauna.name} specs={specs} options={viewerOptionsOf(d.sauna, d.configuration.selections)} lowUrl={d.sauna.assets.lowGlbUrl} highUrl={d.sauna.assets.highGlbUrl} allowHigh thumbnailUrl={d.sauna.assets.thumbnailUrl} />
+          <ViewerSlot name={d.sauna.name} specs={specs} options={viewerOptionsOf(d.sauna, d.configuration.selections)} lowUrl={d.sauna.assets.lowGlbUrl} highUrl={d.sauna.assets.highGlbUrl} allowHigh thumbnailUrl={d.sauna.assets.thumbnailUrl} shareToken={token} />
           {d.sauna.assets.hasAr && (
             <div className="detail__ar">
               <ArButton saunaModelId={d.sauna.id} name={d.sauna.name} enabled shareToken={token} />

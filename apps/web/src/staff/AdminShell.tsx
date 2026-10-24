@@ -7,6 +7,7 @@ import { useT, type TKey } from '../i18n/i18n.ts';
 import { Icon } from '../design/components/Icon.tsx';
 import { Toaster } from '../design/components/Toast.tsx';
 import { NavigationProgress } from '../motion/PageTransition.tsx';
+import { Credit } from '../design/components/Credit.tsx';
 import { FlipText } from '../motion/FlipText.tsx';
 import { gsap } from '../motion/gsap.ts';
 import { prefersReducedMotion } from '../motion/preferences.ts';
@@ -87,6 +88,7 @@ export function AdminShell({ brand, area, nav, session, extra, children }: { bra
               {t('staff.logout')}
             </button>
           </div>
+          <Credit quiet copyright={false} className="staff-shell__credit" />
         </div>
       </aside>
       <div className="staff-shell__main">

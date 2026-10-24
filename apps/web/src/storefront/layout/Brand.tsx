@@ -1,8 +1,13 @@
 import { Link } from 'react-router';
 import type { Tenant } from '../../api/types.ts';
+import { LogoMark } from '../../design/brand/Logo.tsx';
+import { DotWord } from '../../design/brand/DotWordmark.tsx';
 
-/** Tenant logo, or a typographic wordmark with a small ink mark when there is no logo. */
-export function Brand({ tenant, onClick }: { tenant: Tenant; onClick?: () => void }) {
+/**
+ * The reseller's uploaded logo; without one, the SaunaKlar mark beside a dotted
+ * wordmark of the reseller's name.
+ */
+export function Brand({ tenant, onClick, intro = true }: { tenant: Tenant; onClick?: () => void; intro?: boolean }) {
   const name = tenant.branding.displayName;
   return (
     <Link to="/" className="brand" onClick={onClick} aria-label={name}>
@@ -10,8 +15,8 @@ export function Brand({ tenant, onClick }: { tenant: Tenant; onClick?: () => voi
         <img src={tenant.branding.logoUrl} alt="" className="brand__logo" height={28} />
       ) : (
         <>
-          <span className="brand__mark" aria-hidden="true" />
-          <span className="brand__name">{name}</span>
+          <LogoMark className="brand__mark" size={26} />
+          <DotWord text={name} className="brand__dots" intro={intro} />
         </>
       )}
     </Link>

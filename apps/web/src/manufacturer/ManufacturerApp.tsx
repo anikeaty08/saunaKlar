@@ -7,10 +7,11 @@ import { useT } from '../i18n/i18n.ts';
 import { applyTheme } from '../design/theme.ts';
 import { hideSplash } from '../app/splash.ts';
 import { AdminShell, RequireStaff } from '../staff/index.ts';
+import { Logo } from '../design/brand/Logo.tsx';
 import './manufacturer.css';
 
 export function Brand() {
-  return <span className="staff-shell__logo">Saunaklar</span>;
+  return <Logo className="staff-shell__logo" size={24} />;
 }
 
 /**

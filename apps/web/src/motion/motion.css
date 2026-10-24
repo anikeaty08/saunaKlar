@@ -87,3 +87,21 @@
 .magnetic {
   display: inline-block;
 }
+
+/* FlipChars */
+.flipchars__word {
+  display: inline-block;
+  white-space: nowrap;
+  perspective: 900px;
+}
+
+.flipchars__char {
+  display: inline-block;
+  will-change: transform;
+}
+
+/* Keeps the page sheet above the footer while a route transition transforms it. */
+.page-tx {
+  position: relative;
+  z-index: 1;
+}

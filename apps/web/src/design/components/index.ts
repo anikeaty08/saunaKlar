@@ -21,3 +21,4 @@ export { LazyImage } from './LazyImage.tsx';
 export { Breadcrumbs } from './Breadcrumbs.tsx';
 export { SectionHeading } from './SectionHeading.tsx';
 export { Menu, type MenuItem } from './Menu.tsx';
+export { Credit } from './Credit.tsx';

@@ -36,7 +36,9 @@ export function PageTransition({ children, label }: { children: ReactNode; label
       <div ref={curtain} className="curtain" aria-hidden="true">
         <span className="curtain__label">{label}</span>
       </div>
-      <div ref={content}>{children}</div>
+      <div ref={content} className="page-tx">
+        {children}
+      </div>
     </>
   );
 }

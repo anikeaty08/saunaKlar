@@ -1,18 +1,45 @@
 import { contrast, oklchToHex, parseHex, rgbToOklch, type Oklch } from './color.ts';
 
 /**
- * Unary design tokens. Every colour is the brand colour's hue and (scaled)
- * chroma at a different OKLCH lightness — there is no second accent colour.
+ * Unary design tokens, modelled on a cool slate system: low-chroma surfaces,
+ * a near-black ink of the hue, and mid tones (umber, taupe, stone, sand) that
+ * keep a little more of the hue. There is no second accent colour.
  *
- *   --ink        text, primary buttons, rules that need weight
+ *   --ink        text, primary buttons, rules that need weight (near-black)
  *   --ink-2..6   lightness steps from ink towards paper (2 = strongest)
  *   --paper      page background; --paper-2/3 raised and pressed surfaces
+ *   --card       the lightest surface (cards, dialogs)
  *   --line       hairlines; --line-strong for inputs
  *   --on-ink     text on an ink surface
  *   --focus      focus ring
+ *   --accent     the hue at mid lightness (decorative dots, stop marks)
  *   --brand      the reseller's colour exactly as configured
+ *   --night*     the footer band: stays dark in both modes
  */
-export const DEFAULT_PRIMARY = '#1c1c1a';
+/** Platform default: slate. Also the fallback for a reseller without a colour. */
+export const DEFAULT_PRIMARY = '#5a6b7b';
+
+/** The slate palette verbatim, used for the platform default in light mode. */
+const SLATE_LIGHT: ThemeTokens = {
+  '--ink': '#0a1016',
+  '--ink-2': '#1b242c',
+  '--ink-3': '#47525c',
+  '--ink-4': '#74808b',
+  '--ink-5': '#b4bdc6',
+  '--ink-6': '#e3e7eb',
+  '--paper': '#f3f5f7',
+  '--card': '#ffffff',
+  '--paper-3': '#e3e7eb',
+  '--line-strong': '#b4bdc6',
+  '--on-ink': '#f3f5f7',
+  '--focus': '#74808b',
+  '--accent': '#5a6b7b',
+  '--night': '#0a1016',
+  '--night-2': '#1b242c',
+  '--on-night': '#f3f5f7',
+  '--night-muted': '#8d99a4',
+  '--night-line': '#2a333c',
+};
 
 export type ThemeTokens = Record<`--${string}`, string>;
 
@@ -24,89 +51,89 @@ export interface Theme {
   metaDark: string;
 }
 
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+/** Chroma for a step: the hue's own chroma scaled, then capped (surfaces stay quiet). */
+const k = (c0: number, f: number, cap: number) => Math.min(c0 * f, cap);
 
 export function deriveTheme(primaryHex: string): Theme {
   const rgb = parseHex(primaryHex) ?? parseHex(DEFAULT_PRIMARY)!;
   const base = rgbToOklch(rgb);
-  // Achromatic input has an undefined hue; pin it so the steps stay neutral.
-  const hue = base.c < 0.002 ? 90 : base.h;
-  const chroma = Math.min(base.c, 0.2);
-  const tint = Math.min(chroma, 0.04);
-  const c = (l: number, k: number): string => oklchToHex({ l, c: k, h: hue });
+  // Achromatic input has an undefined hue; pin it to slate so the tint stays cool and faint.
+  const neutral = base.c < 0.002;
+  const hue = neutral ? 250 : base.h;
+  const c0 = neutral ? 0.012 : Math.min(base.c, 0.2);
+  const c = (l: number, ch: number): string => oklchToHex({ l, c: ch, h: hue });
 
-  // Ink must read as text on paper: keep the brand colour when it is dark
-  // enough, otherwise darken it along lightness only.
-  const inkL = Math.min(base.l, 0.4);
-  const inkC = chroma;
-
-  const light = {
-    paper: 0.975,
-    ink: inkL,
-  };
-  const dark = {
-    paper: 0.175,
-    ink: 0.955,
+  // Text steps are pulled towards ink (lightness only) until they clear their
+  // contrast target on the given surface; 5.05 keeps ink-3 at AA on paper-2 too.
+  const fit = (l: number, ch: number, towards: number, surface: string, min: number) => {
+    let ll = l;
+    let hex = c(ll, ch);
+    while (contrast(hex, surface) < min && Math.abs(ll - towards) > 0.005) {
+      ll += Math.sign(towards - ll) * 0.005;
+      hex = c(ll, ch);
+    }
+    return hex;
   };
 
-  // Lightness steps from ink to paper. ink-2 and ink-3 carry text, so they are
-  // pulled back towards ink (lightness only) until they clear WCAG AA on paper.
-  const minContrast = [7, 4.75, 0, 0, 0];
-  const steps = (from: number, to: number, fromC: number, toC: number) =>
-    [0.12, 0.26, 0.45, 0.65, 0.82].map((t, i) => {
-      const paperHex = c(to, toC);
-      let tt = t;
-      let hex = c(lerp(from, to, tt), lerp(fromC, toC, tt));
-      while (minContrast[i]! > 0 && contrast(hex, paperHex) < minContrast[i]! && tt > 0) {
-        tt = Math.max(0, tt - 0.01);
-        hex = c(lerp(from, to, tt), lerp(fromC, toC, tt));
-      }
-      return hex;
-    });
-
-  const paperC = tint * 0.22;
-  const lightInkSteps = steps(light.ink, light.paper, inkC, paperC);
-  const darkInkC = Math.min(chroma, 0.03);
-  const darkPaperC = tint * 0.35;
-  const darkInkSteps = steps(dark.ink, dark.paper, darkInkC, darkPaperC);
-
-  const brand = oklchToHex(base.c < 0.002 ? { ...base, h: hue } : base);
-
-  const lightTokens: ThemeTokens = {
-    '--brand': brand,
-    '--ink': c(light.ink, inkC),
-    '--ink-2': lightInkSteps[0]!,
-    '--ink-3': lightInkSteps[1]!,
-    '--ink-4': lightInkSteps[2]!,
-    '--ink-5': lightInkSteps[3]!,
-    '--ink-6': lightInkSteps[4]!,
-    '--paper': c(light.paper, paperC),
-    '--paper-2': c(0.952, tint * 0.3),
-    '--paper-3': c(0.925, tint * 0.38),
-    '--line': c(0.88, tint * 0.4),
-    '--line-strong': c(0.74, tint * 0.6),
-    '--on-ink': c(light.paper, paperC),
-    '--focus': c(Math.min(inkL + 0.08, 0.5), Math.max(inkC, 0.02)),
+  // ---- light ----------------------------------------------------------------
+  const lp = c(0.968, k(c0, 0.15, 0.01));
+  const lp2 = c(0.945, k(c0, 0.22, 0.014));
+  const light: ThemeTokens = {
+    '--ink': c(0.16, k(c0, 0.7, 0.035)),
+    '--ink-2': fit(0.25, k(c0, 0.75, 0.04), 0.16, lp, 7),
+    '--ink-3': fit(0.44, k(c0, 0.9, 0.05), 0.16, lp2, 5.05),
+    '--ink-4': c(0.6, k(c0, 0.8, 0.05)),
+    '--ink-5': c(0.79, k(c0, 0.6, 0.035)),
+    '--ink-6': c(0.92, k(c0, 0.3, 0.02)),
+    '--paper': lp,
+    '--paper-2': lp2,
+    '--paper-3': c(0.92, k(c0, 0.3, 0.02)),
+    '--card': c(0.995, k(c0, 0.05, 0.004)),
+    '--line': c(0.9, k(c0, 0.35, 0.022)),
+    '--line-strong': c(0.79, k(c0, 0.6, 0.035)),
+    '--on-ink': lp,
+    '--focus': c(0.6, k(c0, 0.8, 0.05)),
+    '--accent': c(0.53, k(c0, 1, 0.11)),
+    '--night': c(0.16, k(c0, 0.7, 0.035)),
+    '--night-2': c(0.24, k(c0, 0.75, 0.04)),
+    '--on-night': lp,
+    '--night-muted': c(0.68, k(c0, 0.7, 0.045)),
+    '--night-line': c(0.3, k(c0, 0.7, 0.035)),
   };
 
-  const darkTokens: ThemeTokens = {
-    '--brand': brand,
-    '--ink': c(dark.ink, darkInkC * 0.6),
-    '--ink-2': darkInkSteps[0]!,
-    '--ink-3': darkInkSteps[1]!,
-    '--ink-4': darkInkSteps[2]!,
-    '--ink-5': darkInkSteps[3]!,
-    '--ink-6': darkInkSteps[4]!,
-    '--paper': c(dark.paper, darkPaperC),
-    '--paper-2': c(0.21, tint * 0.4),
-    '--paper-3': c(0.245, tint * 0.45),
-    '--line': c(0.3, tint * 0.45),
-    '--line-strong': c(0.42, tint * 0.55),
-    '--on-ink': c(dark.paper, darkPaperC),
-    '--focus': c(0.88, Math.max(darkInkC, 0.02)),
+  // ---- dark -----------------------------------------------------------------
+  const dp = c(0.175, k(c0, 0.5, 0.018));
+  const dp2 = c(0.21, k(c0, 0.55, 0.02));
+  const dark: ThemeTokens = {
+    '--ink': c(0.955, k(c0, 0.2, 0.012)),
+    '--ink-2': fit(0.86, k(c0, 0.3, 0.02), 0.955, dp, 7),
+    '--ink-3': fit(0.74, k(c0, 0.5, 0.03), 0.955, dp2, 5.05),
+    '--ink-4': c(0.6, k(c0, 0.6, 0.035)),
+    '--ink-5': c(0.43, k(c0, 0.6, 0.03)),
+    '--ink-6': c(0.3, k(c0, 0.55, 0.025)),
+    '--paper': dp,
+    '--paper-2': dp2,
+    '--paper-3': c(0.25, k(c0, 0.55, 0.022)),
+    '--card': c(0.225, k(c0, 0.55, 0.02)),
+    '--line': c(0.31, k(c0, 0.55, 0.022)),
+    '--line-strong': c(0.44, k(c0, 0.6, 0.03)),
+    '--on-ink': dp,
+    '--focus': c(0.7, k(c0, 0.6, 0.04)),
+    '--accent': c(0.68, k(c0, 0.9, 0.1)),
+    '--night': c(0.13, k(c0, 0.5, 0.02)),
+    '--night-2': c(0.2, k(c0, 0.55, 0.022)),
+    '--on-night': c(0.955, k(c0, 0.2, 0.012)),
+    '--night-muted': c(0.68, k(c0, 0.6, 0.035)),
+    '--night-line': c(0.27, k(c0, 0.55, 0.022)),
   };
 
-  return { light: lightTokens, dark: darkTokens, metaLight: lightTokens['--paper']!, metaDark: darkTokens['--paper']! };
+  const brand = oklchToHex(neutral ? { ...base, h: hue } : base);
+  light['--brand'] = brand;
+  dark['--brand'] = brand;
+  // The platform default uses the slate palette verbatim.
+  if (!parseHex(primaryHex) || primaryHex.toLowerCase() === DEFAULT_PRIMARY) Object.assign(light, SLATE_LIGHT);
+
+  return { light, dark, metaLight: light['--paper']!, metaDark: dark['--paper']! };
 }
 
 const block = (tokens: ThemeTokens) => Object.entries(tokens).map(([k, v]) => `  ${k}: ${v};`).join('\n');

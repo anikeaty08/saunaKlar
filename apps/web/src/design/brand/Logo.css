@@ -1,0 +1,24 @@
+.logo-mark {
+  display: block;
+  flex: none;
+  overflow: visible;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--logo-size, 28px) * 0.36);
+  color: inherit;
+  line-height: 1;
+}
+
+.logo__word {
+  font-family: var(--font-display);
+  font-weight: 650;
+  font-size: calc(var(--logo-size, 28px) * 0.72);
+  letter-spacing: -0.035em;
+}
+
+.logo__klar {
+  font-weight: 350;
+}

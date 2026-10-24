@@ -85,7 +85,7 @@ export function StorefrontRoot() {
       <Header tenant={data} />
       <LocaleFlip>
         <PageTransition label={label}>
-          <main id="main" tabIndex={-1} className="main">
+          <main id="main" tabIndex={-1} className="main main--sheet">
             <Outlet />
           </main>
         </PageTransition>

@@ -39,6 +39,9 @@
 .scard__media .lazy-img {
   position: absolute;
   inset: 0;
+  /* Fill the card box exactly; the image's own ratio must not size it. */
+  width: 100%;
+  height: 100%;
 }
 
 .scard__index {

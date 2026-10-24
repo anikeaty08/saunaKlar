@@ -1,21 +1,93 @@
-import { ArrowUp } from 'lucide-react';
-import { gsap } from '../../motion/gsap.ts';
+import { useRef, type ReactNode } from 'react';
+import { Link } from 'react-router';
+import { ChevronUp } from 'lucide-react';
+import { gsap, useGSAP } from '../../motion/gsap.ts';
 import { prefersReducedMotion } from '../../motion/preferences.ts';
-import { Marquee } from '../../motion/Marquee.tsx';
-import { Reveal } from '../../motion/Reveal.tsx';
 import { FlipText } from '../../motion/FlipText.tsx';
-import { ExternalLink, TextLink } from '../../design/components/TextLink.tsx';
-import { Icon } from '../../design/components/Icon.tsx';
+import { FlipChars } from '../../motion/FlipChars.tsx';
+import { ButtonLink } from '../../design/components/Button.tsx';
+import { Credit } from '../../design/components/Credit.tsx';
+import { DotWordPlay } from '../../design/brand/DotWordmark.tsx';
 import { useCatalog, useSession } from '../../api/queries.ts';
 import { useT } from '../../i18n/i18n.ts';
 import type { Tenant } from '../../api/types.ts';
 import { LanguageSwitcher } from './LanguageSwitcher.tsx';
 import './Footer.css';
 
-function backToTop() {
+export function backToTop() {
   if (prefersReducedMotion()) window.scrollTo(0, 0);
-  else gsap.to(window, { scrollTo: 0, duration: 1.2, ease: 'sk.inOut' });
+  else gsap.to(window, { scrollTo: 0, duration: 1.2, ease: 'sk.snap' });
   document.getElementById('main')?.focus({ preventScroll: true });
+}
+
+function Col({ title, className, children }: { title: string; className?: string; children: ReactNode }) {
+  return (
+    <section className={['sfoot__col', className].filter(Boolean).join(' ')}>
+      <h2 className="sfoot__cap">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+function FLink({ to, href, children }: { to?: string; href?: string; children: string }) {
+  // Addresses stay plain text so they can wrap on narrow screens.
+  if (href)
+    return (
+      <a className="sfoot__link" href={href}>
+        {children}
+      </a>
+    );
+  return (
+    <Link className="sfoot__link" to={to!}>
+      <FlipText text={children} />
+    </Link>
+  );
+}
+
+/**
+ * Dark footer that sits "under" the page: the main sheet lifts off it and its
+ * content slides up into place while it scrolls in (scrubbed, no motion when
+ * reduced motion is on).
+ */
+export function FooterFrame({ cta, children, bar, wordmark, label }: { cta: ReactNode; children: ReactNode; bar: ReactNode; wordmark: string; label: string }) {
+  const root = useRef<HTMLElement>(null);
+  const inner = useRef<HTMLDivElement>(null);
+
+  useGSAP(
+    () => {
+      if (prefersReducedMotion() || !inner.current) return;
+      gsap.from(inner.current, {
+        yPercent: -22,
+        opacity: 0.3,
+        ease: 'none',
+        scrollTrigger: { trigger: root.current, start: 'top bottom', end: 'top 15%', scrub: true },
+      });
+    },
+    { scope: root },
+  );
+
+  return (
+    <footer ref={root} className="sfoot">
+      <div ref={inner} className="sfoot__inner">
+        <div className="sfoot__cta container">{cta}</div>
+        <div className="sfoot__grid container">{children}</div>
+        <div className="sfoot__word container">
+          <DotWordPlay text={wordmark} label={label} />
+        </div>
+        <div className="sfoot__bar container">{bar}</div>
+      </div>
+    </footer>
+  );
+}
+
+export function BackToTop() {
+  const { t } = useT();
+  return (
+    <button type="button" className="sfoot__top" onClick={backToTop}>
+      <FlipText text={t('common.backToTop')} />
+      <ChevronUp aria-hidden="true" className="sfoot__chev" size={14} strokeWidth={1.75} />
+    </button>
+  );
 }
 
 export function Footer({ tenant }: { tenant: Tenant }) {
@@ -29,147 +101,136 @@ export function Footer({ tenant }: { tenant: Tenant }) {
   const signedIn = session?.kind === 'customer';
 
   return (
-    <footer className="footer">
-      <div className="footer__cta container">
-        <p className="footer__statement">{b.tagline ?? t('footer.statement')}</p>
-        <button type="button" className="footer__top" onClick={backToTop}>
-          <FlipText text={t('common.backToTop')} />
-          <span className="footer__top-icon">
-            <Icon icon={ArrowUp} size="sm" />
-          </span>
-        </button>
-      </div>
-
-      <Marquee className="footer__marquee" speed={50}>
-        <span className="footer__word">{b.displayName}</span>
-        <span className="footer__sep" aria-hidden="true">
-          ✳
-        </span>
-      </Marquee>
-
-      <Reveal className="footer__grid container" stagger={0.06}>
-        <section className="footer__col">
-          <h2 className="footer__h">{t('footer.saunas')}</h2>
-          <ul>
-            {top.map(s => (
-              <li key={s.id}>
-                <TextLink to={`/saunas/${s.slug}`}>{s.name}</TextLink>
-              </li>
+    <FooterFrame
+      wordmark={b.displayName}
+      label={t('footer.wordmark', { name: b.displayName })}
+      cta={
+        <>
+          <p className="sfoot__cap">{t('footer.ctaEyebrow')}</p>
+          <FlipChars as="p" text={t('footer.ctaTitle')} onScroll className="sfoot__title" />
+          <ButtonLink to="/saunas" variant="light" size="lg">
+            {t('footer.ctaButton')}
+          </ButtonLink>
+        </>
+      }
+      bar={
+        <>
+          <p className="sfoot__legal">
+            {t('footer.copyright', { year: String(year), name: legalName })}
+            <span aria-hidden="true"> • </span>
+            {t(`vat.${b.vatDisplay}`)}
+          </p>
+          <Credit tone="on-ink" copyright={false} />
+          <div className="sfoot__lang">
+            <LanguageSwitcher align="end" />
+          </div>
+          <BackToTop />
+        </>
+      }
+    >
+      <Col title={t('footer.about', { name: b.displayName })} className="sfoot__about">
+        <p className="sfoot__text">{b.tagline ?? t('footer.statement')}</p>
+        {b.legalAddress && (
+          <address className="sfoot__address">
+            <span>{legalName}</span>
+            {b.legalAddress.split('\n').map(line => (
+              <span key={line}>{line}</span>
             ))}
-            <li>
-              <TextLink to="/saunas" tone="underline">
-                {t('footer.allSaunas')}
-              </TextLink>
-            </li>
-          </ul>
-        </section>
+          </address>
+        )}
+        <ul className="sfoot__inline">
+          <li>
+            <FLink to="/legal/imprint">{t('footer.imprint')}</FLink>
+          </li>
+          <li>
+            <FLink to="/legal/privacy">{t('footer.privacy')}</FLink>
+          </li>
+          <li>
+            <FLink to="/legal/terms">{t('footer.terms')}</FLink>
+          </li>
+        </ul>
+      </Col>
 
-        <section className="footer__col">
-          <h2 className="footer__h">{t('footer.service')}</h2>
-          <ul>
-            <li>
-              <TextLink to="/contact">{t('nav.contact')}</TextLink>
+      <Col title={t('footer.shop')} className="sfoot__c2">
+        <ul>
+          {top.map(s => (
+            <li key={s.id}>
+              <FLink to={`/saunas/${s.slug}`}>{s.name}</FLink>
             </li>
-            <li>
-              <TextLink to="/faq">{t('nav.faq')}</TextLink>
-            </li>
-            <li>
-              <TextLink to={signedIn ? '/account/requests' : '/account/login?next=/account/requests'}>{t('footer.requestStatus')}</TextLink>
-            </li>
-            {b.supportEmail && (
+          ))}
+          <li>
+            <FLink to="/saunas">{t('footer.allSaunas')}</FLink>
+          </li>
+          <li>
+            <FLink to="/showroom">{t('nav.showroom')}</FLink>
+          </li>
+        </ul>
+      </Col>
+
+      <Col title={t('footer.company')} className="sfoot__c2">
+        <ul>
+          <li>
+            <FLink to="/how-it-works">{t('nav.howItWorks')}</FLink>
+          </li>
+          <li>
+            <FLink to="/guide">{t('nav.guide')}</FLink>
+          </li>
+          <li>
+            <FLink to="/about">{t('nav.about')}</FLink>
+          </li>
+          <li>
+            <FLink to="/faq">{t('nav.faq')}</FLink>
+          </li>
+        </ul>
+      </Col>
+
+      <Col title={t('footer.account')} className="sfoot__c2">
+        <ul>
+          {signedIn ? (
+            <>
               <li>
-                <ExternalLink href={`mailto:${b.supportEmail}`}>{b.supportEmail}</ExternalLink>
+                <FLink to="/account">{t('nav.account')}</FLink>
               </li>
-            )}
-            {b.supportPhone && (
               <li>
-                <ExternalLink href={`tel:${b.supportPhone.replace(/[^+\d]/g, '')}`}>{b.supportPhone}</ExternalLink>
+                <FLink to="/account/configurations">{t('nav.configurations')}</FLink>
               </li>
-            )}
-          </ul>
-        </section>
-
-        <section className="footer__col">
-          <h2 className="footer__h">{t('footer.company')}</h2>
-          <ul>
-            <li>
-              <TextLink to="/about">{t('nav.about')}</TextLink>
-            </li>
-            <li>
-              <TextLink to="/how-it-works">{t('nav.howItWorks')}</TextLink>
-            </li>
-            <li>
-              <TextLink to="/guide">{t('nav.guide')}</TextLink>
-            </li>
-            <li>
-              <TextLink to="/showroom">{t('nav.showroom')}</TextLink>
-            </li>
-          </ul>
-        </section>
-
-        <section className="footer__col">
-          <h2 className="footer__h">{t('footer.account')}</h2>
-          <ul>
-            {signedIn ? (
-              <>
-                <li>
-                  <TextLink to="/account">{t('nav.account')}</TextLink>
-                </li>
-                <li>
-                  <TextLink to="/account/configurations">{t('nav.configurations')}</TextLink>
-                </li>
-                <li>
-                  <TextLink to="/account/requests">{t('nav.requests')}</TextLink>
-                </li>
-                <li>
-                  <TextLink to="/account/profile">{t('nav.profile')}</TextLink>
-                </li>
-              </>
-            ) : (
-              <>
-                <li>
-                  <TextLink to="/account/login">{t('nav.login')}</TextLink>
-                </li>
-                <li>
-                  <TextLink to="/account/signup">{t('nav.signup')}</TextLink>
-                </li>
-              </>
-            )}
-          </ul>
-        </section>
-
-        <section className="footer__col">
-          <h2 className="footer__h">{t('footer.legal')}</h2>
-          <ul>
-            <li>
-              <TextLink to="/legal/imprint">{t('footer.imprint')}</TextLink>
-            </li>
-            <li>
-              <TextLink to="/legal/privacy">{t('footer.privacy')}</TextLink>
-            </li>
-            <li>
-              <TextLink to="/legal/terms">{t('footer.terms')}</TextLink>
-            </li>
-          </ul>
-          {b.legalAddress && (
-            <address className="footer__address">
-              <strong>{legalName}</strong>
-              {b.legalAddress.split('\n').map(line => (
-                <span key={line}>{line}</span>
-              ))}
-            </address>
+              <li>
+                <FLink to="/account/requests">{t('nav.requests')}</FLink>
+              </li>
+            </>
+          ) : (
+            <>
+              <li>
+                <FLink to="/account/login">{t('nav.login')}</FLink>
+              </li>
+              <li>
+                <FLink to="/account/signup">{t('nav.signup')}</FLink>
+              </li>
+              <li>
+                <FLink to="/account/login?next=/account/requests">{t('footer.requestStatus')}</FLink>
+              </li>
+            </>
           )}
-        </section>
-      </Reveal>
+        </ul>
+      </Col>
 
-      <div className="footer__bar container">
-        <p>{t('footer.copyright', { year: String(year), name: legalName })}</p>
-        <p>{t(`vat.${b.vatDisplay}`)}</p>
-        <p className="footer__powered">{t('footer.poweredBy')}</p>
-        <div className="footer__lang">
-          <LanguageSwitcher align="end" />
-        </div>
-      </div>
-    </footer>
+      <Col title={t('footer.contact')} className="sfoot__c2">
+        <ul>
+          <li>
+            <FLink to="/contact">{t('nav.contact')}</FLink>
+          </li>
+          {b.supportEmail && (
+            <li>
+              <FLink href={`mailto:${b.supportEmail}`}>{b.supportEmail}</FLink>
+            </li>
+          )}
+          {b.supportPhone && (
+            <li>
+              <FLink href={`tel:${b.supportPhone.replace(/[^+\d]/g, '')}`}>{b.supportPhone}</FLink>
+            </li>
+          )}
+        </ul>
+      </Col>
+    </FooterFrame>
   );
 }

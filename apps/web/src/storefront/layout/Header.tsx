@@ -1,9 +1,7 @@
 import { useRef, useState } from 'react';
-import { Menu as MenuIcon } from 'lucide-react';
 import { gsap, ScrollTrigger, useGSAP } from '../../motion/gsap.ts';
 import { prefersReducedMotion } from '../../motion/preferences.ts';
 import { TextNavLink } from '../../design/components/TextLink.tsx';
-import { Icon } from '../../design/components/Icon.tsx';
 import { FlipText } from '../../motion/FlipText.tsx';
 import { useT } from '../../i18n/i18n.ts';
 import type { Tenant } from '../../api/types.ts';
@@ -75,7 +73,14 @@ export function Header({ tenant }: { tenant: Tenant }) {
             </div>
             <button type="button" className="header__burger" aria-label={t('nav.openMenu')} aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}>
               <FlipText text={t('nav.menu')} />
-              <Icon icon={MenuIcon} size="sm" />
+              <span className="sixdots" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+                <i />
+                <i />
+                <i />
+              </span>
             </button>
           </div>
         </div>

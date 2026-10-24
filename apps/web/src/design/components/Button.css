@@ -73,6 +73,15 @@
   color: var(--on-ink);
 }
 
+.btn--light {
+  background: var(--on-night, var(--paper));
+  color: var(--night, var(--ink));
+}
+
+.btn--light:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--on-night, var(--paper)) 86%, var(--night, var(--ink)));
+}
+
 .btn--quiet {
   background: transparent;
   color: var(--ink);

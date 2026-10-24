@@ -3,24 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#1c1c1a" />
+    <meta name="theme-color" content="#f3f5f7" />
     <meta name="color-scheme" content="light dark" />
-    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,300..800&family=JetBrains+Mono:wght@300..600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Newsreader:ital,opsz,wght@0,6..72,300..500;1,6..72,300..500&family=JetBrains+Mono:wght@300..600&display=swap"
     />
     <title>Saunas</title>
     <style>
-      #splash { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: #f6f5f1; color: #1c1c1a; will-change: transform; }
+      #splash { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: #f3f5f7; color: #0a1016; will-change: transform; }
       #splash .splash__mark { display: grid; gap: 14px; justify-items: center; font: 600 13px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: 0.3em; text-transform: uppercase; }
-      #splash .splash__track { width: 120px; height: 2px; background: rgba(28, 28, 26, 0.12); overflow: hidden; }
+      #splash .splash__track { width: 120px; height: 2px; background: rgba(45, 74, 56, 0.14); overflow: hidden; }
       #splash .splash__bar { display: block; height: 100%; background: currentColor; transform-origin: 0 50%; transform: scaleX(0.15); animation: splash-load 2.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
       @keyframes splash-load { to { transform: scaleX(0.85); } }
       @media (prefers-color-scheme: dark) {
-        #splash { background: #141413; color: #ecebe6; }
+        #splash { background: #0b1117; color: #edf1f4; }
         #splash .splash__track { background: rgba(236, 235, 230, 0.16); }
       }
       @media (prefers-reduced-motion: reduce) { #splash .splash__bar { animation: none; transform: scaleX(0.6); } }

@@ -41,7 +41,7 @@ async function loadBranding(db: Db, tenant: TenantInfo) {
   if (!b) {
     const { rows: r } = await db.query<{ name: string }>('select name from resellers where id = $1', [tenant.id]);
     return {
-      displayName: r[0]?.name ?? tenant.slug, tagline: null, primaryColor: '#1a1a1a', logoUrl: null, faviconUrl: null,
+      displayName: r[0]?.name ?? tenant.slug, tagline: null, primaryColor: '#5a6b7b', logoUrl: null, faviconUrl: null,
       supportEmail: null, supportPhone: null, legalName: null, legalAddress: null, vatDisplay: 'INCLUDED' as const,
     };
   }

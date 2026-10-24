@@ -16,7 +16,8 @@ gsap.registerPlugin(useGSAP, ScrambleTextPlugin, SplitText, Flip, ScrollTrigger,
 /** House easings: a long, confident deceleration and a symmetric in-out. */
 CustomEase.create('sk.out', 'M0,0 C0.16,1 0.3,1 1,1');
 CustomEase.create('sk.inOut', 'M0,0 C0.65,0 0.35,1 1,1');
-CustomEase.create('sk.snap', 'M0,0 C0.5,0 0.1,1 1,1');
+CustomEase.create('sk.snap', 'M0,0 C0.625,0.05 0,1 1,1');
+CustomEase.create('sk.outSoft', 'M0,0 C0.22,1 0.36,1 1,1');
 
 gsap.defaults({ ease: 'sk.out', duration: 0.8 });
 ScrollTrigger.config({ ignoreMobileResize: true });

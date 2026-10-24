@@ -6,6 +6,7 @@ import { useInView } from '../design/useInView.ts';
 import { Button, IconButton } from '../design/components/Button.tsx';
 import { LazyImage } from '../design/components/LazyImage.tsx';
 import { ErrorBoundary } from '../design/components/ErrorBoundary.tsx';
+import { invalidateAssetSession, useAssetSession } from '../api/assetSession.ts';
 import { SaunaGlyph } from '../storefront/components/SaunaGlyph.tsx';
 import type { ViewerOptions, ViewerSpecs } from './types.ts';
 import './ViewerSlot.css';
@@ -28,6 +29,8 @@ interface Props {
   options: ViewerOptions;
   lowUrl: string | null;
   highUrl: string | null;
+  /** On the share page: asks for FULL asset cookies with the token. */
+  shareToken?: string;
   allowHigh: boolean;
   thumbnailUrl: string | null;
   /** Start loading without waiting for the slot to scroll into view. */
@@ -40,7 +43,7 @@ interface Props {
  * progress, and the 3D chunk is requested only when the slot is near the
  * viewport (or on demand with data saver).
  */
-export function ViewerSlot({ name, specs, options, lowUrl, highUrl, allowHigh, thumbnailUrl, eager }: Props) {
+export function ViewerSlot({ name, specs, options, lowUrl, highUrl, allowHigh, thumbnailUrl, eager, shareToken }: Props) {
   const { t } = useT();
   const [ref, inView] = useInView<HTMLDivElement>('100px');
   const [requested, setRequested] = useState(false);
@@ -51,9 +54,12 @@ export function ViewerSlot({ name, specs, options, lowUrl, highUrl, allowHigh, t
   const [full, setFull] = useState(false);
   const stage = useRef<HTMLDivElement>(null);
   const saveData = prefersSaveData();
-  const load = webgl && (requested || ((inView || eager) && !saveData));
-
+  const wanted = webgl && (requested || (Boolean(inView || eager) && !saveData));
   const hasGlb = Boolean(lowUrl ?? highUrl);
+  // Signed asset cookies must be in place before the first GLB request.
+  const assetsReady = useAssetSession(wanted && hasGlb, shareToken);
+  const load = wanted && (!hasGlb || assetsReady);
+  const retried = useRef(false);
   const onProgress = useCallback(
     (p: number, active: boolean) => {
       setProgress({ p, active });
@@ -87,7 +93,22 @@ export function ViewerSlot({ name, specs, options, lowUrl, highUrl, allowHigh, t
           {placeholder}
         </div>
         {load && (
-          <ErrorBoundary fallback={() => <p className="vslot__note">{t('three.noWebgl')}</p>}>
+          <ErrorBoundary
+            fallback={(_e, reset) => {
+              // A 403 on a model usually means expired or missing asset cookies: re-issue once and retry.
+              if (hasGlb && !retried.current) {
+                retried.current = true;
+                invalidateAssetSession();
+                // drei caches the failed load per URL: clear it, then remount.
+                void import('@react-three/drei').then(m => {
+                  for (const u of [lowUrl, highUrl]) if (u) m.useGLTF.clear(u);
+                  reset();
+                });
+                return null;
+              }
+              return <p className="vslot__note">{t('three.noWebgl')}</p>;
+            }}
+          >
             <Suspense fallback={null}>
               <div className="vslot__canvas">
                 <SaunaViewer specs={specs} options={options} lowUrl={lowUrl} highUrl={highUrl} allowHigh={allowHigh} label={t('three.canvasLabel', { name })} onProgress={onProgress} resetKey={resetKey} />

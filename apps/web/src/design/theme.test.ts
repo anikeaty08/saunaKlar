@@ -15,7 +15,7 @@ describe('colour maths', () => {
 });
 
 describe('deriveTheme', () => {
-  const brands = ['#1c1c1a', '#1d4ed8', '#fde047', '#16a34a', '#be123c', '#ffffff', '#000000'];
+  const brands = ['#5a6b7b', '#2d4a38', '#1c1c1a', '#1a1a1a', '#1d4ed8', '#fde047', '#16a34a', '#be123c', '#ffffff', '#000000'];
 
   it('keeps ink readable on paper in both modes for any brand colour', () => {
     for (const b of brands) {
@@ -25,6 +25,9 @@ describe('deriveTheme', () => {
       // Muted text (ink-3) still meets AA for body copy.
       expect(contrast(t.light['--ink-3']!, t.light['--paper']!)).toBeGreaterThan(4.5);
       expect(contrast(t.dark['--ink-3']!, t.dark['--paper']!)).toBeGreaterThan(4.5);
+      // …also on raised surfaces (cards, sidebars).
+      expect(contrast(t.light['--ink-3']!, t.light['--paper-2']!)).toBeGreaterThan(4.5);
+      expect(contrast(t.dark['--ink-3']!, t.dark['--paper-2']!)).toBeGreaterThan(4.5);
     }
   });
 
@@ -43,7 +46,12 @@ describe('deriveTheme', () => {
     for (let i = 1; i < ls.length; i++) expect(ls[i]!).toBeGreaterThan(ls[i - 1]!);
   });
 
+  it('tints surfaces with the hue instead of pure grey', () => {
+    const t = deriveTheme('#2d4a38').light;
+    for (const k of ['--paper', '--paper-2', '--line'] as const) expect(rgbToOklch(parseHex(t[k]!)!).c, k).toBeGreaterThan(0.005);
+  });
+
   it('falls back to the default for invalid input', () => {
-    expect(deriveTheme('nope').light['--ink']).toBe(deriveTheme('#1c1c1a').light['--ink']);
+    expect(deriveTheme('nope').light['--ink']).toBe(deriveTheme('#5a6b7b').light['--ink']);
   });
 });

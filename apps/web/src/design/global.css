@@ -1,27 +1,35 @@
 /*
  * Global foundation. Colour tokens (--ink, --paper, ...) are injected at
  * runtime by applyTheme() from the tenant's single brand colour; the values
- * below are the default (#1c1c1a) so the first paint is already correct.
+ * below are the platform default (slate #5a6b7b) so the first paint is already correct.
  */
 :root {
-  --brand: #1c1c1a;
-  --ink: #1c1c1a;
-  --ink-2: #3a3a37;
-  --ink-3: #575753;
-  --ink-4: #82827d;
-  --ink-5: #adada8;
-  --ink-6: #d1d1cc;
-  --paper: #f7f7f4;
-  --paper-2: #efefeb;
-  --paper-3: #e7e7e2;
-  --line: #dcdcd6;
-  --line-strong: #b4b4ae;
-  --on-ink: #f7f7f4;
-  --focus: #34342f;
+  --ink: #0a1016;
+  --ink-2: #1b242c;
+  --ink-3: #47525c;
+  --ink-4: #74808b;
+  --ink-5: #b4bdc6;
+  --ink-6: #e3e7eb;
+  --paper: #f3f5f7;
+  --paper-2: #e9edf1;
+  --paper-3: #e3e7eb;
+  --card: #ffffff;
+  --line: #d8dfe5;
+  --line-strong: #b4bdc6;
+  --on-ink: #f3f5f7;
+  --focus: #74808b;
+  --accent: #5a6b7b;
+  --night: #0a1016;
+  --night-2: #1b242c;
+  --on-night: #f3f5f7;
+  --night-muted: #8d99a4;
+  --night-line: #2a333c;
+  --brand: #5a6b7b;
   color-scheme: light dark;
 
-  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-body: 'Bricolage Grotesque', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: 'Newsreader', Georgia, 'Times New Roman', serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 
   /* Fluid type scale (360px → 1440px). */
@@ -57,6 +65,8 @@
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-snap: cubic-bezier(0.625, 0.05, 0, 1);
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --dur-1: 120ms;
   --dur-2: 240ms;
   --dur-3: 480ms;
@@ -72,20 +82,27 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --brand: #1c1c1a;
-    --ink: #eeeeea;
-    --ink-2: #d2d2ce;
-    --ink-3: #aeaeaa;
-    --ink-4: #868682;
-    --ink-5: #5d5d5a;
-    --ink-6: #3c3c3a;
-    --paper: #161614;
-    --paper-2: #1d1d1b;
-    --paper-3: #252523;
-    --line: #2f2f2c;
-    --line-strong: #4a4a46;
-    --on-ink: #161614;
-    --focus: #dcdcd8;
+    --ink: #edf1f4;
+    --ink-2: #ccd2d7;
+    --ink-3: #a3acb5;
+    --ink-4: #77828c;
+    --ink-5: #47515a;
+    --ink-6: #272f36;
+    --paper: #0b1117;
+    --paper-2: #121920;
+    --paper-3: #1b232a;
+    --card: #151d24;
+    --line: #293139;
+    --line-strong: #4a545d;
+    --on-ink: #0b1117;
+    --focus: #95a0aa;
+    --accent: #8a9aaa;
+    --night: #03080d;
+    --night-2: #0f171e;
+    --on-night: #edf1f4;
+    --night-muted: #8f9aa4;
+    --night-line: #1f272f;
+    --brand: #5a6b7b;
   }
 }
 
@@ -119,7 +136,7 @@ body {
 
 ::selection {
   background: var(--ink);
-  color: var(--on-ink);
+  color: var(--paper);
 }
 
 img,
@@ -194,7 +211,7 @@ hr {
 :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 3px;
-  border-radius: var(--radius);
+  border-radius: 4px;
 }
 
 :focus:not(:focus-visible) {

@@ -15,6 +15,8 @@
 
 .lazy-img__img,
 .lazy-img picture {
+  /* Block, not inline: an inline img leaves a descender gap under it. */
+  display: block;
   width: 100%;
   height: 100%;
 }

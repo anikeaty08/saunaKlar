@@ -11,6 +11,7 @@ import { Button } from '../design/components/Button.tsx';
 import { Input } from '../design/components/Field.tsx';
 import { Icon } from '../design/components/Icon.tsx';
 import { useDocumentTitle } from '../app/useDocumentTitle.ts';
+import { Credit } from '../design/components/Credit.tsx';
 import { qrMatrix } from './qr.ts';
 import './staff.css';
 
@@ -169,6 +170,7 @@ export function StaffLogin({ title, brand, notice, onSignedIn }: { title: string
             </Button>
           )}
         </form>
+        <Credit quiet copyright={false} className="staff-login__credit" />
       </div>
     </div>
   );
