@@ -511,14 +511,15 @@ function roomSvg(r) {
 
 function modelThumbSvg(m) {
   const W = 1600;
-  const H = 1200;
+  // 4:3.4, the storefront card's aspect ratio, so the drawing is never cropped.
+  const H = 1360;
   const spec = [m.widthMm && `${nf(m.widthMm)} × ${nf(m.depthMm)} × ${nf(m.heightMm)} mm`, m.persons && `${m.persons} persons`].filter(Boolean).join('  ·  ');
   return frame(W, H, `
     <text x="72" y="96" font-family="${MONO}" font-size="24" letter-spacing="3" fill="${INK}" opacity="0.7">${esc((m.manufacturer ?? '').toUpperCase())}</text>
     <text x="${W - 72}" y="96" font-family="${MONO}" font-size="24" letter-spacing="3" fill="${INK}" opacity="0.7" text-anchor="end">${esc(m.sku ?? '')}</text>
-    <line x1="72" y1="900" x2="${W - 72}" y2="900" stroke="${INK}" stroke-width="2"/>
-    ${saunaDrawing(m, { x: 260, y: 170, w: W - 520, h: 730 })}
-    ${caption(72, 1060, { title: m.name, spec, size: 96 })}`);
+    <line x1="72" y1="1010" x2="${W - 72}" y2="1010" stroke="${INK}" stroke-width="2"/>
+    ${saunaDrawing(m, { x: 240, y: 170, w: W - 480, h: 840 })}
+    ${caption(72, 1190, { title: m.name, spec, size: 96 })}`);
 }
 
 function modelInteriorSvg(m) {

@@ -103,10 +103,14 @@ describe('rule 12: tenant isolation', () => {
       currencies: (await c.query<{ c: string }>('SELECT DISTINCT currency_code AS c FROM sauna_model_prices')).rows.map(r => r.c),
       helsinki: await count(c, 'SELECT 1 FROM sauna_model_option_groups WHERE sauna_model_id = $1', [M('helsinki-studio')]),
       rooms: await count(c, 'SELECT 1 FROM room_scenes'),
-      espooAssets: await count(c, 'SELECT 1 FROM assets'),
+      espooAssets: await count(c, `SELECT 1 FROM assets WHERE storage_key LIKE '%/espoo-compact/%'`),
+      assets: await count(c, 'SELECT 1 FROM assets'),
     }));
-    expect(gamma).toEqual({ currencies: ['SEK'], helsinki: 0, rooms: 1, espooAssets: 0 });
-    expect(await tenant(env, BETA, c => count(c, 'SELECT 1 FROM assets'))).toBe(4); // beta offers espoo-compact
+    // Gamma offers lappi-barrel, oulu-corner and kuopio-cube (6 assets each), the basement-spa room
+    // (1 thumbnail) and the 19 options those models carry (1 thumbnail each); nothing of Espoo.
+    expect(gamma).toEqual({ currencies: ['SEK'], helsinki: 0, rooms: 1, espooAssets: 0, assets: 3 * 6 + 1 + 19 });
+    // Beta offers espoo-compact: its 4 sample files plus 2 gallery images.
+    expect(await tenant(env, BETA, c => count(c, `SELECT 1 FROM assets WHERE storage_key LIKE '%/espoo-compact/%'`))).toBe(6);
   });
 
   it('lets a tenant change its own visibility, order, share expiry and branding only', async () => {

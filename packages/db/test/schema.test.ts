@@ -87,13 +87,18 @@ describe('dev seed', () => {
   it('links the Espoo Compact sample asset set by tier prefix', async () => {
     const { rows } = await env.owner.query<{ asset_role: string; storage_key: string }>(
       `SELECT a.asset_role, s.storage_key FROM sauna_model_assets a JOIN assets s ON s.id = a.asset_id
-       WHERE a.sauna_model_id = $1 ORDER BY a.asset_role`, [SEED.models('espoo-compact')]);
+       WHERE a.sauna_model_id = $1 AND a.asset_role <> 'MODEL_GALLERY' ORDER BY a.asset_role`, [SEED.models('espoo-compact')]);
     expect(rows).toEqual([
       { asset_role: 'MODEL_AR_GLB', storage_key: 'assets/hi/catalog/espoo-compact/ar-9f3c2a.glb' },
       { asset_role: 'MODEL_GLB_HIGH', storage_key: 'assets/hi/catalog/espoo-compact/high-9f3c2a.glb' },
       { asset_role: 'MODEL_GLB_LOW', storage_key: 'assets/lo/catalog/espoo-compact/low-4b1e7d.glb' },
       { asset_role: 'MODEL_THUMBNAIL', storage_key: 'media/catalog/espoo-compact/thumb-1a2b3c.webp' },
     ]);
+    const gallery = await env.owner.query<{ position: number; storage_key: string }>(
+      `SELECT a.position, s.storage_key FROM sauna_model_assets a JOIN assets s ON s.id = a.asset_id
+       WHERE a.sauna_model_id = $1 AND a.asset_role = 'MODEL_GALLERY' ORDER BY a.position`, [SEED.models('espoo-compact')]);
+    expect(gallery.rows.map(r => r.position)).toEqual([0, 1]);
+    for (const r of gallery.rows) expect(r.storage_key).toMatch(/^media\/catalog\/espoo-compact\/gallery-\d-[0-9a-f]{6}\.webp$/);
   });
 
   it('rejects a protected role whose file sits under the public prefix (ASSET_TIER_MISMATCH)', async () => {
