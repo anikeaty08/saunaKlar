@@ -95,14 +95,14 @@ describe('mail templates', () => {
   });
 });
 
+    // The Swiss grouping mark depends on the runtime's ICU/CLDR data (', ’ or a narrow space), so any of them is accepted.
 describe('formatting', () => {
-    // The Swiss grouping mark depends on the runtime's ICU data: ' in some Node builds, ’ in others.
   it('formats money from minor units with Swiss conventions', () => {
-    expect(formatMoney(1234550, 'CHF', 'de')).toMatch(/^CHF\s12['’]345\.50$/);
-    expect(formatMoney(1234550, 'CHF', 'fr')).toMatch(/^12\s345\.50\sCHF$/);
-    expect(formatMoney(1234550, 'EUR', 'it')).toMatch(/12['’]345\.50/);
-    expect(formatMoney(1234550, 'CHF', 'rm')).toMatch(/12['’]345\.50\sCHF/);
-    expect(formatMoney(12345, 'JPY', 'en')).toMatch(/12['’]345$/); // zero-decimal currency: minor = major
+    expect(formatMoney(1234550, 'CHF', 'de')).toMatch(/^CHF\s12[\s'’]345\.50$/);
+    expect(formatMoney(1234550, 'CHF', 'fr')).toMatch(/^12[\s'’]345\.50\sCHF$/);
+    expect(formatMoney(1234550, 'EUR', 'it')).toMatch(/12[\s'’]345\.50/);
+    expect(formatMoney(1234550, 'CHF', 'rm')).toMatch(/12[\s'’]345\.50\sCHF/);
+    expect(formatMoney(12345, 'JPY', 'en')).toMatch(/12[\s'’]345$/); // zero-decimal currency: minor = major
   });
 
   it('formats dates per locale', () => {
