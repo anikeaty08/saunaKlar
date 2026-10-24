@@ -166,13 +166,14 @@ const ROOMS = [
 
 interface ResellerDef {
   key: 'alpha' | 'beta' | 'gamma'; name: string; currency: Cur; status: 'ACTIVE' | 'SUSPENDED';
-  branding: { display: string; tagline: string; color: string; email: string; phone: string; legalName: string; legalAddress: string };
+  branding: { display: string; tagline: string; color: string; email: string; phone: string; legalName: string; legalAddress: string;
+    layout: 'atelier' | 'showroom' | 'nordic' | 'catalogue' | 'journal' };
   saunas: { slug: string; visible?: boolean; discount?: Discount }[];
   defaultDiscount?: Discount; rooms: string[]; owner: { key: keyof typeof SEED.staff; email: string; name: string };
 }
 const RESELLERS: ResellerDef[] = [
   { key: 'alpha', name: 'Alpha Spa & Sauna GmbH', currency: 'EUR', status: 'ACTIVE',
-    branding: { display: 'Alpha Spa', tagline: 'Finnish saunas, built for your garden', color: '#1f2a24', email: 'support@alpha.test', phone: '+49 30 1234567', legalName: 'Alpha Spa & Sauna GmbH', legalAddress: 'Gartenstraße 12, 10115 Berlin, Germany' },
+    branding: { display: 'Alpha Spa', tagline: 'Finnish saunas, built for your garden', color: '#1f2a24', email: 'support@alpha.test', phone: '+49 30 1234567', legalName: 'Alpha Spa & Sauna GmbH', legalAddress: 'Gartenstraße 12, 10115 Berlin, Germany', layout: 'atelier' },
     saunas: [
       { slug: 'espoo-compact', discount: { type: 'FIXED', value: 50000 } },
       { slug: 'lappi-barrel', discount: { type: 'PERCENT', value: 800 } },
@@ -183,7 +184,7 @@ const RESELLERS: ResellerDef[] = [
     defaultDiscount: { type: 'PERCENT', value: 1000 }, rooms: ['garden-deck', 'basement-spa', 'lakeside-terrace'],
     owner: { key: 'alphaOwner', email: 'owner@alpha.test', name: 'Anton Albrecht' } },
   { key: 'beta', name: 'Beta Wellness AG', currency: 'CHF', status: 'ACTIVE',
-    branding: { display: 'Beta Wellness', tagline: 'Swiss calm, Nordic heat', color: '#2b2440', email: 'support@beta.test', phone: '+41 44 123 45 67', legalName: 'Beta Wellness AG', legalAddress: 'Seestrasse 5, 8002 Zürich, Switzerland' },
+    branding: { display: 'Beta Wellness', tagline: 'Swiss calm, Nordic heat', color: '#2b2440', email: 'support@beta.test', phone: '+41 44 123 45 67', legalName: 'Beta Wellness AG', legalAddress: 'Seestrasse 5, 8002 Zürich, Switzerland', layout: 'showroom' },
     saunas: [
       { slug: 'espoo-compact' }, { slug: 'turku-panorama' }, { slug: 'kuopio-cube' },
       { slug: 'helsinki-studio', discount: { type: 'PERCENT', value: 500 } },
@@ -191,7 +192,7 @@ const RESELLERS: ResellerDef[] = [
     rooms: ['garden-deck', 'lakeside-terrace'],
     owner: { key: 'betaOwner', email: 'owner@beta.test', name: 'Beatrice Brunner' } },
   { key: 'gamma', name: 'Gamma Bastu AB', currency: 'SEK', status: 'SUSPENDED',
-    branding: { display: 'Gamma Bastu', tagline: 'Bastu för hela familjen', color: '#3a2a1c', email: 'support@gamma.test', phone: '+46 8 123 456 78', legalName: 'Gamma Bastu AB', legalAddress: 'Strandvägen 7, 114 56 Stockholm, Sweden' },
+    branding: { display: 'Gamma Bastu', tagline: 'Bastu för hela familjen', color: '#3a2a1c', email: 'support@gamma.test', phone: '+46 8 123 456 78', legalName: 'Gamma Bastu AB', legalAddress: 'Strandvägen 7, 114 56 Stockholm, Sweden', layout: 'nordic' },
     saunas: [{ slug: 'lappi-barrel' }, { slug: 'oulu-corner' }, { slug: 'kuopio-cube' }],
     defaultDiscount: { type: 'FIXED', value: 100000 }, rooms: ['basement-spa'],
     owner: { key: 'gammaOwner', email: 'owner@gamma.test', name: 'Gustav Gran' } },
@@ -359,8 +360,8 @@ async function seedTenants(db: Db): Promise<void> {
     await q(db, `INSERT INTO resellers (id, manufacturer_id, slug, name, currency_code, status) VALUES ($1, $2, $3, $4, $5, $6)`,
       [rid, SEED.manufacturerId, r.key, r.name, r.currency, r.status]);
     const b = r.branding;
-    await q(db, `INSERT INTO reseller_branding (reseller_id, display_name, tagline, primary_color, support_email, support_phone, legal_name, legal_address)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [rid, b.display, b.tagline, b.color, b.email, b.phone, b.legalName, b.legalAddress]);
+    await q(db, `INSERT INTO reseller_branding (reseller_id, display_name, tagline, primary_color, support_email, support_phone, legal_name, legal_address, storefront_layout)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [rid, b.display, b.tagline, b.color, b.email, b.phone, b.legalName, b.legalAddress, b.layout]);
     const sid = SEED.staff[r.owner.key];
     await q(db, `INSERT INTO staff_users (id, email, display_name, idp_subject, status) VALUES ($1, $2, $3, $4, 'ACTIVE')`,
       [sid, r.owner.email, r.owner.name, seedId(`idp:${r.owner.email}`)]);

@@ -9188,6 +9188,16 @@
               "EXCLUDED",
               "NONE"
             ]
+          },
+          "storefrontLayout": {
+            "type": "string",
+            "enum": [
+              "atelier",
+              "showroom",
+              "nordic",
+              "catalogue",
+              "journal"
+            ]
           }
         },
         "required": [
@@ -9200,7 +9210,8 @@
           "supportPhone",
           "legalName",
           "legalAddress",
-          "vatDisplay"
+          "vatDisplay",
+          "storefrontLayout"
         ],
         "additionalProperties": false
       },
@@ -9818,6 +9829,16 @@
               "INCLUDED",
               "EXCLUDED",
               "NONE"
+            ]
+          },
+          "storefrontLayout": {
+            "type": "string",
+            "enum": [
+              "atelier",
+              "showroom",
+              "nordic",
+              "catalogue",
+              "journal"
             ]
           }
         }
@@ -14967,6 +14988,16 @@
                   "EXCLUDED",
                   "NONE"
                 ]
+              },
+              "storefrontLayout": {
+                "type": "string",
+                "enum": [
+                  "atelier",
+                  "showroom",
+                  "nordic",
+                  "catalogue",
+                  "journal"
+                ]
               }
             },
             "required": [
@@ -14979,7 +15010,27 @@
               "supportPhone",
               "legalName",
               "legalAddress",
-              "vatDisplay"
+              "vatDisplay",
+              "storefrontLayout"
+            ],
+            "additionalProperties": false
+          },
+          "manufacturer": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "website": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "website"
             ],
             "additionalProperties": false
           }
@@ -14991,7 +15042,8 @@
           "currency",
           "catalogVersion",
           "defaultShareExpiryDays",
-          "branding"
+          "branding",
+          "manufacturer"
         ],
         "additionalProperties": false
       },

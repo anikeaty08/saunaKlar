@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
 import { calculatePrice, type Discount } from '@saunaklar/pricing';
-import { UPLOAD_LIMITS, routes, type AdminSauna, type Analytics } from '@saunaklar/shared';
+import { UPLOAD_LIMITS, routes, type AdminSauna, type Analytics, type StorefrontLayout } from '@saunaklar/shared';
 import { processBrandingUpload } from '../adapters/images.ts';
 import { originFor } from '../config.ts';
 import type { AppEnv, Ctx, Db, TenantInfo } from '../context.ts';
@@ -26,13 +26,13 @@ const UPLOAD_TTL_SECONDS = 600;
 interface BrandingRow {
   display_name: string; tagline: string | null; primary_color: string; logo: string | null; favicon: string | null;
   support_email: string | null; support_phone: string | null; legal_name: string | null; legal_address: string | null;
-  vat_display: 'INCLUDED' | 'EXCLUDED' | 'NONE';
+  vat_display: 'INCLUDED' | 'EXCLUDED' | 'NONE'; storefront_layout: StorefrontLayout;
 }
 
 async function loadBranding(db: Db, tenant: TenantInfo) {
   const { rows } = await db.query<BrandingRow>(
     `select b.display_name, b.tagline, b.primary_color, l.storage_key as logo, f.storage_key as favicon,
-            b.support_email, b.support_phone, b.legal_name, b.legal_address, b.vat_display
+            b.support_email, b.support_phone, b.legal_name, b.legal_address, b.vat_display, b.storefront_layout
        from reseller_branding b
        left join assets l on l.id = b.logo_asset_id
        left join assets f on f.id = b.favicon_asset_id
@@ -43,19 +43,21 @@ async function loadBranding(db: Db, tenant: TenantInfo) {
     return {
       displayName: r[0]?.name ?? tenant.slug, tagline: null, primaryColor: '#5a6b7b', logoUrl: null, faviconUrl: null,
       supportEmail: null, supportPhone: null, legalName: null, legalAddress: null, vatDisplay: 'INCLUDED' as const,
+      storefrontLayout: 'atelier' as const,
     };
   }
   return {
     displayName: b.display_name, tagline: b.tagline, primaryColor: b.primary_color.trim(), logoUrl: assetUrl(b.logo), faviconUrl: assetUrl(b.favicon),
     supportEmail: b.support_email, supportPhone: b.support_phone, legalName: b.legal_name, legalAddress: b.legal_address, vatDisplay: b.vat_display,
+    storefrontLayout: b.storefront_layout,
   };
 }
 
 /** Creates the branding row on first edit, so every later write is a plain update. */
 async function ensureBranding(db: Db, tenant: TenantInfo): Promise<void> {
   await db.query(
-    `insert into reseller_branding (reseller_id, display_name)
-     select r.id, r.name from resellers r where r.id = $1
+    `insert into reseller_branding (reseller_id, display_name, storefront_layout)
+     select r.id, r.name, 'atelier' from resellers r where r.id = $1
      on conflict (reseller_id) do nothing`, [tenant.id]);
 }
 
@@ -227,6 +229,7 @@ export function registerAdmin(app: Hono<AppEnv>): void {
       if (body.legalName !== undefined) set('legal_name', body.legalName || null);
       if (body.legalAddress !== undefined) set('legal_address', body.legalAddress || null);
       if (body.vatDisplay !== undefined) set('vat_display', body.vatDisplay);
+      if (body.storefrontLayout !== undefined) set('storefront_layout', body.storefrontLayout);
       if (sets.length) await db.query(`update reseller_branding set ${sets.join(', ')}, updated_at = now() where reseller_id = $1`, vals);
       return loadBranding(db, tenant);
     });

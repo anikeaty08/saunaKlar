@@ -15,7 +15,10 @@ route table and its Zod schemas.
 Each operation has an `x-host` field and its own `servers` entry. A route called on the wrong host
 returns `404`. An unknown subdomain returns `TENANT_NOT_FOUND`, and a suspended reseller returns
 `TENANT_SUSPENDED`. `GET /api/tenant` returns the reseller's branding, currency and current
-`catalogVersion` (`Cache-Control: max-age=60`).
+`catalogVersion` (`Cache-Control: max-age=60`). The branding includes `storefrontLayout`, one of
+`atelier` (default), `showroom`, `nordic`, `catalogue` or `journal`, which reseller staff set with
+`PATCH /api/admin/branding`. `manufacturer` (`{ name, website }`) names the manufacturer the
+reseller is an authorised reseller of; `website` is `null` until the manufacturer record has one.
 
 ## Sessions (BFF cookies)
 

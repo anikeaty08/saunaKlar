@@ -13,6 +13,11 @@ describe('tenant routing', () => {
     expect(r.body.slug).toBe('alpha');
     expect(r.body.currency).toBe('EUR');
     expect(r.body.branding.displayName).toBe('Alpha Spa');
+    expect(r.body.branding.storefrontLayout).toBe('atelier');
+    expect(r.body.manufacturer).toEqual({ name: 'Nordlicht Saunabau', website: null });
+    const beta = (await h.client('beta.localhost').get('/api/tenant')).body;
+    expect(beta.branding.storefrontLayout).toBe('showroom');
+    expect(beta.manufacturer.name).toBe('Nordlicht Saunabau');
     expect(r.headers.get('cache-control')).toContain('max-age=60');
   });
 

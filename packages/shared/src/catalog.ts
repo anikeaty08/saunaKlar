@@ -2,6 +2,10 @@ import { z } from 'zod';
 import { basisPoints, currencyCode, discount, hexColor, isoDateTime, minorUnits, slug, uuid } from './common.ts';
 
 /** GET /api/tenant — public, cached 60 s. */
+/** Storefront layouts a reseller can choose (reseller_branding.storefront_layout). */
+export const storefrontLayout = z.enum(['atelier', 'showroom', 'nordic', 'catalogue', 'journal']);
+export type StorefrontLayout = z.infer<typeof storefrontLayout>;
+
 export const tenantSchema = z.object({
   id: uuid,
   slug,
@@ -20,6 +24,12 @@ export const tenantSchema = z.object({
     legalName: z.string().nullable(),
     legalAddress: z.string().nullable(),
     vatDisplay: z.enum(['INCLUDED', 'EXCLUDED', 'NONE']),
+    storefrontLayout,
+  }),
+  /** The reseller's manufacturer, for "Authorised reseller of …". */
+  manufacturer: z.object({
+    name: z.string(),
+    website: z.string().nullable(),
   }),
 });
 export type Tenant = z.infer<typeof tenantSchema>;

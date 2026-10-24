@@ -182,6 +182,34 @@ describe('platform, worker and catalog roles', () => {
   });
 });
 
+describe('storefront layout and manufacturer', () => {
+  const layout = (r: string) => (c: pg.PoolClient) => one<{ l: string }>(c, 'SELECT storefront_layout AS l FROM reseller_branding WHERE reseller_id = $1', [r]).then(x => x.l);
+
+  it('seeds distinct layouts; a tenant changes only its own; the CHECK allows the five layouts only', async () => {
+    expect(await tenant(env, ALPHA, layout(ALPHA))).toBe('atelier');
+    expect(await tenant(env, BETA, layout(BETA))).toBe('showroom');
+    expect(await one(env.owner, 'SELECT storefront_layout AS l FROM reseller_branding WHERE reseller_id = $1', [GAMMA])).toEqual({ l: 'nordic' });
+    await tenant(env, ALPHA, async c => {
+      await c.query(`UPDATE reseller_branding SET storefront_layout = 'catalogue' WHERE reseller_id = $1`, [ALPHA]);
+      expect(await layout(ALPHA)(c)).toBe('catalogue');
+      // Beta's row is invisible to alpha: the update matches nothing.
+      expect((await c.query(`UPDATE reseller_branding SET storefront_layout = 'journal' WHERE reseller_id = $1`, [BETA])).rowCount).toBe(0);
+      await c.query(`UPDATE reseller_branding SET storefront_layout = 'atelier' WHERE reseller_id = $1`, [ALPHA]);
+    });
+    expect(await tenant(env, BETA, layout(BETA))).toBe('showroom');
+    await expectCode(tenant(env, ALPHA, c => c.query(`UPDATE reseller_branding SET storefront_layout = 'brutalist' WHERE reseller_id = $1`, [ALPHA])),
+      'CHECK_VIOLATION');
+    const col = await one(env.owner, `SELECT column_default AS d, is_nullable AS n FROM information_schema.columns
+                                       WHERE table_name = 'reseller_branding' AND column_name = 'storefront_layout'`);
+    expect(col).toEqual({ d: "'atelier'::text", n: 'NO' });
+  });
+
+  it('a tenant reads its manufacturer name through its reseller', async () => {
+    const m = await tenant(env, ALPHA, c => one(c, 'SELECT m.name FROM resellers r JOIN manufacturers m ON m.id = r.manufacturer_id'));
+    expect(m).toEqual({ name: 'Nordlicht Saunabau' });
+  });
+});
+
 describe('SECURITY DEFINER API functions', () => {
   it('search_customer_ids searches the current tenant only, honours the customer actor, escapes LIKE and pages', async () => {
     const ids = (r: pg.QueryResult) => r.rows.map(x => x.id as string);

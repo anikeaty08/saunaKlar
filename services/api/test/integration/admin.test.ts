@@ -44,6 +44,20 @@ describe('reseller admin: branding', () => {
     expect((await c.get('/api/admin/branding')).body.tagline).toBe('Saunas for every garden');
   });
 
+  it('sets the storefront layout and the storefront tenant reflects it', async () => {
+    const c = await alphaStaff();
+    expect((await c.get('/api/admin/branding')).body.storefrontLayout).toBe('atelier');
+    const r = await c.patch('/api/admin/branding', { storefrontLayout: 'journal' });
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    expect(r.body.storefrontLayout).toBe('journal');
+    expect((await h.client('alpha.localhost').get('/api/tenant')).body.branding.storefrontLayout).toBe('journal');
+    const bad = await c.patch('/api/admin/branding', { storefrontLayout: 'brutalist' });
+    expect(bad.status).toBe(422);
+    expect(bad.body.code).toBe('VALIDATION_FAILED');
+    expect((await c.get('/api/admin/branding')).body.storefrontLayout).toBe('journal');
+    expect((await c.patch('/api/admin/branding', { storefrontLayout: 'atelier' })).status).toBe(200);
+  });
+
   it('rejects an invalid colour', async () => {
     const c = await alphaStaff();
     const r = await c.patch('/api/admin/branding', { primaryColor: 'red' });

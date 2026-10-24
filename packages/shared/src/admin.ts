@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { basisPoints, discount, hexColor, isoDateTime, minorUnits, uuid } from './common.ts';
-import { tenantSchema } from './catalog.ts';
+import { storefrontLayout, tenantSchema } from './catalog.ts';
 
 // ---- Reseller admin: /api/admin/* on the reseller's own host -------------
 
@@ -14,6 +14,7 @@ export const brandingPatch = z.object({
   legalName: z.string().trim().max(200).nullable().optional(),
   legalAddress: z.string().trim().max(500).nullable().optional(),
   vatDisplay: z.enum(['INCLUDED', 'EXCLUDED', 'NONE']).optional(),
+  storefrontLayout: storefrontLayout.optional(),
 });
 
 export const uploadKind = z.enum(['LOGO', 'FAVICON']);
