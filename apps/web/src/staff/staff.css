@@ -280,11 +280,43 @@
 .staff-login {
   min-height: 100dvh;
   display: grid;
-  place-items: center;
-  padding: var(--space-7) 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: center;
+  justify-items: center;
+  padding: 12px;
+  background: var(--paper);
+}
+
+.staff-login__art {
+  align-self: stretch;
+  justify-self: stretch;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-5);
+  border-radius: clamp(16px, 2vw, 28px);
   background:
-    radial-gradient(120% 80% at 100% 0%, color-mix(in oklab, var(--brand) 14%, transparent), transparent 60%),
-    var(--paper);
+    radial-gradient(90% 70% at 50% 110%, color-mix(in oklab, var(--accent) 45%, transparent), transparent 70%),
+    var(--night);
+  color: var(--on-night);
+}
+
+.staff-login__art-word {
+  font-family: var(--font-serif);
+  font-size: var(--step-4);
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 900px) {
+  .staff-login {
+    grid-template-columns: 1fr;
+    padding: var(--space-7) 16px;
+  }
+
+  .staff-login__art {
+    display: none;
+  }
 }
 
 .staff-login__panel {
@@ -298,10 +330,11 @@
 }
 
 .staff-login__title {
+  font-family: var(--font-serif);
   font-size: var(--step-4);
-  letter-spacing: -0.05em;
-  line-height: 0.95;
-  font-variation-settings: 'wdth' 85;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1;
 }
 
 .staff-login__lede {

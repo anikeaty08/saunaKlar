@@ -260,6 +260,7 @@ export const fr: Messages = {
     contact: 'Contacter {name}',
   },
   auth: {
+    modes: 'Se connecter ou créer un compte',
     loginTitle: 'Bon retour parmi nous',
     loginLede: 'Connectez-vous pour configurer des saunas, conserver votre historique et envoyer des demandes.',
     email: 'E-mail',

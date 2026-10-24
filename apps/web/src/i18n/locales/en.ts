@@ -260,6 +260,7 @@ const messages = {
     contact: 'Contact {name}',
   },
   auth: {
+    modes: 'Sign in or create an account',
     loginTitle: 'Welcome back',
     loginLede: 'Log in to configure saunas, keep your history and send requests.',
     email: 'E-mail',

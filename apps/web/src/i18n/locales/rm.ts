@@ -259,6 +259,7 @@ export const rm: Messages = {
     contact: 'Contactar {name}',
   },
   auth: {
+    modes: 'Annunziar u crear in conto',
     loginTitle: 'Bainvegni anc ina giada',
     loginLede: 'As annunziai per configurar saunas, salvar Vossa istorgia e trametter dumondas.',
     email: 'E-mail',

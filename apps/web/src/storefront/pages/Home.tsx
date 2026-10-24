@@ -15,6 +15,7 @@ import { useDocumentTitle } from '../../app/useDocumentTitle.ts';
 import { SaunaCard, SaunaCardSkeleton, SaunaGrid } from '../components/SaunaCard.tsx';
 import { SaunaGlyph } from '../components/SaunaGlyph.tsx';
 import { DrawOn } from '../components/DrawOn.tsx';
+import { LogoMark } from '../../design/brand/Logo.tsx';
 import { specsOf } from '../components/specs.ts';
 import './Home.css';
 
@@ -29,9 +30,10 @@ export default function Home() {
   useGSAP(
     () => {
       if (prefersReducedMotion()) return;
-      gsap.from('.home-hero__line-inner', { yPercent: 110, duration: 1.2, stagger: 0.1, ease: 'sk.out', delay: 0.15 });
-      gsap.from('.home-hero__after', { autoAlpha: 0, y: 20, duration: 1, stagger: 0.08, delay: 0.7 });
-      gsap.to('.home-hero__scroll-dot', { y: 18, repeat: -1, yoyo: true, duration: 1.1, ease: 'sine.inOut' });
+      gsap.from('.home-hero__line-inner', { yPercent: 110, duration: 1.3, stagger: 0.12, ease: 'sk.snap', delay: 0.45 });
+      gsap.from('.home-hero__after', { autoAlpha: 0, y: 18, duration: 1, stagger: 0.08, ease: 'sk.outSoft', delay: 0.9 });
+      gsap.from('.home-hero__glow', { autoAlpha: 0, scale: 0.85, duration: 2.2, ease: 'sk.outSoft' });
+      gsap.to('.home-hero__scroll-dot', { yPercent: 260, repeat: -1, duration: 1.6, ease: 'sk.snap' });
     },
     { scope: hero },
   );
@@ -44,41 +46,50 @@ export default function Home() {
 
   return (
     <div className="home">
-      <section ref={hero} className="home-hero container">
-        <div className="home-hero__top home-hero__after">
-          <ScrambleText as="p" className="eyebrow" text={`${t('home.eyebrow')} — ${name}`} />
-          <p className="eyebrow">N° {String(tenant.catalogVersion).padStart(3, '0')}</p>
-        </div>
-        <h1 className="home-hero__title">
-          <span className="sr-only">{`${t('home.heroTitleA')} ${t('home.heroTitleB')} ${t('home.heroTitleC')}`}</span>
-          {[t('home.heroTitleA'), t('home.heroTitleB'), t('home.heroTitleC')].map((line, i) => (
-            <span key={i} className={`home-hero__line home-hero__line--${i}`} aria-hidden="true">
-              <span className="home-hero__line-inner">
-                <ScrambleText text={line} delay={0.3 + i * 0.15} aria-hidden="true" />
-              </span>
-            </span>
-          ))}
-        </h1>
-        <div className="home-hero__art" aria-hidden="true">
+      <section ref={hero} className="home-hero">
+        <div className="home-hero__scene" aria-hidden="true">
+          <div className="home-hero__glow" />
           {hs && (
-            <DrawOn delay={0.5}>
-              <SaunaGlyph form={hs.form} widthMm={hs.widthMm} depthMm={hs.depthMm} heightMm={hs.heightMm} strokeWidth={0.9} />
+            <DrawOn delay={0.9} className="home-hero__art">
+              <SaunaGlyph form={hs.form} widthMm={hs.widthMm} depthMm={hs.depthMm} heightMm={hs.heightMm} strokeWidth={0.6} />
             </DrawOn>
           )}
+          <div className="home-hero__floor" />
         </div>
-        <div className="home-hero__foot">
-          <p className="lede home-hero__after">{t('home.heroLede', { name })}</p>
+
+        <div className="home-hero__center container">
+          <LogoMark className="home-hero__mark" size={44} draw delay={0.2} />
+          <ScrambleText as="p" className="eyebrow home-hero__after" text={`${t('home.eyebrow')} — ${name}`} />
+          <h1 className="home-hero__title">
+            <span className="sr-only">{`${t('home.heroTitleA')} ${t('home.heroTitleB')} ${t('home.heroTitleC')}`}</span>
+            {[t('home.heroTitleA'), t('home.heroTitleB'), t('home.heroTitleC')].map((line, i) => (
+              <span key={i} className={`home-hero__line home-hero__line--${i}`} aria-hidden="true">
+                <span className="home-hero__line-inner">{line}</span>
+              </span>
+            ))}
+          </h1>
+          <p className="lede home-hero__lede home-hero__after">{t('home.heroLede', { name })}</p>
           <div className="home-hero__ctas home-hero__after">
             <Magnetic>
               <ButtonLink to="/saunas" size="lg" iconAfter={ArrowRight}>
                 {t('home.ctaPrimary')}
               </ButtonLink>
             </Magnetic>
-            <TextLink to="/how-it-works" tone="underline">
+            <ButtonLink to="/how-it-works" size="lg" variant="ghost">
               {t('home.ctaSecondary')}
-            </TextLink>
+            </ButtonLink>
           </div>
-          <dl className="home-hero__stats home-hero__after">
+        </div>
+
+        <div className="home-hero__base container home-hero__after">
+          <p className="eyebrow">N° {String(tenant.catalogVersion).padStart(3, '0')}</p>
+          <span className="home-hero__scroll" aria-hidden="true">
+            <span className="home-hero__scroll-line">
+              <span className="home-hero__scroll-dot" />
+            </span>
+            <span className="mono">{t('home.scroll')}</span>
+          </span>
+          <dl className="home-hero__stats">
             <div>
               <dt>{t('home.stats.models')}</dt>
               <dd>
@@ -99,10 +110,6 @@ export default function Home() {
             </div>
           </dl>
         </div>
-        <span className="home-hero__scroll home-hero__after" aria-hidden="true">
-          <span className="home-hero__scroll-dot" />
-          <span className="mono">{t('home.scroll')}</span>
-        </span>
       </section>
 
       <section className="section container" aria-labelledby="featured">

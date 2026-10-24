@@ -259,6 +259,7 @@ export const de: Messages = {
     contact: '{name} kontaktieren',
   },
   auth: {
+    modes: 'Anmelden oder Konto erstellen',
     loginTitle: 'Willkommen zurück',
     loginLede: 'Melden Sie sich an, um Saunas zu konfigurieren, Ihren Verlauf zu behalten und Anfragen zu senden.',
     email: 'E-Mail',

@@ -1,13 +1,15 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowRight } from 'lucide-react';
 import { confirmRequest, emailOnlyRequest, loginRequest, resetPasswordRequest, signupRequest } from '@saunaklar/shared';
 import type { z } from 'zod';
 import { api, isApiError } from '../../api/client.ts';
-import { sessionQuery, useTenantData } from '../../api/queries.ts';
+import { sessionQuery, useCatalog, useTenantData } from '../../api/queries.ts';
 import { useT, type TKey } from '../../i18n/i18n.ts';
-import { ScrambleText } from '../../motion/ScrambleText.tsx';
+import { gsap, useGSAP } from '../../motion/gsap.ts';
+import { prefersReducedMotion } from '../../motion/preferences.ts';
+import { LogoMark } from '../../design/brand/Logo.tsx';
 import { Button } from '../../design/components/Button.tsx';
 import { Checkbox, Input } from '../../design/components/Field.tsx';
 import { TextLink } from '../../design/components/TextLink.tsx';
@@ -64,21 +66,84 @@ function useAuthForm<S extends z.ZodType>(schema: S, messages: Partial<Record<st
   return { errors, formError, busy, run };
 }
 
-function AuthFrame({ title, lede, children, foot }: { title: string; lede?: ReactNode; children: ReactNode; foot?: ReactNode }) {
-  const tenant = useTenantData();
-  useDocumentTitle(title);
+/** Sign-in / create-account switch. The active pane re-enters on change. */
+function ModeSwitch({ mode, next }: { mode: 'login' | 'signup'; next: string }) {
+  const { t } = useT();
+  const q = next === '/account' ? '' : `?next=${encodeURIComponent(next)}`;
   return (
-    <div className="auth">
-      <section className="auth__form container">
-        <ScrambleText as="h1" className="auth__title" text={title} />
-        {lede && <p className="auth__lede">{lede}</p>}
-        {children}
-        {foot && <div className="auth__foot">{foot}</div>}
+    <nav className="auth__modes" aria-label={t('auth.modes')} data-login-in>
+      <Link to={`/account/login${q}`} className="auth__mode" aria-current={mode === 'login' ? 'page' : undefined}>
+        {t('nav.login')}
+      </Link>
+      <Link to={`/account/signup${q}`} className="auth__mode" aria-current={mode === 'signup' ? 'page' : undefined}>
+        {t('nav.signup')}
+      </Link>
+      <span className="auth__mode-ink" aria-hidden="true" />
+    </nav>
+  );
+}
+
+/**
+ * Split layout: the form on the left, a visual panel on the right that wipes in
+ * (clip-path) once the form is on screen. The visual is the reseller's first
+ * sauna photo, loaded lazily, over a line drawing of a cabin.
+ */
+function AuthFrame({ title, lede, children, foot, mode }: { title: string; lede?: ReactNode; children: ReactNode; foot?: ReactNode; mode?: 'login' | 'signup' }) {
+  const tenant = useTenantData();
+  const catalog = useCatalog();
+  const [params] = useSearchParams();
+  const { pathname } = useLocation();
+  const root = useRef<HTMLDivElement>(null);
+  useDocumentTitle(title);
+  const photo = catalog.data?.items[0]?.assets.thumbnailUrl;
+
+  useGSAP(
+    () => {
+      if (prefersReducedMotion()) return;
+      gsap.from('[data-login-in]', { y: 24, autoAlpha: 0, duration: 0.9, ease: 'sk.outSoft', stagger: 0.07, delay: 0.05, clearProps: 'all' });
+    },
+    { scope: root, dependencies: [pathname] },
+  );
+  useGSAP(
+    () => {
+      if (prefersReducedMotion()) return;
+      gsap.fromTo('.auth__art', { clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)', duration: 1.4, ease: 'expo.inOut', delay: 0.15, clearProps: 'clipPath' });
+      gsap.from('.auth__art-in', { scale: 1.15, duration: 1.8, ease: 'sk.outSoft', delay: 0.15 });
+    },
+    { scope: root },
+  );
+
+  return (
+    <div ref={root} className="auth">
+      <section className="auth__form" key={pathname}>
+        {mode && <ModeSwitch mode={mode} next={safeNext(params.get('next'))} />}
+        <h1 className="auth__title" data-login-in>
+          {title}
+        </h1>
+        {lede && (
+          <p className="auth__lede" data-login-in>
+            {lede}
+          </p>
+        )}
+        <div data-login-in>{children}</div>
+        {foot && (
+          <div className="auth__foot" data-login-in>
+            {foot}
+          </div>
+        )}
       </section>
       <aside className="auth__art" aria-hidden="true">
-        <p className="auth__brand">{tenant.branding.displayName}</p>
-        <SaunaGlyph form="cabin" widthMm={3000} depthMm={2400} heightMm={2600} className="auth__glyph" strokeWidth={0.8} />
-        <p className="auth__tag">{tenant.branding.tagline}</p>
+        <div className="auth__art-in">
+          <SaunaGlyph form="cabin" widthMm={3000} depthMm={2400} heightMm={2600} className="auth__glyph" strokeWidth={0.8} />
+          {photo && <img className="auth__photo" src={photo} alt="" loading="lazy" decoding="async" onError={e => (e.currentTarget.hidden = true)} />}
+        </div>
+        <div className="auth__art-top">
+          {tenant.branding.logoUrl ? <img src={tenant.branding.logoUrl} alt="" className="auth__logo" /> : <LogoMark size={36} />}
+        </div>
+        <div className="auth__art-foot">
+          <p className="auth__brand">{tenant.branding.displayName}</p>
+          {tenant.branding.tagline && <p className="auth__tag">{tenant.branding.tagline}</p>}
+        </div>
       </aside>
     </div>
   );
@@ -123,6 +188,7 @@ export function Login() {
 
   return (
     <AuthFrame
+      mode="login"
       title={t('auth.loginTitle')}
       lede={t('auth.loginLede')}
       foot={
@@ -191,6 +257,7 @@ export function Signup() {
   const [privA, privB] = t('auth.acceptPrivacy').split('{privacy}');
   return (
     <AuthFrame
+      mode="signup"
       title={t('auth.signupTitle')}
       lede={t('auth.signupLede', { name: tenant.branding.displayName })}
       foot={

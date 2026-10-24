@@ -259,6 +259,7 @@ export const it: Messages = {
     contact: 'Contatta {name}',
   },
   auth: {
+    modes: 'Accedi o crea un account',
     loginTitle: 'Bentornato',
     loginLede: 'Acceda per configurare saune, conservare la cronologia e inviare richieste.',
     email: 'E-mail',

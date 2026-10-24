@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { KeyRound, ShieldCheck } from 'lucide-react';
 import type { StaffChallengeResponse } from '@saunaklar/shared';
@@ -12,6 +12,9 @@ import { Input } from '../design/components/Field.tsx';
 import { Icon } from '../design/components/Icon.tsx';
 import { useDocumentTitle } from '../app/useDocumentTitle.ts';
 import { Credit } from '../design/components/Credit.tsx';
+import { LogoMark } from '../design/brand/Logo.tsx';
+import { gsap, useGSAP } from '../motion/gsap.ts';
+import { prefersReducedMotion } from '../motion/preferences.ts';
 import { qrMatrix } from './qr.ts';
 import './staff.css';
 
@@ -100,9 +103,25 @@ export function StaffLogin({ title, brand, notice, onSignedIn }: { title: string
   const lede =
     step.kind === 'password' ? t('staff.loginLede') : step.kind === 'mfa' ? t('staff.mfaLede') : step.kind === 'setup' ? t('staff.mfaSetupLede') : t('staff.newPasswordLede');
 
+  const root = useRef<HTMLDivElement>(null);
+  useGSAP(
+    () => {
+      if (prefersReducedMotion()) return;
+      gsap.from('.staff-login__panel > *', { y: 22, autoAlpha: 0, duration: 0.85, ease: 'sk.outSoft', stagger: 0.06, clearProps: 'all' });
+    },
+    { scope: root, dependencies: [step.kind] },
+  );
+  useGSAP(
+    () => {
+      if (prefersReducedMotion()) return;
+      gsap.fromTo('.staff-login__art', { clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)', duration: 1.4, ease: 'expo.inOut', delay: 0.1, clearProps: 'clipPath' });
+    },
+    { scope: root },
+  );
+
   return (
-    <div className="staff-login">
-      <div className="staff-login__panel">
+    <div className="staff-login" ref={root}>
+      <div className="staff-login__panel" key={step.kind}>
         <div className="staff-login__brand">{brand}</div>
         <ScrambleText key={step.kind} as="h1" className="staff-login__title" text={heading} />
         <p className="staff-login__lede">{lede}</p>
@@ -172,6 +191,10 @@ export function StaffLogin({ title, brand, notice, onSignedIn }: { title: string
         </form>
         <Credit quiet copyright={false} className="staff-login__credit" />
       </div>
+      <aside className="staff-login__art" aria-hidden="true">
+        <LogoMark size={88} draw delay={0.6} className="staff-login__mark" />
+        <p className="staff-login__art-word">SaunaKlar</p>
+      </aside>
     </div>
   );
 }
