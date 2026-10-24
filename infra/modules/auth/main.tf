@@ -228,8 +228,8 @@ resource "aws_cognito_user_pool_client" "customers" {
     refresh_token = "days"
   }
 
-  read_attributes  = ["email", "email_verified", "custom:reseller_id"]
-  write_attributes = ["email", "custom:reseller_id"]
+  read_attributes  = ["email", "email_verified", "locale", "custom:reseller_id"]
+  write_attributes = ["email", "locale", "custom:reseller_id"]
 }
 
 # ---------------------------------------------------------------------------------------------
