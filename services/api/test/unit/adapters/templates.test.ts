@@ -95,9 +95,9 @@ describe('mail templates', () => {
   });
 });
 
-    // The Swiss grouping mark depends on the runtime's ICU/CLDR data (', ’ or a narrow space), so any of them is accepted.
 describe('formatting', () => {
   it('formats money from minor units with Swiss conventions', () => {
+    // The Swiss grouping mark depends on the runtime's ICU/CLDR data (', ’ or a narrow space), so any of them is accepted.
     expect(formatMoney(1234550, 'CHF', 'de')).toMatch(/^CHF\s12[\s'’]345\.50$/);
     expect(formatMoney(1234550, 'CHF', 'fr')).toMatch(/^12[\s'’]345\.50\sCHF$/);
     expect(formatMoney(1234550, 'EUR', 'it')).toMatch(/12[\s'’]345\.50/);
