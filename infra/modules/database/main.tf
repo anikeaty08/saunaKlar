@@ -187,6 +187,20 @@ resource "aws_db_parameter_group" "this" {
     value = tostring(var.statement_timeout_ms)
   }
 
+  # gp3 SSD storage: random reads cost little more than sequential ones. With the default of 4
+  # the planner reads and sorts every row of a large reseller for list pages instead of walking
+  # the keyset index (tools/perf: requests list 89 ms -> 16 ms at design scale).
+  parameter {
+    name  = "random_page_cost"
+    value = "1.1"
+  }
+
+  # Concurrent prefetch for bitmap heap scans on SSD.
+  parameter {
+    name  = "effective_io_concurrency"
+    value = "200"
+  }
+
   lifecycle {
     create_before_destroy = true
   }

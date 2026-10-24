@@ -219,9 +219,15 @@ export async function listRequestSummaries(
   const add = (sql: string, v: unknown) => { params.push(v); where.push(sql.replace('?', `$${params.length}`)); };
   if (filter.customerId) add('r.customer_id = ?', filter.customerId);
   if (filter.status) add('r.status_code = ?', filter.status);
-  // Search terms match through correlated subqueries rather than joins, so the plan stays an
-  // ordered walk of the request index that stops after limit+1 hits.
-  if (filter.q) add(`((select c.name from configurations c where c.id = r.configuration_id) ilike ? or exists (select 1 from customers cu where cu.id = r.customer_id and (cu.email ilike $${params.length + 1} or (coalesce(cu.first_name, '') || ' ' || coalesce(cu.last_name, '')) ilike $${params.length + 1})))`, `%${filter.q.replace(/[\\%_]/g, m => `\\${m}`)}%`);
+  // Search terms match through subqueries rather than joins, so the plan stays an ordered walk
+  // of the request index that stops after limit+1 hits. The customer match comes from
+  // search_customer_ids() (SECURITY DEFINER, current tenant only), which can use the trigram
+  // index that ILIKE under RLS cannot; its ids are hashed once.
+  if (filter.q) {
+    params.push(`%${filter.q.replace(/[\\%_]/g, m => `\\${m}`)}%`, filter.q);
+    where.push(`((select c.name from configurations c where c.id = r.configuration_id) ilike $${params.length - 1}
+             or r.customer_id in (select search_customer_ids($1, $${params.length}, null)))`);
+  }
   if (cursor) {
     params.push(cursor.at, cursor.id);
     where.push(`(r.created_at, r.id) < ($${params.length - 1}::timestamptz, $${params.length}::uuid)`);

@@ -151,6 +151,35 @@ describe('reseller admin: share links', () => {
   });
 });
 
+describe('reseller admin: customers', () => {
+  it('searches customers of this tenant only and pages the matches without gaps', async () => {
+    const c = await alphaStaff();
+    const all = await c.get('/api/admin/customers?limit=100');
+    expect(all.status, JSON.stringify(all.body)).toBe(200);
+    const anna = await c.get('/api/admin/customers?q=VIRTANEN');
+    expect(anna.body.items.map((x: { email: string }) => x.email)).toEqual(['anna@example.test']);
+    expect((await c.get('/api/admin/customers?q=%25')).body.items).toEqual([]);
+
+    // Every seeded alpha customer matches "example"; page through them one by one.
+    const matches = all.body.items.filter((x: { email: string }) => x.email.includes('example')).map((x: { id: string }) => x.id);
+    expect(matches.length).toBeGreaterThan(1);
+    const seen: string[] = [];
+    let cursor: string | null = null;
+    do {
+      const pg: { body: { items: { id: string }[]; nextCursor: string | null } } =
+        await c.get(`/api/admin/customers?q=example&limit=1${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+      seen.push(...pg.body.items.map(x => x.id));
+      cursor = pg.body.nextCursor;
+    } while (cursor && seen.length < 200);
+    expect(seen).toEqual(matches);
+
+    const beta = h.client('beta.localhost');
+    await beta.staffLogin('owner@beta.test', SEED_PASSWORD);
+    const betaAnna = await beta.get('/api/admin/customers?q=anna');
+    expect(betaAnna.body.items.map((x: { id: string }) => x.id)).not.toContain(anna.body.items[0].id);
+  });
+});
+
 describe('reseller admin: requests and quotes', () => {
   it('lists, searches and pages requests newest first', async () => {
     const { requestId } = await benSubmits('lappi-barrel', 'List and search');

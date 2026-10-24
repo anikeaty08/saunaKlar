@@ -46,7 +46,11 @@ export async function clientMetadata(c: Ctx, db: Db, locale?: string): Promise<C
 
 async function findCustomer(db: Db, email: string): Promise<CustomerRow | undefined> {
   const { rows } = await db.query<CustomerRow>(
-    `select id, status, created_at, locale from customers where lower(email) = lower($1) and status in ('PENDING', 'ACTIVE')`, [email]);
+    // email_lower (stored, = lower(email)) with plain text equality: leakproof, so under RLS it is
+    // an index condition on customers_reseller_email_key; lower(email) was checked row by row.
+    // lower($1) is evaluated once, with the same function and collation as the stored column.
+    `select id, status, created_at, locale from customers
+      where email_lower = lower($1) and status in ('PENDING', 'ACTIVE')`, [email]);
   return rows[0];
 }
 

@@ -86,7 +86,7 @@ const CUSTOMER_LIST = (extra: string) => `
    where cu.reseller_id = $1 ${extra}
    order by cu.created_at desc, cu.id desc
    limit $2`;
-const CUSTOMER_SEARCH = `and (cu.email ilike $3 or (coalesce(cu.first_name, '') || ' ' || coalesce(cu.last_name, '')) ilike $3)`;
+const CUSTOMER_SEARCH = `and cu.id = any (array(select search_customer_ids($1, $3, $2, null, null)))`;
 
 // services/api/src/routes/admin.ts analytics()
 const SINCE = `now() - make_interval(days => $2)`;
@@ -170,10 +170,18 @@ export const QUERIES: PerfQuery[] = [
   {
     name: 'requests: search "virtanen"', role: 'app_tenant',
     sql: REQUEST_LIST(
-      `and ((select c.name from configurations c where c.id = r.configuration_id) ilike $4 or exists (select 1 from customers cu where cu.id = r.customer_id and (cu.email ilike $4 or (coalesce(cu.first_name, '') || ' ' || coalesce(cu.last_name, '')) ilike $4)))`,
+      `and ((select c.name from configurations c where c.id = r.configuration_id) ilike $4 or r.customer_id in (select search_customer_ids($1, $5, null)))`,
     ),
-    params: (c) => [c.alphaId, 'de', 26, like('virtanen')],
+    params: (c) => [c.alphaId, 'de', 26, like('virtanen'), 'virtanen'],
   },
+  {
+    name: 'requests: search one e-mail (rare)', role: 'app_tenant',
+    sql: REQUEST_LIST(
+      `and ((select c.name from configurations c where c.id = r.configuration_id) ilike $4 or r.customer_id in (select search_customer_ids($1, $5, null)))`,
+    ),
+    params: (c) => [c.alphaId, 'de', 26, like(c.rareTerm), c.rareTerm],
+  },
+
   {
     name: 'requests: customer list', role: 'app_tenant', asCustomer: true,
     sql: REQUEST_LIST('and r.customer_id = $4'), params: (c) => [c.alphaId, 'de', 26, c.customerId],
@@ -183,12 +191,12 @@ export const QUERIES: PerfQuery[] = [
     name: 'customers: list, page 400', role: 'app_tenant',
     sql: CUSTOMER_LIST('and (cu.created_at, cu.id) < ($3::timestamptz, $4::uuid)'), params: (c) => [c.alphaId, 26, ...c.customerCursor],
   },
-  { name: 'customers: search "anna" (common)', role: 'app_tenant', sql: CUSTOMER_LIST(CUSTOMER_SEARCH), params: (c) => [c.alphaId, 26, like('anna')] },
-  { name: 'customers: search one e-mail (rare)', role: 'app_tenant', sql: CUSTOMER_LIST(CUSTOMER_SEARCH), params: (c) => [c.alphaId, 26, like(c.rareTerm)] },
-  { name: 'customers: search "zzqx" (no match)', role: 'app_tenant', sql: CUSTOMER_LIST(CUSTOMER_SEARCH), params: (c) => [c.alphaId, 26, like('zzqx')] },
+  { name: 'customers: search "anna" (common)', role: 'app_tenant', sql: CUSTOMER_LIST(CUSTOMER_SEARCH), params: (c) => [c.alphaId, 26, 'anna'] },
+  { name: 'customers: search one e-mail (rare)', role: 'app_tenant', sql: CUSTOMER_LIST(CUSTOMER_SEARCH), params: (c) => [c.alphaId, 26, c.rareTerm] },
+  { name: 'customers: search "zzqx" (no match)', role: 'app_tenant', sql: CUSTOMER_LIST(CUSTOMER_SEARCH), params: (c) => [c.alphaId, 26, 'zzqx'] },
   {
     name: 'auth: login lookup by e-mail', role: 'app_tenant',
-    sql: `select id, status, created_at, locale from customers where lower(email) = lower($1) and status in ('PENDING', 'ACTIVE')`,
+    sql: `select id, status, created_at, locale from customers where email_lower = lower($1) and status in ('PENDING', 'ACTIVE')`,
     params: (c) => [c.loginEmail],
   },
   { name: 'analytics: totals 30 d', role: 'app_tenant', sql: ANALYTICS_TOTALS, params: (c) => [c.alphaId, 30] },

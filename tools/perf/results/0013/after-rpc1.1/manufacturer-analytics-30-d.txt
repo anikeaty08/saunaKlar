@@ -1,0 +1,19 @@
+manufacturer: analytics 30 d
+
+select r.id, r.name, r.slug, st.customers, st.configurations, st.requests, st.requests_accepted, st.share_link_views
+    from resellers r cross join lateral reseller_stats(r.id, now() - make_interval(days => $2)) st
+   where r.manufacturer_id = $1 order by st.requests desc, r.name
+
+Sort  (cost=71358.23..72608.23 rows=500000 width=87) (actual time=126.640..126.664 rows=500 loops=1)
+  Sort Key: st.requests DESC, r.name
+  Sort Method: quicksort  Memory: 82kB
+  Buffers: shared hit=114614 read=3471 written=1
+  ->  Nested Loop  (cost=0.26..10015.50 rows=500000 width=87) (actual time=7.539..126.263 rows=500 loops=1)
+        Buffers: shared hit=114614 read=3471 written=1
+        ->  Seq Scan on resellers r  (cost=0.00..15.25 rows=500 width=47) (actual time=0.005..0.084 rows=500 loops=1)
+              Filter: (manufacturer_id = '9205fe63-9eb6-58a2-815b-4ecb42d82aed'::uuid)
+              Buffers: shared hit=9
+        ->  Function Scan on reseller_stats st  (cost=0.26..10.26 rows=1000 width=40) (actual time=0.252..0.252 rows=1 loops=500)
+              Buffers: shared hit=114605 read=3471 written=1
+Planning Time: 0.134 ms
+Execution Time: 126.705 ms

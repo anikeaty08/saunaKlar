@@ -179,6 +179,41 @@ describe('platform, worker and catalog roles', () => {
 });
 
 describe('SECURITY DEFINER API functions', () => {
+  it('search_customer_ids searches the current tenant only, honours the customer actor, escapes LIKE and pages', async () => {
+    const ids = (r: pg.QueryResult) => r.rows.map(x => x.id as string);
+    const search = (reseller: string, q: string, limit: number | null = null, before: [string, string] | [null, null] = [null, null]) =>
+      (c: pg.PoolClient) => c.query('SELECT search_customer_ids AS id FROM search_customer_ids($1, $2, $3, $4, $5)', [reseller, q, limit, ...before]);
+    const alpha = ids(await tenant(env, ALPHA, search(ALPHA, 'VIRTANEN')));
+    expect(alpha).toContain(SEED.customers.annaAlpha);
+    expect(alpha).not.toContain(SEED.customers.annaBeta);
+    expect(ids(await tenant(env, ALPHA, search(ALPHA, 'anna@exa')))).toContain(SEED.customers.annaAlpha);
+    expect(ids(await tenant(env, ALPHA, search(ALPHA, 'anna virt')))).toContain(SEED.customers.annaAlpha);
+    // Not across fields (e-mail end + first name), and LIKE metacharacters are literal.
+    expect(ids(await tenant(env, ALPHA, search(ALPHA, 'test anna')))).toEqual([]);
+    expect(ids(await tenant(env, ALPHA, search(ALPHA, '%')))).toEqual([]);
+    expect(ids(await tenant(env, ALPHA, search(ALPHA, 'a_na')))).toEqual([]);
+    // Another tenant's id, or no tenant, is refused; a customer session finds only itself.
+    await expectCode(tenant(env, ALPHA, search(BETA, 'anna')), 'INSUFFICIENT_PRIVILEGE');
+    await expectCode(tenant(env, null, search(ALPHA, 'anna')), 'INSUFFICIENT_PRIVILEGE');
+    expect(ids(await tenant(env, ALPHA, search(ALPHA, 'example'), { actorCustomerId: SEED.customers.benAlpha }))).toEqual([SEED.customers.benAlpha]);
+    await expectCode(platform(env, search(ALPHA, 'anna')), 'INSUFFICIENT_PRIVILEGE');
+    await expectCode(as(env, 'app_worker', {}, search(ALPHA, 'anna')), 'INSUFFICIENT_PRIVILEGE');
+    // Keyset: newest first, limit, then strictly after the cursor.
+    const all = ids(await tenant(env, ALPHA, search(ALPHA, 'example')));
+    expect(all.length).toBeGreaterThan(1);
+    const first = ids(await tenant(env, ALPHA, search(ALPHA, 'example', 1)));
+    expect(first).toEqual([all[0]]);
+    const at = await one<{ at: string }>(env.owner, `SELECT created_at::text AS at FROM customers WHERE id = $1`, [all[0]]);
+    expect(ids(await tenant(env, ALPHA, search(ALPHA, 'example', null, [at.at, all[0]!])))).toEqual(all.slice(1));
+  });
+
+  it('customers.email_lower follows the e-mail', async () => {
+    const row = await tenant(env, ALPHA, c => one<{ email_lower: string }>(c, `SELECT email_lower FROM customers WHERE email_lower = lower('ANNA@Example.test')`));
+    expect(row.email_lower).toBe('anna@example.test');
+    await expect(tenant(env, ALPHA, c => c.query(`UPDATE customers SET email_lower = 'x' WHERE id = $1`, [SEED.customers.annaAlpha])))
+      .rejects.toMatchObject({ code: '428C9' });
+  });
+
   const alphaSub = () => one<{ s: string }>(env.owner, 'SELECT idp_subject AS s FROM staff_users WHERE id = $1', [SEED.staff.alphaOwner]).then(r => r.s);
 
   it('staff_principal_for_reseller returns ACTIVE admins of that reseller only', async () => {

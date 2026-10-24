@@ -202,7 +202,6 @@ async function analytics(db: Db, tenant: TenantInfo, locale: string, days: numbe
   };
 }
 
-const like = (q: string) => `%${q.replace(/[\\%_]/g, m => `\\${m}`)}%`;
 
 // ---- routes -----------------------------------------------------------------------
 
@@ -493,13 +492,16 @@ export function registerAdmin(app: Hono<AppEnv>): void {
     const cursor = decodeCursor(deps.config.APP_SECRET, query.cursor);
     const params: unknown[] = [tenant.id, query.limit + 1];
     const where = ['cu.reseller_id = $1'];
-    if (query.q) {
-      params.push(like(query.q));
-      where.push(`(cu.email ilike $${params.length} or (coalesce(cu.first_name, '') || ' ' || coalesce(cu.last_name, '')) ilike $${params.length})`);
-    }
     if (cursor) {
       params.push(cursor.at, cursor.id);
       where.push(`(cu.created_at, cu.id) < ($${params.length - 1}::timestamptz, $${params.length}::uuid)`);
+    }
+    if (query.q) {
+      // search_customer_ids() (SECURITY DEFINER, current tenant only) can use the trigram index,
+      // which ILIKE under RLS cannot. It applies the same keyset cursor and limit, so its ids are
+      // exactly this page's rows (plus the one that tells whether there is a next page).
+      params.push(query.q);
+      where.push(`cu.id = any (array(select search_customer_ids($1, $${params.length}, $2, ${cursor ? '$3::timestamptz, $4::uuid' : 'null, null'})))`);
     }
     const { rows } = await tenantTx(c, db => db.query<{ id: string; email: string; first_name: string | null; last_name: string | null; status: 'PENDING' | 'ACTIVE' | 'ANONYMISED'; created_at: Date; cursor_at: string; configurations: string; requests: string }>(
       `select cu.id, cu.email, cu.first_name, cu.last_name, cu.status, cu.created_at,

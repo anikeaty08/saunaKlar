@@ -1,0 +1,82 @@
+catalog: storefront listing
+
+select m.id, m.slug, m.sku, coalesce(t.name, m.name) as name, coalesce(t.description, m.description) as description,
+         rs.sort_order, rs.is_visible, p.list_price_minor, p.max_discount_bps,
+         d.discount_type as sauna_type, d.discount_value as sauna_value, dd.discount_type as default_type, dd.discount_value as default_value
+    from reseller_saunas rs
+    join sauna_models m on m.id = rs.sauna_model_id and m.status = 'ACTIVE'
+    join sauna_model_prices p on p.sauna_model_id = m.id and p.currency_code = $2
+    left join sauna_model_translations t on t.sauna_model_id = m.id and t.locale = $3
+    left join reseller_sauna_discounts d on d.reseller_id = rs.reseller_id and d.sauna_model_id = m.id
+    left join reseller_default_discounts dd on dd.reseller_id = rs.reseller_id
+   where rs.reseller_id = $1 and rs.is_visible order by rs.sort_order, name
+
+Sort  (cost=25.59..25.60 rows=1 width=151) (actual time=3.836..3.840 rows=4 loops=1)
+  Sort Key: rs.sort_order, (COALESCE(t.name, m.name))
+  Sort Method: quicksort  Memory: 25kB
+  Buffers: shared hit=97
+  InitPlan 1 (returns $0)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.116..0.116 rows=1 loops=1)
+  InitPlan 2 (returns $1)
+    ->  Result  (cost=0.00..0.26 rows=1 width=32) (actual time=0.198..0.198 rows=1 loops=1)
+          Buffers: shared hit=3
+  InitPlan 3 (returns $2)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.035..0.035 rows=1 loops=1)
+  InitPlan 4 (returns $3)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.037..0.037 rows=1 loops=1)
+  ->  Result  (cost=0.30..24.54 rows=1 width=151) (actual time=1.260..3.826 rows=4 loops=1)
+        One-Time Filter: (($0 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid) AND ($1 = 'EUR'::bpchar))
+        Buffers: shared hit=97
+        ->  Nested Loop Left Join  (cost=0.30..24.54 rows=1 width=247) (actual time=0.941..3.505 rows=4 loops=1)
+              Buffers: shared hit=94
+              ->  Nested Loop Left Join  (cost=0.29..23.50 rows=1 width=248) (actual time=0.900..3.457 rows=4 loops=1)
+                    Join Filter: (d.sauna_model_id = m.id)
+                    Rows Removed by Join Filter: 5
+                    Buffers: shared hit=90
+                    ->  Nested Loop Left Join  (cost=0.28..22.43 rows=1 width=233) (actual time=0.859..3.401 rows=4 loops=1)
+                          Join Filter: (t.sauna_model_id = m.id)
+                          Rows Removed by Join Filter: 7
+                          Buffers: shared hit=86
+                          ->  Nested Loop  (cost=0.28..16.68 rows=1 width=149) (actual time=0.555..1.820 rows=4 loops=1)
+                                Join Filter: (m.id = rs.sauna_model_id)
+                                Buffers: shared hit=49
+                                ->  Nested Loop  (cost=0.00..8.37 rows=1 width=144) (actual time=0.549..1.797 rows=5 loops=1)
+                                      Join Filter: (m.id = p.sauna_model_id)
+                                      Rows Removed by Join Filter: 10
+                                      Buffers: shared hit=34
+                                      ->  Seq Scan on sauna_models m  (cost=0.00..2.58 rows=2 width=116) (actual time=0.296..0.974 rows=5 loops=1)
+                                            Filter: ((status = 'ACTIVE'::text) AND app_offers_model(id))
+                                            Rows Removed by Filter: 1
+                                            Buffers: shared hit=18
+                                      ->  Materialize  (cost=0.00..5.74 rows=2 width=28) (actual time=0.050..0.163 rows=3 loops=5)
+                                            Buffers: shared hit=16
+                                            ->  Seq Scan on sauna_model_prices p  (cost=0.00..5.73 rows=2 width=28) (actual time=0.249..0.808 rows=5 loops=1)
+                                                  Filter: ((currency_code = 'EUR'::bpchar) AND app_offers_model(sauna_model_id))
+                                                  Rows Removed by Filter: 8
+                                                  Buffers: shared hit=16
+                                ->  Index Scan using reseller_saunas_pkey on reseller_saunas rs  (cost=0.28..8.30 rows=1 width=37) (actual time=0.003..0.003 rows=1 loops=5)
+                                      Index Cond: ((reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid) AND (sauna_model_id = p.sauna_model_id))
+                                      Filter: is_visible
+                                      Rows Removed by Filter: 0
+                                      Buffers: shared hit=15
+                          ->  Seq Scan on sauna_model_translations t  (cost=0.00..5.73 rows=2 width=100) (actual time=0.171..0.392 rows=3 loops=4)
+                                Filter: ((locale = 'de'::text) AND app_offers_model(sauna_model_id))
+                                Rows Removed by Filter: 4
+                                Buffers: shared hit=37
+                    ->  Result  (cost=0.01..1.04 rows=2 width=47) (actual time=0.011..0.012 rows=2 loops=4)
+                          One-Time Filter: (($2 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid) AND ($0 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid))
+                          Buffers: shared hit=4
+                          ->  Seq Scan on reseller_sauna_discounts d  (cost=0.01..1.04 rows=2 width=47) (actual time=0.001..0.002 rows=2 loops=4)
+                                Filter: (reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                                Rows Removed by Filter: 0
+                                Buffers: shared hit=4
+              ->  Result  (cost=0.01..1.03 rows=1 width=31) (actual time=0.011..0.011 rows=1 loops=4)
+                    One-Time Filter: (($3 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid) AND ($0 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid))
+                    Buffers: shared hit=4
+                    ->  Seq Scan on reseller_default_discounts dd  (cost=0.01..1.03 rows=1 width=31) (actual time=0.001..0.001 rows=1 loops=4)
+                          Filter: (reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                          Buffers: shared hit=4
+Planning:
+  Buffers: shared hit=16
+Planning Time: 0.825 ms
+Execution Time: 3.980 ms
