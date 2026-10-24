@@ -152,6 +152,63 @@ describe('reseller admin: share links', () => {
 });
 
 describe('reseller admin: requests and quotes', () => {
+  it('lists, searches and pages requests newest first', async () => {
+    const { requestId } = await benSubmits('lappi-barrel', 'List and search');
+    const c = await alphaStaff();
+    const all = await c.get('/api/admin/requests?limit=100');
+    expect(all.status, JSON.stringify(all.body)).toBe(200);
+    const first = all.body.items[0];
+    expect(first.id).toBe(requestId);
+    expect(first.customerEmail).toBe('ben@example.test');
+    expect(first.saunaName).toBeTruthy();
+    expect(first.finalPriceMinor).toBeGreaterThan(0);
+    const created = all.body.items.map((r: { createdAt: string }) => r.createdAt);
+    expect([...created].sort().reverse()).toEqual(created);
+
+    // Search matches the customer's e-mail, the customer's name, or nothing.
+    const byEmail = await c.get('/api/admin/requests?q=BEN%40example');
+    expect(byEmail.body.items.some((r: { id: string }) => r.id === requestId)).toBe(true);
+    const byName = await c.get(`/api/admin/requests?q=${encodeURIComponent(first.customerName.split(' ')[0])}`);
+    expect(byName.body.items.some((r: { id: string }) => r.id === requestId)).toBe(true);
+    expect((await c.get('/api/admin/requests?q=zzqx-no-such')).body.items).toEqual([]);
+
+    // Keyset pages of one walk the same list without gaps or repeats.
+    const seen: string[] = [];
+    let cursor: string | null = null;
+    do {
+      const pg: { body: { items: { id: string }[]; nextCursor: string | null } } =
+        await c.get(`/api/admin/requests?limit=1${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+      seen.push(...pg.body.items.map(r => r.id));
+      cursor = pg.body.nextCursor;
+    } while (cursor && seen.length < 200);
+    expect(seen).toEqual(all.body.items.map((r: { id: string }) => r.id));
+  });
+
+  it('analytics counts the new request against its sauna', async () => {
+    const before = (await (await alphaStaff()).get('/api/admin/analytics?days=30')).body;
+    await benSubmits('kuopio-cube', 'Analytics');
+    const c = await alphaStaff();
+    const r = await c.get('/api/admin/analytics?days=30');
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    expect(r.body.totals.requests).toBe(before.totals.requests + 1);
+    expect(r.body.totals.configurations).toBe(before.totals.configurations + 1);
+    expect(r.body.daily).toHaveLength(30);
+    expect(r.body.daily.at(-1).requests).toBeGreaterThanOrEqual(1);
+    const sum = r.body.daily.reduce((n: number, d: { requests: number }) => n + d.requests, 0);
+    expect(sum).toBe(r.body.totals.requests);
+    const top = r.body.topSaunas as { name: string; configurations: number; requests: number }[];
+    expect(top.length).toBeGreaterThan(0);
+    for (const t of top) expect(t.requests).toBeLessThanOrEqual(t.configurations);
+    const ranks = top.map(t => [t.requests, t.configurations] as const);
+    for (let i = 1; i < ranks.length; i++) {
+      const [a, b] = [ranks[i - 1]!, ranks[i]!];
+      expect(a[0] > b[0] || (a[0] === b[0] && a[1] >= b[1])).toBe(true);
+    }
+    const prevTop = new Map((before.topSaunas as { saunaModelId: string; requests: number }[]).map(t => [t.saunaModelId, t.requests]));
+    const grew = (r.body.topSaunas as { saunaModelId: string; requests: number }[]).filter(t => t.requests > (prevTop.get(t.saunaModelId) ?? 0));
+    expect(grew).toHaveLength(1);
+  });
+
   it('quotes a request and the customer accepts it', async () => {
     const { ben, requestId } = await benSubmits('lappi-barrel', 'Please quote with installation');
     const c = await alphaStaff();

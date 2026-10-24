@@ -129,7 +129,8 @@ export function SaunasAdmin() {
           {order.map((s, i) => {
             const own = s.discount;
             const requested = own ?? def;
-            const capped = requested && s.effectiveDiscount && (requested.type !== s.effectiveDiscount.type || requested.value !== s.effectiveDiscount.value);
+            // Capped when what was asked for exceeds the manufacturer maximum for this model.
+            const capped = requested ? (requested.type === 'PERCENT' ? requested.value > s.maxDiscountBps : requested.value * 10_000 > s.listPriceMinor * s.maxDiscountBps) : false;
             return (
               <li key={s.id} data-flip-id={s.id} className={['sauna-admin__row', dragging === s.id && 'is-dragged', !s.isVisible && 'is-hidden'].filter(Boolean).join(' ')}>
                 <button
@@ -152,7 +153,7 @@ export function SaunasAdmin() {
                 </button>
                 <span className="sauna-admin__pos mono">{String(i + 1).padStart(2, '0')}</span>
                 <span className="sauna-admin__thumb" aria-hidden="true">
-                  {s.thumbnailUrl ? <img src={s.thumbnailUrl} alt="" width={64} height={48} loading="lazy" decoding="async" /> : null}
+                  {s.thumbnailUrl ? <img src={s.thumbnailUrl} alt="" width={64} height={48} loading="lazy" decoding="async" onError={e => (e.currentTarget.style.visibility = 'hidden')} /> : null}
                 </span>
                 <span className="sauna-admin__name">
                   <span className="staff-strong">{s.name}</span>

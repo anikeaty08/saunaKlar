@@ -103,7 +103,7 @@ function BrandingForm({ branding }: { branding: Branding }) {
               <Input label={t('admin.branding.displayName')} value={draft.displayName} onChange={e => set('displayName', e.target.value)} maxLength={120} required error={errors.displayName} />
               <Input label={t('admin.branding.tagline')} value={draft.tagline ?? ''} onChange={e => set('tagline', e.target.value)} maxLength={200} error={errors.tagline} />
               <div className="color-field">
-                <Input label={t('admin.branding.color')} hint={t('admin.branding.colorHint')} value={draft.primaryColor} onChange={e => set('primaryColor', e.target.value)} maxLength={7} spellCheck={false} error={errors.primaryColor} className="color-field__hex" />
+                <Input label={t('admin.branding.color')} hint={t('admin.branding.colorHint')} value={draft.primaryColor} onChange={e => set('primaryColor', e.target.value)} maxLength={7} spellCheck={false} required error={errors.primaryColor} className="color-field__hex" />
                 <input type="color" aria-label={t('admin.branding.color')} value={HEX.test(draft.primaryColor) ? draft.primaryColor : '#000000'} onChange={e => set('primaryColor', e.target.value)} className="color-field__picker" />
               </div>
             </div>

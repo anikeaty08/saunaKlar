@@ -226,7 +226,7 @@ export async function listRequestSummaries(
     params.push(cursor.at, cursor.id);
     where.push(`(r.created_at, r.id) < ($${params.length - 1}::timestamptz, $${params.length}::uuid)`);
   }
-  const { rows } = await db.query<{ id: string; status_code: RequestStatus; model_name: string; config_name: string | null; final_price_minor: string; currency_code: string; created_at: Date; updated_at: Date; first_name: string; last_name: string; email: string }>(
+  const { rows } = await db.query<{ id: string; status_code: RequestStatus; model_name: string; config_name: string | null; final_price_minor: string; currency_code: string; created_at: Date; updated_at: Date; cursor_at: string; first_name: string; last_name: string; email: string }>(
     // Page first: walk configuration_requests_reseller_created_id_idx (or the status index) in
     // order and stop after limit+1 rows, then fetch configuration, snapshot, translation and
     // customer for the page only. The page holds only configuration_requests, with every other
@@ -242,7 +242,7 @@ export async function listRequestSummaries(
         order by r.created_at desc, r.id desc
         limit $3)
      select p.id, p.status_code, coalesce(t.name, m.name) as model_name, c.name as config_name, s.final_price_minor, s.currency_code,
-            p.created_at, p.updated_at, cu.first_name, cu.last_name, cu.email
+            p.created_at, p.updated_at, to_char(p.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_at, cu.first_name, cu.last_name, cu.email
        from page p
        join configurations c on c.id = p.configuration_id
        join sauna_models m on m.id = c.sauna_model_id
@@ -262,7 +262,8 @@ export async function listRequestSummaries(
     updatedAt: iso(r.updated_at),
     customerName: `${r.first_name} ${r.last_name}`.trim(),
     customerEmail: r.email,
-    _at: iso(r.created_at),
+    // Full microseconds: a millisecond cursor would skip rows that share the millisecond.
+    _at: r.cursor_at,
   }));
 }
 

@@ -64,7 +64,7 @@ export function Dashboard() {
               {q.data.topSaunas.length === 0 ? (
                 <p className="staff-muted">{t('admin.dashboard.empty')}</p>
               ) : (
-                <HBarList label={t('admin.dashboard.topSaunas')} items={q.data.topSaunas.map(s => ({ key: s.saunaModelId, label: s.name, value: s.configurations }))} />
+                <HBarList label={t('admin.dashboard.topSaunas')} items={[...q.data.topSaunas].sort((a, b) => b.configurations - a.configurations).map(s => ({ key: s.saunaModelId, label: s.name, value: s.configurations }))} />
               )}
             </Panel>
           </div>

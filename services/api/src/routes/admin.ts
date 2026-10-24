@@ -501,15 +501,16 @@ export function registerAdmin(app: Hono<AppEnv>): void {
       params.push(cursor.at, cursor.id);
       where.push(`(cu.created_at, cu.id) < ($${params.length - 1}::timestamptz, $${params.length}::uuid)`);
     }
-    const { rows } = await tenantTx(c, db => db.query<{ id: string; email: string; first_name: string | null; last_name: string | null; status: 'PENDING' | 'ACTIVE' | 'ANONYMISED'; created_at: Date; configurations: string; requests: string }>(
+    const { rows } = await tenantTx(c, db => db.query<{ id: string; email: string; first_name: string | null; last_name: string | null; status: 'PENDING' | 'ACTIVE' | 'ANONYMISED'; created_at: Date; cursor_at: string; configurations: string; requests: string }>(
       `select cu.id, cu.email, cu.first_name, cu.last_name, cu.status, cu.created_at,
+              to_char(cu.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_at,
               (select count(*) from configurations x where x.customer_id = cu.id) as configurations,
               (select count(*) from configuration_requests r where r.customer_id = cu.id) as requests
          from customers cu
         where ${where.join(' and ')}
         order by cu.created_at desc, cu.id desc
         limit $2`, params));
-    const p = pageOf(rows, query.limit, deps.config.APP_SECRET, r => ({ at: r.created_at.toISOString(), id: r.id }));
+    const p = pageOf(rows, query.limit, deps.config.APP_SECRET, r => ({ at: r.cursor_at, id: r.id })); // microseconds, see cursor_at
     return {
       items: p.items.map(r => ({
         id: r.id, email: r.email, firstName: r.first_name ?? '', lastName: r.last_name ?? '', status: r.status,

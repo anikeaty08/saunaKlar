@@ -419,8 +419,16 @@
   border-top: var(--hair) solid var(--ink);
 }
 
+.staff-panel {
+  align-content: start;
+}
+
 .staff-panel + .staff-panel {
   margin-top: var(--space-5);
+}
+
+.staff-grid > .staff-panel + .staff-panel {
+  margin-top: 0;
 }
 
 .staff-panel__head {

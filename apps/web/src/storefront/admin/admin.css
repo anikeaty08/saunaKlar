@@ -236,11 +236,12 @@
 
 .sauna-admin__row {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-areas:
-    'handle pos name arrows'
-    'handle pos switch discount'
-    'handle pos price discount';
+    'handle name arrows'
+    'handle switch switch'
+    'handle price price'
+    'handle discount discount';
   align-items: center;
   gap: var(--space-2) var(--space-3);
   padding: var(--space-3) 0;
@@ -286,6 +287,7 @@
 }
 
 .sauna-admin__pos {
+  display: none;
   grid-area: pos;
   font-size: var(--step--2);
   color: var(--ink-4);
@@ -315,10 +317,10 @@
 
 .sauna-admin__discount {
   grid-area: discount;
-  display: grid;
-  justify-items: end;
-  gap: 0.2rem;
-  text-align: right;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem var(--space-2);
 }
 
 .sauna-admin__discount-btn {
@@ -340,6 +342,14 @@
     grid-template-columns: auto 2rem 4rem minmax(0, 1fr) 10rem 9rem 12rem auto;
     grid-template-areas: 'handle pos thumb name switch price discount arrows';
     gap: var(--space-4);
+  }
+  .sauna-admin__pos {
+    display: block;
+  }
+  .sauna-admin__discount {
+    display: grid;
+    justify-items: end;
+    text-align: right;
   }
   .sauna-admin__thumb {
     grid-area: thumb;
@@ -530,4 +540,8 @@
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+}
+
+.cell-stack {
+  display: grid;
 }

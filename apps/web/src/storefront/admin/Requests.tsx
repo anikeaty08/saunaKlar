@@ -71,12 +71,17 @@ export function RequestsList() {
       ),
       sortValue: r => r.customerName,
     },
-    { key: 'sauna', header: t('admin.requests.sauna'), cell: r => (
-      <>
-        {r.saunaName}
-        <span className="staff-sub">{r.configurationName}</span>
-      </>
-    ), sortValue: r => r.saunaName },
+    {
+      key: 'sauna',
+      header: t('admin.requests.sauna'),
+      cell: r => (
+        <span className="cell-stack">
+          {r.saunaName}
+          <span className="staff-sub">{r.configurationName}</span>
+        </span>
+      ),
+      sortValue: r => r.saunaName,
+    },
     { key: 'status', header: t('staff.status'), cell: r => <StatusBadge status={r.status} />, sortValue: r => REQUEST_STATUSES.indexOf(r.status) },
     { key: 'price', header: t('admin.requests.price'), align: 'end', cell: r => <span className="mono">{fmt.money(r.finalPriceMinor, r.currency)}</span>, sortValue: r => r.finalPriceMinor },
     { key: 'created', header: t('admin.requests.submitted'), align: 'end', cell: r => <span className="mono staff-muted" title={fmt.dateTime(r.createdAt)}>{fmt.date(r.createdAt, 'short')}</span>, sortValue: r => r.createdAt, hideOnMobile: true },

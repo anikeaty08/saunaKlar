@@ -41,11 +41,12 @@ export function AdminShell({ brand, area, nav, session, extra, children }: { bra
   }, [pathname]);
 
   return (
-    <div className="staff-shell">
+    <>
       <a href="#main" className="skip-link">
         {t('common.skipToContent')}
       </a>
       <NavigationProgress />
+      <div className="staff-shell">
       <aside className="staff-shell__side">
         <div className="staff-shell__brand">
           {brand}
@@ -93,7 +94,8 @@ export function AdminShell({ brand, area, nav, session, extra, children }: { bra
           {children ?? <Outlet />}
         </main>
       </div>
+      </div>
       <Toaster />
-    </div>
+    </>
   );
 }

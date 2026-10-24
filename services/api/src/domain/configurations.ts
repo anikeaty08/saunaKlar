@@ -266,7 +266,7 @@ export async function listConfigurationSummaries(db: Db, tenant: TenantInfo, loc
   // joins, the thumbnail subquery (assets RLS) and the request/snapshot lookups run only for
   // the rows on the page. Joining sauna_models inside the page keeps the old semantics: a
   // configuration of a model the reseller no longer offers stays hidden (RLS on sauna_models).
-  const { rows } = await db.query<{ id: string; name: string | null; locked_at: Date | null; customer_id: string | null; created_at: Date; updated_at: Date; model_id: string; slug: string; model_name: string; thumb: string | null; final_price_minor: string | null; request_id: string | null; status_code: RequestStatus | null }>(
+  const { rows } = await db.query<{ id: string; name: string | null; locked_at: Date | null; customer_id: string | null; created_at: Date; updated_at: Date; cursor_at: string; model_id: string; slug: string; model_name: string; thumb: string | null; final_price_minor: string | null; request_id: string | null; status_code: RequestStatus | null }>(
     `with page as materialized (
        select c.id, c.name, c.locked_at, c.customer_id, c.created_at, c.updated_at, c.sauna_model_id
          from configurations c
@@ -275,6 +275,7 @@ export async function listConfigurationSummaries(db: Db, tenant: TenantInfo, loc
         order by c.updated_at desc, c.id desc
         limit $3)
      select p.id, p.name, p.locked_at, p.customer_id, p.created_at, p.updated_at,
+            to_char(p.updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as cursor_at,
             m.id as model_id, m.slug, coalesce(t.name, m.name) as model_name,
             th.storage_key as thumb,
             s.final_price_minor, r.id as request_id, r.status_code
@@ -322,7 +323,8 @@ export async function listConfigurationSummaries(db: Db, tenant: TenantInfo, loc
       updatedAt: iso(r.updated_at),
       finalPriceMinor: final,
       currency: tenant.currency,
-      _at: iso(r.updated_at),
+      // Full microseconds: a millisecond cursor would skip rows that share the millisecond.
+      _at: r.cursor_at,
     });
   }
   return out;

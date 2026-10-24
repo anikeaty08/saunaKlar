@@ -201,7 +201,7 @@ function CreateResellerDialog({ open, onClose, taken }: { open: boolean; onClose
           </p>
         </div>
         <Input label={t('staff.name')} required value={f.name} onChange={set('name')} error={errors.name} />
-        <Select label={t('manufacturer.currency')} value={f.currencyCode} onChange={set('currencyCode')} options={CURRENCIES.map(c => ({ value: c, label: c }))} hint={t('manufacturer.currencyHint')} />
+        <Select label={t('manufacturer.currency')} required value={f.currencyCode} onChange={set('currencyCode')} options={CURRENCIES.map(c => ({ value: c, label: c }))} hint={t('manufacturer.currencyHint')} />
         <div className="staff-form__row">
           <Input label={t('manufacturer.ownerEmail')} type="email" required autoComplete="off" value={f.email} onChange={set('email')} error={errors['owner.email']} />
           <Input label={t('manufacturer.ownerName')} required autoComplete="off" value={f.displayName} onChange={set('displayName')} error={errors['owner.displayName']} />
