@@ -101,7 +101,8 @@ describe('formatting', () => {
     expect(formatMoney(1234550, 'CHF', 'de')).toMatch(/^CHF\s12[\s'’]345\.50$/);
     expect(formatMoney(1234550, 'CHF', 'fr')).toMatch(/^12[\s'’]345\.50\sCHF$/);
     expect(formatMoney(1234550, 'EUR', 'it')).toMatch(/12[\s'’]345\.50/);
-    expect(formatMoney(1234550, 'CHF', 'rm')).toMatch(/12[\s'’]345\.50\sCHF/);
+    // Romansh data is missing from some ICU builds (falling back to Swiss German), so only the amount and currency are fixed.
+    expect(formatMoney(1234550, 'CHF', 'rm').replace(/[\s'’]/g, '')).toMatch(/^(CHF12345[.,]50|12345[.,]50CHF)$/);
     expect(formatMoney(12345, 'JPY', 'en')).toMatch(/12[\s'’]345$/); // zero-decimal currency: minor = major
   });
 
