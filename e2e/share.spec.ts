@@ -10,7 +10,8 @@ test('the seeded share link renders a read-only snapshot', async ({ page }) => {
   await expect(page.getByRole('button', { name: en.configure.sendRequest })).toHaveCount(0);
   await expect(page.getByRole('button', { name: en.configure.saveDraft, exact: true })).toHaveCount(0);
   await expect(page.getByText(en.shared.claimHint)).toBeVisible();
-  await expect(page.getByRole('link', { name: en.nav.login, exact: true }).last()).toHaveAttribute('href', new RegExp(`/account/login\\?next=`));
+  // The pricecard's "Log in" returns to this link afterwards (the header one does not).
+  await expect(page.getByRole('link', { name: en.nav.login, exact: true }).and(page.locator(`[href*="next="]`))).toHaveCount(1);
 });
 
 test('an unknown share token shows the expired page', async ({ page }) => {

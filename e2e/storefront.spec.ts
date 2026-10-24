@@ -22,7 +22,7 @@ test.describe('storefront', () => {
   test('the language switcher changes the UI and the catalogue texts to French', async ({ page }) => {
     await page.goto('/saunas/espoo-compact');
     await expect(page.getByText('A compact two-to-three seat indoor sauna', { exact: false })).toBeVisible();
-    await expect(page.getByText('Nordic spruce', { exact: true })).toBeVisible();
+    await expect(page.getByText(/^Nordic spruce/).first()).toBeVisible();
 
     await page.getByRole('button', { name: new RegExp(`^${en.nav.language}`) }).first().click();
     await page.getByRole('menuitemradio', { name: /Français/ }).click();
@@ -30,13 +30,13 @@ test.describe('storefront', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
     await expect(page.getByRole('heading', { name: fr.detail.options })).toBeVisible();
     await expect(page.getByText('Sauna d’intérieur compact', { exact: false })).toBeVisible();
-    await expect(page.getByText('Épicéa nordique', { exact: true })).toBeVisible();
-    await expect(page.getByText('Nordic spruce', { exact: true })).toHaveCount(0);
+    await expect(page.getByText(/^Épicéa nordique/).first()).toBeVisible();
+    await expect(page.getByText(/^Nordic spruce/)).toHaveCount(0);
 
     // The choice survives a reload.
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
-    await expect(page.getByText('Épicéa nordique', { exact: true })).toBeVisible();
+    await expect(page.getByText(/^Épicéa nordique/).first()).toBeVisible();
     expect(page.url()).toContain(ALPHA);
   });
 });
