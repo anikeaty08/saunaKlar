@@ -32,6 +32,11 @@ layer_dir="$(mktemp -d)"
 mkdir -p "$layer_dir/nodejs"
 (cd "$layer_dir/nodejs" && echo '{"private":true}' > package.json &&
   npm install --no-audit --no-fund --omit=dev --os=linux --cpu=arm64 --libc=glibc $pkgs >/dev/null)
+# aws-crt ships prebuilt binaries for every platform; keep only linux arm64 (layer size limit).
+crt_bin="$layer_dir/nodejs/node_modules/aws-crt/dist/bin"
+if [ -d "$crt_bin" ]; then
+  find "$crt_bin" -mindepth 1 -maxdepth 1 -type d ! -name 'linux-arm64*' -exec rm -rf {} +
+fi
 (cd "$layer_dir" && zip -qr -X "$out/layer/native-arm64.zip" nodejs)
 echo "linux-arm64 $pkgs" | sha256sum | cut -c1-16 > "$out/layer/native-arm64.sha"
 echo "layer/native-arm64.zip $(du -h "$out/layer/native-arm64.zip" | cut -f1) key=$(cat "$out/layer/native-arm64.sha")"

@@ -254,7 +254,12 @@ export function registerManufacturer(app: Hono<AppEnv>): void {
     const m = manufacturerOf(c);
     return platformTx(c, async db => {
       const reseller = await getReseller(db, m, params.id!);
-      await db.query('delete from reseller_saunas where reseller_id = $1 and sauna_model_id = $2', [reseller.id, params.saunaId]);
+      // Configurations reference the assignment (app_platform cannot read them, the FK tells us):
+      // once any exist, the sauna can only be hidden by the reseller.
+      await db.query('delete from reseller_saunas where reseller_id = $1 and sauna_model_id = $2', [reseller.id, params.saunaId]).catch((err: { code?: string }) => {
+        if (err.code === '23503') throw new ApiError('CONFLICT', 'Customers have configured this sauna. Ask the reseller to hide it instead.');
+        throw err;
+      });
       return assignments(db, m, reseller, requestLocale(c));
     });
   });
@@ -322,8 +327,8 @@ export function registerManufacturer(app: Hono<AppEnv>): void {
     c.header('Cache-Control', 'private, max-age=60');
     const { rows } = await platformTx(c, db => db.query<{ id: string; name: string; slug: string; customers: string; configurations: string; requests: string; requests_accepted: string; share_link_views: string }>(
       `select r.id, r.name, r.slug, st.customers, st.configurations, st.requests, st.requests_accepted, st.share_link_views
-         from resellers r cross join lateral reseller_stats(r.id) st
-        where r.manufacturer_id = $1 order by st.requests desc, r.name`, [m]));
+         from resellers r cross join lateral reseller_stats(r.id, now() - make_interval(days => $2)) st
+        where r.manufacturer_id = $1 order by st.requests desc, r.name`, [m, query.days]));
     return {
       days: query.days,
       resellers: rows.map(r => ({

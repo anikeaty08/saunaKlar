@@ -151,22 +151,22 @@ export async function customerTransition(db: Db, id: string, customerId: string,
 }
 
 /**
- * Adds a quote (review G8: earlier quotes are superseded, never overwritten)
- * and moves the request to QUOTED. From SUBMITTED it passes through
- * IN_REVIEW so the history shows the real sequence.
+ * Adds a quote (review G8: the database supersedes the previous quote, it is
+ * never overwritten) and moves the request to QUOTED. The database accepts a
+ * quote only while the request is IN_REVIEW, so SUBMITTED and QUOTED pass
+ * through IN_REVIEW first and the history shows the real sequence.
  */
 export async function putQuote(db: Db, tenant: TenantInfo, id: string, staffId: string, input: { amountMinor: number; validUntil: string; note?: string | undefined }, now: Date): Promise<void> {
+  await db.query('select 1 from configuration_requests where id = $1 for update', [id]);
   const row = await getRequestRow(db, id);
   if (!['SUBMITTED', 'IN_REVIEW', 'QUOTED'].includes(row.status_code)) throw new ApiError('INVALID_TRANSITION', `A ${row.status_code} request cannot be quoted.`);
   if (new Date(input.validUntil) <= now) throw new ApiError('VALIDATION_FAILED', 'The quote must be valid in the future.', { errors: { validUntil: ['Must be in the future.'] } });
-  await db.query('select 1 from configuration_requests where id = $1 for update', [id]);
-  await db.query('update request_quotes set superseded_at = now() where request_id = $1 and superseded_at is null', [id]);
+  if (row.status_code !== 'IN_REVIEW') await setStatus(db, id, 'IN_REVIEW', row.status_code === 'QUOTED' ? 'Revised quote' : undefined);
   await db.query(
     `insert into request_quotes (request_id, reseller_id, amount_minor, currency_code, valid_until, note, created_by_staff_id)
      values ($1, $2, $3, $4, $5, $6, $7)`,
     [id, tenant.id, input.amountMinor, tenant.currency, input.validUntil, input.note?.trim() || null, staffId]);
-  if (row.status_code === 'SUBMITTED') await setStatus(db, id, 'IN_REVIEW', undefined);
-  if (row.status_code !== 'QUOTED') await setStatus(db, id, 'QUOTED', input.note);
+  await setStatus(db, id, 'QUOTED', input.note);
 }
 
 export async function addNote(db: Db, tenant: TenantInfo, id: string, staffId: string, body: string): Promise<void> {

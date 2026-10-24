@@ -1,4 +1,8 @@
-# Values CI needs (deploy.yml reads them with `terraform output -json`).
+# Values CI needs (deploy-env.yml reads them with `terraform output -json platform`).
+
+output "name_prefix" {
+  value = local.name
+}
 
 output "web_bucket" {
   value = module.storage.bucket_names["web"]
