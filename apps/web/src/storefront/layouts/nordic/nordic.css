@@ -1,0 +1,317 @@
+/* Nordic: warm and crafted. Surfaces lean towards wood (theme flavour
+   "warm"); Fraunces for headings; soft, rounded shapes. */
+
+html[data-layout='nordic'] {
+  --font-craft: 'Fraunces', var(--font-serif);
+  --radius-soft: 22px;
+}
+
+html[data-layout='nordic'] .header {
+  background: color-mix(in oklab, var(--paper) 90%, transparent);
+}
+
+html[data-layout='nordic'] .scard__media {
+  border-radius: var(--radius-soft);
+  background: var(--paper-3);
+}
+
+html[data-layout='nordic'] .scard__name,
+html[data-layout='nordic'] .page-title,
+html[data-layout='nordic'] .sh__title {
+  font-family: var(--font-craft);
+  font-weight: 450;
+  letter-spacing: -0.02em;
+  font-variation-settings: 'opsz' 72;
+}
+
+html[data-layout='nordic'] .btn {
+  border-radius: 14px;
+}
+
+/* ---- home ---- */
+
+.nd-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  gap: var(--space-7) var(--gutter);
+  align-items: center;
+  min-height: calc(100svh - var(--header-h));
+  padding-block: var(--space-5) var(--space-7);
+}
+
+.nd-hero__photo {
+  position: relative;
+  align-self: stretch;
+  min-height: 26rem;
+  border-radius: 28px;
+  background: var(--paper-3);
+  overflow: hidden;
+}
+
+.nd-hero__photo .lmedia__glyph {
+  color: var(--ink-4);
+}
+
+.nd-hero__in {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-5);
+}
+
+.nd-badge {
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  background: var(--paper-3);
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+
+.nd-hero__title {
+  font-family: var(--font-craft);
+  font-size: clamp(2.8rem, 1.4rem + 4.6vw, 6.2rem);
+  font-weight: 400;
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  font-variation-settings: 'opsz' 144;
+}
+
+.nd-hero__title em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.nd-hero__lede {
+  max-width: 42ch;
+  font-size: var(--step-1);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.nd-hero__ctas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.nd-hero__local {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  padding-top: var(--space-4);
+  border-top: var(--hair) solid var(--line);
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.nd-hero__local a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.nd-section {
+  padding-top: clamp(5rem, 3rem + 5vw, 8rem);
+}
+
+.nd-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: end;
+  gap: var(--space-4) var(--space-7);
+  margin-bottom: var(--space-7);
+}
+
+.nd-h2 {
+  max-width: 18ch;
+  margin-top: var(--space-3);
+  font-family: var(--font-craft);
+  font-size: clamp(2rem, 1.2rem + 2.6vw, 3.6rem);
+  font-weight: 400;
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+}
+
+.nd-head__lede {
+  max-width: 40ch;
+  color: var(--ink-3);
+}
+
+.nd-more {
+  margin-top: var(--space-7);
+  text-align: center;
+}
+
+/* Materials band */
+.nd-wood {
+  margin-top: clamp(5rem, 3rem + 5vw, 8rem);
+  padding-block: clamp(4rem, 3rem + 4vw, 6.5rem);
+  background: var(--paper-3);
+  border-radius: 36px;
+  margin-inline: var(--space-3);
+}
+
+.nd-wood__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: var(--space-7) var(--gutter);
+}
+
+.nd-wood__lede {
+  max-width: 40ch;
+  margin-block: var(--space-4);
+  color: var(--ink-2);
+}
+
+.nd-wood__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ink);
+}
+
+.nd-wood__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gutter);
+}
+
+.nd-wood__list li {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-soft);
+  background: var(--paper);
+}
+
+.nd-wood__swatch {
+  display: block;
+  height: 4.5rem;
+  margin-bottom: var(--space-2);
+  border-radius: 14px;
+  background-image: repeating-linear-gradient(90deg, rgb(0 0 0 / 0.05) 0 2px, transparent 2px 9px);
+}
+
+.nd-wood__list h3,
+.nd-steps h3,
+.nd-visit__trust h3 {
+  font-family: var(--font-craft);
+  font-size: var(--step-1);
+  font-weight: 500;
+}
+
+.nd-wood__list p,
+.nd-steps p,
+.nd-visit__trust p {
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+/* Steps */
+.nd-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--gutter);
+}
+
+.nd-steps li {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: var(--hair) solid var(--line);
+  border-radius: var(--radius-soft);
+  background: var(--card);
+}
+
+.nd-steps__num {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--paper);
+  font-family: var(--font-craft);
+  font-size: var(--step-1);
+}
+
+/* Visit */
+.nd-visit {
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  gap: var(--space-7) var(--gutter);
+}
+
+.nd-visit__card {
+  display: grid;
+  justify-items: start;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-7);
+  border-radius: 28px;
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+.nd-visit__card .eyebrow {
+  color: color-mix(in oklab, var(--on-ink) 70%, transparent);
+}
+
+.nd-visit__card .btn--ghost {
+  color: var(--on-ink);
+  border-color: var(--on-ink);
+}
+
+.nd-visit__trust {
+  display: grid;
+  align-content: start;
+}
+
+.nd-visit__trust li {
+  display: grid;
+  gap: 0.3rem;
+  padding-block: var(--space-4);
+  border-bottom: var(--hair) solid var(--line);
+}
+
+@media (max-width: 900px) {
+  .nd-hero,
+  .nd-wood__grid,
+  .nd-visit {
+    grid-template-columns: 1fr;
+  }
+
+  .nd-hero {
+    min-height: 0;
+  }
+
+  .nd-hero__photo {
+    min-height: 0;
+    aspect-ratio: 4 / 3;
+  }
+
+  .nd-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .nd-steps,
+  .nd-wood__list {
+    grid-template-columns: 1fr;
+  }
+
+  .nd-visit__card {
+    padding: var(--space-5);
+  }
+
+  .nd-wood {
+    border-radius: 24px;
+    margin-inline: 0;
+  }
+}

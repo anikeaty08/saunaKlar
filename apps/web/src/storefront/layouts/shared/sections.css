@@ -281,3 +281,29 @@
   }
 }
 
+
+/* Media fill used by the layouts */
+.lmedia {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.lmedia .lazy-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.lmedia img {
+  object-fit: cover;
+}
+
+.lmedia__glyph {
+  width: 72%;
+  max-height: 80%;
+  color: var(--ink-4);
+}
