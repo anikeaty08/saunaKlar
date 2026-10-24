@@ -140,7 +140,7 @@ describe('platform, worker and catalog roles', () => {
     const alpha = await platform(env, c => one(c, 'SELECT * FROM reseller_stats($1)', [ALPHA]));
     expect(alpha).toMatchObject({ reseller_id: ALPHA, customers: 2, configurations: 5, locked_configurations: 4, share_links: 1,
       share_link_views: 2, requests: 3, requests_open: 3, requests_accepted: 0 });
-    const recent = await platform(env, c => one(c, `SELECT * FROM reseller_stats($1, now() - interval '1 day')`, [ALPHA]));
+    const recent = await platform(env, c => one(c, `SELECT * FROM reseller_stats($1, now() - interval '36 hours')`, [ALPHA]));
     expect(recent).toMatchObject({ customers: 0, configurations: 0, share_links: 1, share_link_views: 1, requests: 3 });
     const statuses = await platform(env, c => c.query('SELECT status_code, requests FROM reseller_request_status_counts($1)', [BETA]));
     expect(statuses.rows).toEqual([{ status_code: 'ACCEPTED', requests: 1 }]);

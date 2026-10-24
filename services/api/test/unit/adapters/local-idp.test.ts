@@ -174,6 +174,49 @@ describe('LocalIdentityProvider: refresh tokens', () => {
     expect(await codeOf(idp.refresh('CUSTOMER', third.refreshToken))).toBe('SESSION_EXPIRED');
   });
 
+  it('two tabs refreshing with the same token within 15 s both get the same successor', async () => {
+    const first = await idp.refresh('CUSTOMER', tokens.refreshToken);
+    advance(14_000);
+    const second = await idp.refresh('CUSTOMER', tokens.refreshToken);
+    expect(second).toEqual(first);
+    // The successor stays usable and rotates normally.
+    const third = await idp.refresh('CUSTOMER', first.refreshToken);
+    expect(third.refreshToken).not.toBe(first.refreshToken);
+  });
+
+  it('keeps successors only encrypted', async () => {
+    const next = await idp.refresh('CUSTOMER', tokens.refreshToken);
+    const attrs = JSON.stringify(db.state.users.get(CUSTOMER_ID)!.attributes);
+    expect(attrs).toContain('idp:refresh_grace');
+    expect(attrs).not.toContain(next.refreshToken);
+    expect(attrs).not.toContain(next.accessToken);
+  });
+
+  it('outside the window reuse still revokes the family', async () => {
+    const next = await idp.refresh('CUSTOMER', tokens.refreshToken);
+    advance(15_001);
+    expect(await codeOf(idp.refresh('CUSTOMER', tokens.refreshToken))).toBe('SESSION_EXPIRED');
+    expect(await codeOf(idp.refresh('CUSTOMER', next.refreshToken))).toBe('SESSION_EXPIRED');
+  });
+
+  it('the window does not revive a logged-out or disabled session', async () => {
+    const next = await idp.refresh('CUSTOMER', tokens.refreshToken);
+    await idp.revoke('CUSTOMER', next.refreshToken);
+    expect(await codeOf(idp.refresh('CUSTOMER', tokens.refreshToken))).toBe('SESSION_EXPIRED');
+
+    const fresh = tokensOf(await idp.initiateAuth('CUSTOMER', CUSTOMER_ID, 'Sauna-Lover-2026'));
+    await idp.refresh('CUSTOMER', fresh.refreshToken);
+    await idp.adminDisableUser('CUSTOMER', CUSTOMER_ID);
+    expect(await codeOf(idp.refresh('CUSTOMER', fresh.refreshToken))).toBe('SESSION_EXPIRED');
+  });
+
+  it('a stale grace entry for a successor that was rotated again counts as reuse', async () => {
+    const second = await idp.refresh('CUSTOMER', tokens.refreshToken);
+    const third = await idp.refresh('CUSTOMER', second.refreshToken);
+    expect(await codeOf(idp.refresh('CUSTOMER', tokens.refreshToken))).toBe('SESSION_EXPIRED');
+    expect(await codeOf(idp.refresh('CUSTOMER', third.refreshToken))).toBe('SESSION_EXPIRED');
+  });
+
   it('only works in its own pool and expires after 30 days, not extended by rotation', async () => {
     expect(await codeOf(idp.refresh('STAFF', tokens.refreshToken))).toBe('SESSION_EXPIRED');
     advance(29 * 24 * 3600 * 1000);

@@ -22,6 +22,7 @@ import { base32Decode, base32Encode } from './base32.ts';
 import { ATTR_STATUS_BEFORE_DISABLE, ATTR_TOTP_LAST_STEP, isUniqueViolation, store, type CodePurpose, type UserRow, type UserStatus } from './local-store.ts';
 import { checkPasswordPolicy, generateTemporaryPassword, getDummyHash, hashPassword, verifyPassword } from './password.ts';
 import { generateTotpSecret, otpauthUri, verifyTotp } from './totp.ts';
+import { ATTR_REFRESH_GRACE, addGrace, findGrace, graceKey } from './refresh-grace.ts';
 
 export const LOCAL_IDP_ISSUER = 'saunaklar-local-idp';
 
@@ -71,11 +72,13 @@ const publicAttributes = (attrs: Record<string, string> | undefined) =>
  */
 export class LocalIdentityProvider implements IdentityProvider {
   private readonly key: Uint8Array;
+  private readonly graceKey: Buffer;
   private readonly now: () => Date;
 
   constructor(private readonly config: LocalIdentityProviderConfig) {
     if (Buffer.byteLength(config.jwtSecret) < 32) throw new Error('Local IdP JWT secret must be at least 32 bytes');
     this.key = new TextEncoder().encode(config.jwtSecret);
+    this.graceKey = graceKey(this.key);
     this.now = config.now ?? (() => new Date());
   }
 
@@ -233,13 +236,23 @@ export class LocalIdentityProvider implements IdentityProvider {
         const hash = sha256(refreshToken);
         const row = await store.findRefresh(db, hash);
         if (!row) return fail('SESSION_EXPIRED');
+        const nowMs = this.now().getTime();
+        // Locked: rotation rewrites the grace map in the user's attributes.
+        const user = await store.findUserBySub(db, row.sub, true);
         if (row.revoked_at) {
-          // A rotated token presented again means it leaked: end the whole session family.
-          if (row.replaced_by) await store.revokeFamily(db, row.family_id);
+          if (!row.replaced_by) return fail('SESSION_EXPIRED'); // logged out or revoked
+          // Two tabs refreshing at once: hand out the pair the first one already received,
+          // as long as that successor is still the live head of the family.
+          const successor = user && user.pool === pool ? findGrace(this.graceKey, user.attributes[ATTR_REFRESH_GRACE], hash, nowMs) : null;
+          if (successor && user!.status !== 'DISABLED') {
+            const head = await store.findRefresh(db, sha256(successor.refreshToken));
+            if (head && !head.revoked_at && new Date(head.expires_at).getTime() > nowMs) return ok(successor);
+          }
+          // A rotated token presented again outside the window means it leaked: end the family.
+          await store.revokeFamily(db, row.family_id);
           return fail('SESSION_EXPIRED');
         }
-        if (new Date(row.expires_at).getTime() <= this.now().getTime()) return fail('SESSION_EXPIRED');
-        const user = await store.findUserBySub(db, row.sub);
+        if (new Date(row.expires_at).getTime() <= nowMs) return fail('SESSION_EXPIRED');
         if (!user || user.pool !== pool) return fail('SESSION_EXPIRED');
         if (user.status === 'DISABLED') {
           await store.revokeFamily(db, row.family_id);
@@ -248,6 +261,9 @@ export class LocalIdentityProvider implements IdentityProvider {
         // The family keeps its original expiry: rotation never extends a session past 30 days.
         const issued = await this.issueTokens(db, user, { familyId: row.family_id, expiresAt: new Date(row.expires_at) });
         await store.markReplaced(db, hash, sha256(issued.refreshToken));
+        await store.setAttributes(db, user.sub, {
+          [ATTR_REFRESH_GRACE]: addGrace(this.graceKey, user.attributes[ATTR_REFRESH_GRACE], hash, issued, nowMs),
+        });
         return ok(issued);
       }),
     );
