@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type pg from 'pg';
+import type { Queryable } from '../src/index.ts';
 import { ALPHA, BETA, GAMMA, M, O, SEED, as, count, expectCode, one, ownerTx, platform, setupEnv, tenant, type Env } from './helpers.ts';
 
 let env: Env;
@@ -12,7 +13,7 @@ const versions = async () => {
 };
 
 /** A new ACTIVE model with prices in the given currencies and one wood option priced in optionCurrencies. */
-async function newModel(c: pg.ClientBase, slug: string, currencies: string[], optionCurrencies = currencies, manufacturerId: string = SEED.manufacturerId, status = 'ACTIVE') {
+async function newModel(c: Queryable, slug: string, currencies: string[], optionCurrencies = currencies, manufacturerId: string = SEED.manufacturerId, status = 'ACTIVE') {
   const { id } = await one<{ id: string }>(c, `INSERT INTO sauna_models (manufacturer_id, sku, slug, status, name)
     VALUES ($1, upper($2), $2, $3, $2) RETURNING id`, [manufacturerId, slug, status]);
   for (const cur of currencies) {
@@ -110,7 +111,7 @@ describe('rule 2: assignment', () => {
   });
 
   it('re-checks a new option on an assigned model at commit, allowing prices added in the same transaction', async () => {
-    const addOption = (c: pg.ClientBase) => c.query(
+    const addOption = (c: Queryable) => c.query(
       `INSERT INTO sauna_model_options (sauna_model_id, option_id, option_group_id) VALUES ($1, $2, $3)`,
       [M('espoo-compact'), O('salt-wall'), SEED.groups('extras')]);
     await expectCode(as(env, 'catalog_admin', {}, addOption), 'SAUNA_NOT_ASSIGNABLE', 'ASSIGNED_PRICE_MISSING');
@@ -214,7 +215,7 @@ describe('rule 9: catalog_version bumps only affected resellers', () => {
 });
 
 describe('rule 10: TENANT_SYNC outbox', () => {
-  const syncs = (c: pg.ClientBase, id: string) =>
+  const syncs = (c: Queryable, id: string) =>
     c.query<{ payload: Record<string, unknown> }>(`SELECT payload FROM notification_outbox WHERE event_type = 'TENANT_SYNC' AND reseller_id = $1 ORDER BY id`, [id]);
 
   it('writes TENANT_SYNC on create, status change and slug change, but not on other changes', async () => {

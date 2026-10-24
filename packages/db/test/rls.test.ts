@@ -193,7 +193,8 @@ describe('SECURITY DEFINER API functions', () => {
     const adminSub = (await one<{ s: string }>(env.owner, 'SELECT idp_subject AS s FROM staff_users WHERE id = $1', [SEED.staff.admin])).s;
     const m = await platform(env, c => one(c, 'SELECT * FROM staff_principal_for_manufacturer($1)', [adminSub]));
     expect(m).toMatchObject({ staff_user_id: SEED.staff.admin, manufacturer_id: SEED.manufacturerId, status: 'ACTIVE' });
-    expect((await platform(env, c => c.query('SELECT * FROM staff_principal_for_manufacturer($1)', [await alphaSub()]))).rowCount).toBe(0);
+    const alphaSubject = await alphaSub();
+    expect((await platform(env, c => c.query('SELECT * FROM staff_principal_for_manufacturer($1)', [alphaSubject]))).rowCount).toBe(0);
     const byEmail = await tenant(env, ALPHA, c => one(c, `SELECT * FROM staff_by_email('OWNER@alpha.test ')`));
     expect(byEmail).toMatchObject({ staff_user_id: SEED.staff.alphaOwner, status: 'ACTIVE' });
 

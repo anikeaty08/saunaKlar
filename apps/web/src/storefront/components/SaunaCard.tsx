@@ -81,7 +81,7 @@ export function SaunaCardSkeleton() {
 }
 
 /** Responsive grid for cards. */
-export function SaunaGrid({ children, ...rest }: React.HTMLAttributes<HTMLDivElement>) {
+export function SaunaGrid({ children, ...rest }: React.ComponentProps<'div'>) {
   return (
     <div className="sgrid" {...rest}>
       {children}

@@ -1,4 +1,5 @@
-# Uses the real sample model in ../models/espoo-compact.glb. Shared option groups and options
+# Uses the procedurally generated sample model (scripts/make-sample-sauna.ts): full detail
+# in ../models/espoo-compact.glb, low LOD in ../models/espoo-compact-low.glb. Shared option groups and options
 # (wood, heater, door, lighting, extras) are described exactly like the dev seed describes them.
 sauna:
   sku: NL-ESP-161
@@ -95,3 +96,4 @@ sauna:
       - [heater-wood, control-wifi]
   assets:
     model_high: ../models/espoo-compact.glb
+    model_low: ../models/espoo-compact-low.glb

@@ -105,6 +105,14 @@ export function createLocalEdgeApp(deps: Deps, opts: LocalEdgeOptions): Hono {
 
   if (opts.devTools) {
     app.get('/dev/mail', async c => c.html(await renderMailList(deps.pool, c.req.query('to'))));
+    app.onError((err, c) => {
+      // An unmigrated local database is the usual cause; say how to fix it instead of a bare 500.
+      if ((err as { code?: string }).code === '42P01') {
+        return c.text('The local database is not migrated. Run: LOCAL_IDP=1 npm run db:migrate (and npm run db:seed).', 503);
+      }
+      deps.log.error('local.edge_error', { path: c.req.path, error: err.name });
+      return c.text('Internal error', 500);
+    });
     app.get('/dev/mail/:id', async c => {
       const html = await renderMail(deps.pool, c.req.param('id'));
       return html ? c.html(html) : text(c, 404, 'Not found');

@@ -118,7 +118,14 @@ export async function setStatusNote(client: Queryable, note: string | null): Pro
 // sql`...` tagged template: values become $n parameters; nested sql fragments are inlined.
 // ---------------------------------------------------------------------------------------------
 export class SqlQuery {
-  constructor(readonly strings: readonly string[], readonly params: readonly unknown[]) {}
+  readonly strings: readonly string[];
+  readonly params: readonly unknown[];
+
+  // No TS parameter properties: Node's type stripping must be able to run this file as is.
+  constructor(strings: readonly string[], params: readonly unknown[]) {
+    this.strings = strings;
+    this.params = params;
+  }
 
   get text(): string {
     return this.build().text;

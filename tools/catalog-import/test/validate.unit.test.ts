@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { loadCatalog, percentToBps } from '../src/catalog.ts';
 import { checkGlb, storageKey, MB } from '../src/files.ts';
+import { mkdtemp, readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { makeSampleSauna } from '../scripts/make-sample-sauna.ts';
 import { baseRoom, baseSauna, glb, writeCatalog, type Json } from './fixtures.ts';
 
 async function errorsFor(spec: Parameters<typeof writeCatalog>[0], opts = {}) {
@@ -161,5 +165,19 @@ describe('files', () => {
     expect(storageKey('cedar-100', 'MODEL_GLB_LOW', h, '.glb')).toBe('assets/lo/catalog/cedar-100/model-glb-low-abcdef012345.glb');
     expect(storageKey('cedar-100', 'MODEL_AR_USDZ', h, '.usdz')).toBe('assets/hi/catalog/cedar-100/model-ar-usdz-abcdef012345.usdz');
     expect(storageKey('cedar-100', 'MODEL_THUMBNAIL', h, '.png')).toBe('media/catalog/cedar-100/model-thumbnail-abcdef012345.png');
+  });
+});
+
+describe('make-sample-sauna', () => {
+  it('writes valid GLBs within the size budgets, deterministically', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'sample-sauna-'));
+    const a = await makeSampleSauna(dir);
+    expect(checkGlb(await readFile(a.high))).toBeNull();
+    expect(checkGlb(await readFile(a.low))).toBeNull();
+    expect(a.highBytes).toBeLessThan(300 * 1024);
+    expect(a.lowBytes).toBeLessThan(a.highBytes / 2);
+    const first = await readFile(a.high);
+    await makeSampleSauna(dir);
+    expect(Buffer.compare(first, await readFile(a.high))).toBe(0);
   });
 });

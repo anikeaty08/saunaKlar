@@ -1,6 +1,6 @@
 import { expect } from 'vitest';
 import type pg from 'pg';
-import { createPool, createTestDatabase, dbErrorCode, dbErrorInfo, SEED, withTx, type TestDatabase, type TxContext } from '../src/index.ts';
+import { createPool, createTestDatabase, dbErrorCode, dbErrorInfo, SEED, withTx, type Queryable, type TestDatabase, type TxContext } from '../src/index.ts';
 
 export { SEED };
 export const ALPHA = SEED.resellers.alpha;
@@ -71,19 +71,19 @@ export async function expectCode(p: Promise<unknown>, code: string, detail?: str
   if (detail !== undefined) expect(dbErrorInfo(error)?.detail).toBe(detail);
 }
 
-export async function count(c: pg.ClientBase, sql: string, values: unknown[] = []): Promise<number> {
+export async function count(c: Queryable, sql: string, values: unknown[] = []): Promise<number> {
   const { rows } = await c.query<{ n: number }>(`SELECT count(*)::int AS n FROM (${sql}) x`, values);
   return rows[0]!.n;
 }
 
-export async function one<T = Record<string, unknown>>(c: pg.ClientBase, sql: string, values: unknown[] = []): Promise<T> {
+export async function one<T = Record<string, unknown>>(c: Queryable, sql: string, values: unknown[] = []): Promise<T> {
   const { rows } = await c.query(sql, values);
   if (!rows[0]) throw new Error(`no row: ${sql}`);
   return rows[0] as T;
 }
 
 /** Creates a draft configuration with selections (as the tenant, so RLS and triggers apply). */
-export async function draft(c: pg.ClientBase, o: { reseller: string; model: string; customer?: string | null; staff?: string | null; options: string[] }): Promise<string> {
+export async function draft(c: Queryable, o: { reseller: string; model: string; customer?: string | null; staff?: string | null; options: string[] }): Promise<string> {
   const { id } = await one<{ id: string }>(c,
     `INSERT INTO configurations (reseller_id, sauna_model_id, customer_id, created_by_staff_id, name)
      VALUES ($1, $2, $3, $4, 'test') RETURNING id`, [o.reseller, M(o.model), o.customer ?? null, o.staff ?? null]);
@@ -94,7 +94,7 @@ export async function draft(c: pg.ClientBase, o: { reseller: string; model: stri
 }
 
 /** Writes a correct, undiscounted price snapshot from the current catalog prices. */
-export async function writeSnapshot(c: pg.ClientBase, configurationId: string): Promise<void> {
+export async function writeSnapshot(c: Queryable, configurationId: string): Promise<void> {
   await c.query(
     `INSERT INTO configuration_price_snapshots
        (configuration_id, currency_code, list_price_minor, options_total_minor, discount_amount_minor, final_price_minor,
@@ -121,7 +121,7 @@ export async function writeSnapshot(c: pg.ClientBase, configurationId: string): 
      WHERE s.configuration_id = $1`, [configurationId]);
 }
 
-export async function lock(c: pg.ClientBase, configurationId: string): Promise<void> {
+export async function lock(c: Queryable, configurationId: string): Promise<void> {
   await writeSnapshot(c, configurationId);
   await c.query(`UPDATE configurations SET locked_at = now() WHERE id = $1`, [configurationId]);
 }

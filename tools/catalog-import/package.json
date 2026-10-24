@@ -12,7 +12,8 @@
   },
   "scripts": {
     "import": "tsx src/cli.ts",
-    "typecheck": "tsc --noEmit -p ."
+    "typecheck": "tsc --noEmit -p .",
+    "sample-model": "tsx scripts/make-sample-sauna.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1156.0",

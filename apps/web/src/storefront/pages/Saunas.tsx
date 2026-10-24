@@ -164,7 +164,7 @@ export default function Saunas() {
         )}
       </div>
 
-      <SaunaGrid ref={grid as never}>
+      <SaunaGrid ref={grid}>
         {catalog.isPending
           ? Array.from({ length: 6 }, (_, i) => <SaunaCardSkeleton key={i} />)
           : visible.map((it, i) => <SaunaCard key={it.id} item={it} index={i} currency={currency} />)}
