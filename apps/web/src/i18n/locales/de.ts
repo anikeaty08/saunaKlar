@@ -106,6 +106,15 @@ export const de: Messages = {
     newsletterNote: 'Wir schreiben nur, wenn sich bei einer Anfrage etwas ändert.',
   },
   home: {
+    statementEyebrow: "Warum hier konfigurieren",
+    statement: "Jede Sauna beginnt als Raum für Wärme. Hier wird sie Ihre: bemessen, ausgestattet und berechnet, bevor jemand anruft.",
+    panelCta: "Ansehen und konfigurieren",
+    howSteps: [
+      { title: "Konfigurieren", body: "Wählen Sie eine Form, dann Holz, Ofen, Tür und Licht. Unverträgliche Optionen werden für Sie aufgelöst, und der Preis ändert sich mit jedem Klick." },
+      { title: "In Ihren Raum stellen", body: "Geben Sie die Masse Ihres Raums ein und sehen Sie die Sauna darin, oder öffnen Sie sie auf dem Handy in AR." },
+      { title: "Offerte anfragen", body: "Senden Sie die fixierte Konfiguration mit einem Klick. Nichts ist verbindlich, und der Preis gilt 30 Tage." },
+      { title: "Angebot erhalten", body: "{name} prüft die Details und schickt ein schriftliches Angebot, das Sie online annehmen können." },
+    ],
     eyebrow: 'Konfigurator',
     heroTitleA: 'Wärme,',
     heroTitleB: 'nach',
@@ -119,7 +128,7 @@ export const de: Messages = {
     featuredLede: 'Sechs Formen, von der Eckkabine für zwei bis zum Gartenhaus mit eigener Veranda.',
     viewAll: 'Alle Saunas ansehen',
     howEyebrow: 'Ablauf',
-    howTitle: 'In drei Schritten zu Ihrer Sauna',
+    howTitle: "In vier Schritten zu Ihrer Sauna",
     steps: [
       { title: 'Auswählen', body: 'Formen, Grössen und Preise vergleichen. Alles ist ohne Konto sichtbar.' },
       { title: 'Konfigurieren', body: 'Holz, Ofen, Tür und Licht. Optionen, die nicht zusammenpassen, lösen wir für Sie auf.' },

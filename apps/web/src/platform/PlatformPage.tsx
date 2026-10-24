@@ -13,6 +13,7 @@ import { LanguageSwitcher } from '../storefront/layout/LanguageSwitcher.tsx';
 import { BackToTop, FooterFrame } from '../storefront/layout/Footer.tsx';
 import { FlipChars } from '../motion/FlipChars.tsx';
 import { Logo } from '../design/brand/Logo.tsx';
+import { ScrollProgress } from '../motion/ScrollProgress.tsx';
 import { Credit } from '../design/components/Credit.tsx';
 import './Platform.css';
 
@@ -94,6 +95,7 @@ function PlatformFrame({ children }: { children: React.ReactNode }) {
           </ul>
         </section>
       </FooterFrame>
+      <ScrollProgress />
     </div>
   );
 }

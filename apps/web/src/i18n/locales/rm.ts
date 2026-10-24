@@ -106,6 +106,15 @@ export const rm: Messages = {
     newsletterNote: 'Nus scrivain mo, sch’ina dumonda sa mida.',
   },
   home: {
+    statementEyebrow: "Pertge configurar qua",
+    statement: "Mintga sauna cumenza sco stanza per il chalur. Qua daventa ella Vossa: dimensiunada, equipada e calculada avant ch’insatgi telefonescha.",
+    panelCta: "Guardar e configurar",
+    howSteps: [
+      { title: "Configurar", body: "Tscherni ina furma, lura il lain, la pigna, l’isch e la glisch. Opziuns che na van betg ensemen vegnan schliadas per Vus, ed il pretsch sa mida cun mintga clic." },
+      { title: "Plazzar en Vossa stanza", body: "Endatai las dimensiuns da Vossa stanza e vesai la sauna en ella, u avri ella en AR sin Voss telefon." },
+      { title: "Dumandar ina offerta", body: "Trametti la configuraziun fixada cun in clic. Nagut n’è obligatoric, ed il pretsch vala 30 dis." },
+      { title: "Retschaiver Vossa offerta", body: "{name} controllescha ils detagls e trametta in’offerta en scrit che Vus pudais acceptar online." },
+    ],
     eyebrow: 'Configuratur',
     heroTitleA: 'Chalur,',
     heroTitleB: 'sin',
@@ -119,7 +128,7 @@ export const rm: Messages = {
     featuredLede: 'Sis furmas, dal chantun per duas persunas fin a la chasetta d’iert cun atgna veranda.',
     viewAll: 'Mussar tut las saunas',
     howEyebrow: 'Process',
-    howTitle: 'En trais pass tar Vossa sauna',
+    howTitle: "En quatter pass tar Vossa sauna",
     steps: [
       { title: 'Tscherner', body: 'Cumparegliai furmas, grondezzas e pretschs. Tut è visibel senza conto.' },
       { title: 'Configurar', body: 'Lain, pigna, porta e glisch. Opziuns che na van betg ensemen schliain nus per Vus.' },

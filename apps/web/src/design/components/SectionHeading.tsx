@@ -11,10 +11,12 @@ interface Props {
   index?: string;
   as?: 'h1' | 'h2';
   size?: 'md' | 'lg' | 'xl';
+  /** Id of the heading element, for aria-labelledby. */
+  id?: string;
 }
 
 /** Section title block: index, eyebrow, a scrambled heading and an optional lede and action. */
-export function SectionHeading({ eyebrow, title, lede, action, index, as = 'h2', size = 'lg' }: Props) {
+export function SectionHeading({ eyebrow, title, lede, action, index, as = 'h2', size = 'lg', id }: Props) {
   return (
     <header className={`sh sh--${size}`}>
       <div className="sh__meta">
@@ -22,7 +24,7 @@ export function SectionHeading({ eyebrow, title, lede, action, index, as = 'h2',
         {eyebrow && <ScrambleText as="p" className="eyebrow" text={eyebrow} trigger="inview" />}
       </div>
       <div className="sh__main">
-        <ScrambleText as={as} className="sh__title" text={title} trigger="inview" />
+        <ScrambleText as={as} className="sh__title" text={title} trigger="inview" id={id} />
         {lede && <div className="sh__lede">{lede}</div>}
       </div>
       {action && <div className="sh__action">{action}</div>}

@@ -107,6 +107,15 @@ export const fr: Messages = {
     newsletterNote: 'Nous n’écrivons que lorsqu’une demande évolue.',
   },
   home: {
+    statementEyebrow: "Pourquoi configurer ici",
+    statement: "Chaque sauna commence par une pièce pour la chaleur. Ici, elle devient la vôtre : dimensionnée, équipée et chiffrée avant le moindre appel.",
+    panelCta: "Voir et configurer",
+    howSteps: [
+      { title: "Configurer", body: "Choisissez une forme, puis le bois, le poêle, la porte et l’éclairage. Les options incompatibles sont résolues pour vous et le prix suit chaque clic." },
+      { title: "Placer dans votre pièce", body: "Indiquez les dimensions de votre pièce et voyez-y le sauna, ou ouvrez-le en réalité augmentée sur votre téléphone." },
+      { title: "Demander un devis", body: "Envoyez la configuration verrouillée en un clic. Rien n’est contraignant et le prix reste valable 30 jours." },
+      { title: "Recevoir votre offre", body: "{name} vérifie les détails et vous envoie une offre écrite, que vous pouvez accepter en ligne." },
+    ],
     eyebrow: 'Configurateur',
     heroTitleA: 'La chaleur,',
     heroTitleB: 'sur',
@@ -120,7 +129,7 @@ export const fr: Messages = {
     featuredLede: 'Six formes, de l’angle pour deux à la maisonnette de jardin avec son propre porche.',
     viewAll: 'Voir tous les saunas',
     howEyebrow: 'Démarche',
-    howTitle: 'Trois étapes jusqu’à votre sauna',
+    howTitle: "Quatre étapes jusqu’à votre sauna",
     steps: [
       { title: 'Choisir', body: 'Comparez formes, tailles et prix. Tout est visible sans compte.' },
       { title: 'Configurer', body: 'Bois, poêle, porte et éclairage. Les options incompatibles sont résolues pour vous.' },

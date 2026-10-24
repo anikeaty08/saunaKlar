@@ -8,6 +8,7 @@ import { ErrorPage } from '../design/components/ErrorBoundary.tsx';
 import { Toaster } from '../design/components/Toast.tsx';
 import { Skeleton } from '../design/components/Skeleton.tsx';
 import { NavigationProgress, PageTransition } from '../motion/PageTransition.tsx';
+import { ScrollProgress } from '../motion/ScrollProgress.tsx';
 import { useT } from '../i18n/i18n.ts';
 import { hideSplash } from '../app/splash.ts';
 import { UnknownHost } from '../platform/PlatformPage.tsx';
@@ -91,6 +92,7 @@ export function StorefrontRoot() {
         </PageTransition>
         <Footer tenant={data} />
       </LocaleFlip>
+      <ScrollProgress />
       <ScrollRestoration />
       <Toaster />
     </>

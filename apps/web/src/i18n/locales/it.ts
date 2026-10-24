@@ -106,6 +106,15 @@ export const it: Messages = {
     newsletterNote: 'Le scriviamo solo quando una richiesta cambia.',
   },
   home: {
+    statementEyebrow: "Perché configurare qui",
+    statement: "Ogni sauna nasce come una stanza per il calore. Qui diventa la Sua: dimensionata, definita e con il prezzo, prima di qualsiasi telefonata.",
+    panelCta: "Vedi e configura",
+    howSteps: [
+      { title: "Configurare", body: "Scelga una forma, poi legno, stufa, porta e luce. Le opzioni incompatibili vengono risolte per Lei e il prezzo si aggiorna a ogni clic." },
+      { title: "Posizionarla nella stanza", body: "Inserisca le misure della stanza e veda la sauna al suo interno, oppure la apra in AR sul telefono." },
+      { title: "Richiedere un preventivo", body: "Invii la configurazione bloccata con un clic. Nulla è vincolante e il prezzo resta valido 30 giorni." },
+      { title: "Ricevere l’offerta", body: "{name} verifica i dettagli e invia un’offerta scritta, che può accettare online." },
+    ],
     eyebrow: 'Configuratore',
     heroTitleA: 'Calore,',
     heroTitleB: 'su',
@@ -119,7 +128,7 @@ export const it: Messages = {
     featuredLede: 'Sei forme, dall’angolo per due alla casetta da giardino con il suo portico.',
     viewAll: 'Vedi tutte le saune',
     howEyebrow: 'Procedura',
-    howTitle: 'Tre passi verso la Sua sauna',
+    howTitle: "Quattro passi verso la Sua sauna",
     steps: [
       { title: 'Scegliere', body: 'Confronti forme, dimensioni e prezzi. Tutto è visibile senza account.' },
       { title: 'Configurare', body: 'Legno, stufa, porta e luce. Le opzioni incompatibili vengono risolte per Lei.' },

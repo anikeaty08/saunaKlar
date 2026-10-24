@@ -5,14 +5,13 @@ import { useT } from '../../i18n/i18n.ts';
 import { gsap, useGSAP } from '../../motion/gsap.ts';
 import { prefersReducedMotion } from '../../motion/preferences.ts';
 import { ScrambleText } from '../../motion/ScrambleText.tsx';
-import { Reveal } from '../../motion/Reveal.tsx';
 import { Magnetic } from '../../motion/Magnetic.tsx';
 import { NumberTicker } from '../../motion/NumberTicker.tsx';
 import { ButtonLink } from '../../design/components/Button.tsx';
 import { SectionHeading } from '../../design/components/SectionHeading.tsx';
 import { TextLink } from '../../design/components/TextLink.tsx';
 import { useDocumentTitle } from '../../app/useDocumentTitle.ts';
-import { SaunaCard, SaunaCardSkeleton, SaunaGrid } from '../components/SaunaCard.tsx';
+import { FeaturedPanels, HowSteps, Statement } from './HomeSections.tsx';
 import { SaunaGlyph } from '../components/SaunaGlyph.tsx';
 import { DrawOn } from '../components/DrawOn.tsx';
 import { LogoMark } from '../../design/brand/Logo.tsx';
@@ -20,7 +19,7 @@ import { specsOf } from '../components/specs.ts';
 import './Home.css';
 
 export default function Home() {
-  const { t, m, f } = useT();
+  const { t } = useT();
   const tenant = useTenantData();
   const catalog = useCatalog();
   const name = tenant.branding.displayName;
@@ -30,8 +29,10 @@ export default function Home() {
   useGSAP(
     () => {
       if (prefersReducedMotion()) return;
-      gsap.from('.home-hero__line-inner', { yPercent: 110, duration: 1.3, stagger: 0.12, ease: 'sk.snap', delay: 0.45 });
-      gsap.from('.home-hero__after', { autoAlpha: 0, y: 18, duration: 1, stagger: 0.08, ease: 'sk.outSoft', delay: 0.9 });
+      // Wait for the loader's curtain on a first load, so the entrance is seen.
+      const w = document.getElementById('splash') ? 0.9 : 0;
+      gsap.from('.home-hero__line-inner', { yPercent: 110, duration: 1.3, stagger: 0.12, ease: 'sk.snap', delay: 0.45 + w });
+      gsap.from('.home-hero__after', { autoAlpha: 0, y: 18, duration: 1, stagger: 0.08, ease: 'sk.outSoft', delay: 0.9 + w });
       gsap.from('.home-hero__glow', { autoAlpha: 0, scale: 0.85, duration: 2.2, ease: 'sk.outSoft' });
       gsap.to('.home-hero__scroll-dot', { yPercent: 260, repeat: -1, duration: 1.6, ease: 'sk.snap' });
     },
@@ -58,7 +59,7 @@ export default function Home() {
         </div>
 
         <div className="home-hero__center container">
-          <LogoMark className="home-hero__mark" size={44} draw delay={0.2} />
+          <LogoMark className="home-hero__mark" size={44} draw delay={document.getElementById('splash') ? 1 : 0.2} />
           <ScrambleText as="p" className="eyebrow home-hero__after" text={`${t('home.eyebrow')} — ${name}`} />
           <h1 className="home-hero__title">
             <span className="sr-only">{`${t('home.heroTitleA')} ${t('home.heroTitleB')} ${t('home.heroTitleC')}`}</span>
@@ -112,62 +113,29 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="section container" aria-labelledby="featured">
-        <SectionHeading
-          index="01"
-          eyebrow={t('home.featuredEyebrow')}
-          title={t('home.featuredTitle')}
-          lede={t('home.featuredLede')}
-          action={
-            <TextLink to="/saunas" tone="underline">
-              {t('home.viewAll')}
-            </TextLink>
-          }
-        />
-        <Reveal as={SaunaGrid} id="featured">
-          {catalog.isPending
-            ? [0, 1, 2].map(i => <SaunaCardSkeleton key={i} />)
-            : featured.map((it, i) => <SaunaCard key={it.id} item={it} index={i} currency={catalog.data!.currency} size="lg" />)}
-        </Reveal>
-      </section>
+      <Statement name={name} />
 
-      <section className="section container">
-        <SectionHeading index="02" eyebrow={t('home.howEyebrow')} title={t('home.howTitle')} />
-        <Reveal as="ol" className="home-steps">
-          {m.home.steps.map((s, i) => (
-            <li key={s.title} className="home-step">
-              <span className="home-step__num">{String(i + 1).padStart(2, '0')}</span>
-              <h3 className="home-step__title">{s.title}</h3>
-              <p className="home-step__body">{s.body}</p>
-            </li>
-          ))}
-        </Reveal>
-      </section>
-
-      <section className="section container">
-        <SectionHeading index="03" eyebrow={t('home.trustEyebrow')} title={t('home.trustTitle')} />
-        <Reveal as="ul" className="home-trust">
-          {m.home.trust.map(s => (
-            <li key={s.title}>
-              <h3>{s.title}</h3>
-              <p>{f(s.body, { name })}</p>
-            </li>
-          ))}
-        </Reveal>
-      </section>
-
-      <section className="section container">
-        <div className="home-cta">
-          <ScrambleText as="h2" className="home-cta__title" text={t('home.ctaTitle')} trigger="inview" />
-          <div className="home-cta__side">
-            <p>{t('home.ctaBody')}</p>
-            <Magnetic>
-              <ButtonLink to="/saunas" variant="ghost" size="lg" iconAfter={ArrowRight}>
-                {t('home.ctaButton')}
-              </ButtonLink>
-            </Magnetic>
-          </div>
+      <section className="section" aria-labelledby="featured">
+        <div className="container">
+          <SectionHeading
+            index="01"
+            eyebrow={t('home.featuredEyebrow')}
+            title={t('home.featuredTitle')}
+            id="featured"
+            lede={t('home.featuredLede')}
+            action={
+              <TextLink to="/saunas" tone="underline">
+                {t('home.viewAll')}
+              </TextLink>
+            }
+          />
         </div>
+        {catalog.isPending ? <div className="fpanels fpanels--pending" /> : <FeaturedPanels items={featured} currency={catalog.data?.currency ?? 'EUR'} />}
+      </section>
+
+      <section className="section container home-how">
+        <SectionHeading index="02" eyebrow={t('home.howEyebrow')} title={t('home.howTitle')} />
+        <HowSteps name={name} />
       </section>
     </div>
   );

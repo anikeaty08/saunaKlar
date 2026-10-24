@@ -107,6 +107,15 @@ const messages = {
     newsletterNote: 'We only write when a request changes.',
   },
   home: {
+    statementEyebrow: "Why configure here",
+    statement: "Every sauna starts as a room for heat. Here it becomes yours: sized, specified and priced before anyone calls.",
+    panelCta: "View and configure",
+    howSteps: [
+      { title: "Configure", body: "Choose a form, then wood, heater, door and light. Options that do not fit together are resolved for you, and the price updates with every click." },
+      { title: "Place it in your room", body: "Set your room’s size and see the sauna in it, or open it in AR on your phone to check it on the spot." },
+      { title: "Request a quote", body: "Send the locked configuration with one click. Nothing is binding, and the price stays valid for 30 days." },
+      { title: "Get your offer", body: "{name} checks the details and sends a written offer, which you can accept online." },
+    ],
     eyebrow: 'Configurator',
     heroTitleA: 'Heat,',
     heroTitleB: 'made to',
@@ -120,7 +129,7 @@ const messages = {
     featuredLede: 'Six forms, from a two-person corner to a garden house with its own porch.',
     viewAll: 'View all saunas',
     howEyebrow: 'Process',
-    howTitle: 'Three steps to your sauna',
+    howTitle: "Four steps to your sauna",
     steps: [
       { title: 'Choose', body: 'Compare forms, sizes and prices. Everything is visible without an account.' },
       { title: 'Configure', body: 'Wood, heater, door and light. Options that do not fit together are resolved for you.' },
