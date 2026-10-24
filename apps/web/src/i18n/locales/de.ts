@@ -836,6 +836,17 @@ export const de: Messages = {
     },
     branding: {
       lede: 'Name, Farbe, Logo und Kontaktangaben Ihres Onlineshops.',
+      layout: "Shop-Layout",
+      layoutHint: "So sehen Startseite, Kopfzeile und Karten aus. Farbe, Logo und Texte bleiben in jedem Layout Ihre.",
+      layoutPreview: "Vorschau",
+      layoutPreviewHint: "Öffnet Ihren Shop mit diesem Layout in einem neuen Tab, nur für Sie.",
+      layouts: {
+        atelier: { name: "Atelier", body: "Redaktionell und ruhig: zentrierte Serifen-Headline, viel Weissraum, ein feines Raster." },
+        showroom: { name: "Showroom", body: "Dunkel und filmisch: ein Vollbild-Foto, helle Schrift, eine seitliche Galerie der Saunas." },
+        nordic: { name: "Nordic", body: "Warm und handwerklich: Holz- und Papiertöne, geteilter Einstieg, runde Karten, ein Materialband." },
+        catalogue: { name: "Katalog", body: "Produkt zuerst: kurzer Einstieg, dann alle Saunas mit Filtern, Sortierung und Preisen." },
+        journal: { name: "Journal", body: "Eine Magazingeschichte: sehr grosse Schrift, Kapitel zu Wärme, Holz und Ritual, dann die Kollektion." },
+      },
       identity: 'Identität',
       displayName: 'Name des Onlineshops',
       tagline: 'Slogan',

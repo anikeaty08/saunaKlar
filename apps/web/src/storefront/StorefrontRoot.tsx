@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Outlet, ScrollRestoration, useLocation } from 'react-router';
-import { useTenant } from '../api/queries.ts';
+import { useSession, useTenant } from '../api/queries.ts';
 import { isApiError } from '../api/client.ts';
 import type { Tenant } from '../api/types.ts';
 import { applyTheme } from '../design/theme.ts';
@@ -15,12 +15,17 @@ import { UnknownHost } from '../platform/PlatformPage.tsx';
 import { Header } from './layout/Header.tsx';
 import { Footer } from './layout/Footer.tsx';
 import { LocaleFlip } from './layout/LocaleFlip.tsx';
+import { LAYOUT_LOADERS, LAYOUT_META, loadLayoutFont, resolveLayout, type LayoutId } from './layouts/registry.ts';
 import '../design/layout.css';
 
-function useTenantBranding(tenant: Tenant | undefined) {
+function useTenantBranding(tenant: Tenant | undefined, layout: LayoutId | null) {
   useEffect(() => {
-    if (!tenant) return;
-    applyTheme(tenant.branding.primaryColor);
+    if (!tenant || !layout) return;
+    applyTheme(tenant.branding.primaryColor, LAYOUT_META[layout].flavour);
+    document.documentElement.dataset.layout = layout;
+    loadLayoutFont(layout);
+    // Start the layout chunk (its CSS restyles header and cards on every page).
+    void LAYOUT_LOADERS[layout]();
     if (tenant.branding.faviconUrl) {
       let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
       if (!link) {
@@ -30,7 +35,7 @@ function useTenantBranding(tenant: Tenant | undefined) {
       }
       link.href = tenant.branding.faviconUrl;
     }
-  }, [tenant]);
+  }, [tenant, layout]);
 }
 
 /** Header and footer outlines while the tenant loads (normally hidden by the splash). */
@@ -53,7 +58,9 @@ export function StorefrontRoot() {
   const tenant = useTenant();
   const { t } = useT();
   const { pathname } = useLocation();
-  useTenantBranding(tenant.data);
+  const session = useSession().data;
+  const layout = tenant.data ? resolveLayout(tenant.data, session) : null;
+  useTenantBranding(tenant.data, layout);
 
   useEffect(() => {
     if (!tenant.isPending) hideSplash();

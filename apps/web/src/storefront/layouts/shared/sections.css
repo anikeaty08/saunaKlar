@@ -1,0 +1,283 @@
+/* Statement and fanned principle cards */
+.stmt {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-5);
+  text-align: center;
+}
+
+.stmt__text {
+  max-width: 26ch;
+  font-family: var(--font-serif);
+  font-size: clamp(1.9rem, 1.1rem + 2.8vw, 3.6rem);
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+.stmt__cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--gutter);
+  width: 100%;
+  margin-top: var(--space-7);
+  text-align: left;
+}
+
+.stmt__card {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-height: 15rem;
+  padding: var(--space-5);
+  border: var(--hair) solid var(--line);
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: 0 18px 40px -28px rgb(0 0 0 / 0.35);
+  will-change: transform;
+}
+
+.stmt__card:nth-child(2) {
+  background: var(--paper-3);
+}
+
+.stmt__card:nth-child(3) {
+  background: var(--night);
+  color: var(--on-night);
+  border-color: var(--night-line);
+}
+
+.stmt__card:nth-child(3) p,
+.stmt__card:nth-child(3) .stmt__num {
+  color: var(--night-muted);
+}
+
+.stmt__num {
+  font-size: var(--step--2);
+  color: var(--ink-4);
+}
+
+.stmt__card h3 {
+  margin-top: auto;
+  padding-top: var(--space-6);
+  font-size: var(--step-1);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.stmt__card p {
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+@media (max-width: 1000px) {
+  .stmt__cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .stmt__cards {
+    grid-template-columns: 1fr;
+  }
+
+  .stmt__card {
+    min-height: 0;
+  }
+}
+
+/* Featured sauna panels */
+.fpanels {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-7);
+  padding-inline: var(--space-3);
+}
+
+.fpanels--pending {
+  min-height: 80svh;
+}
+
+.fpanel {
+  position: relative;
+  height: min(100svh, 62rem);
+  min-height: 34rem;
+  overflow: hidden;
+  border-radius: clamp(16px, 2vw, 28px);
+  background: var(--night);
+  color: var(--on-night);
+}
+
+.fpanel__in {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 0%;
+}
+
+.fpanel__media {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.fpanel__media .lazy-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.fpanel__media img {
+  object-fit: cover;
+}
+
+.fpanel__media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 35%, color-mix(in oklab, var(--night) 85%, transparent));
+}
+
+.fpanel__glyph {
+  width: min(70%, 54rem);
+  color: var(--night-muted);
+}
+
+.fpanel__glyph .glyph__face {
+  fill: var(--night) !important;
+}
+
+.fpanel__body {
+  position: absolute;
+  inset: auto 0 0;
+  display: grid;
+  gap: var(--space-3);
+  padding-block: var(--space-7);
+}
+
+.fpanel__count,
+.fpanel__meta {
+  font-size: var(--step--2);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--night-muted);
+}
+
+.fpanel__name {
+  font-family: var(--font-serif);
+  font-size: clamp(2.6rem, 1.2rem + 5.6vw, 7rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.fpanel__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.fpanel__price {
+  font-size: var(--step-2);
+}
+
+.fpanel__price > span:first-child {
+  font-size: var(--step--1);
+  color: var(--night-muted);
+}
+
+/* How it works accordion with ghost numbers */
+.hsteps {
+  border-top: var(--hair) solid var(--ink);
+}
+
+.hsteps__item {
+  position: relative;
+  border-bottom: var(--hair) solid var(--line);
+  overflow: hidden;
+}
+
+.hsteps__ghost {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  translate: 0 -50%;
+  font-family: var(--font-display);
+  font-size: clamp(5rem, 3rem + 9vw, 12rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  color: transparent;
+  -webkit-text-stroke: 1px var(--line-strong);
+  opacity: 0.6;
+  pointer-events: none;
+  transition: opacity var(--dur-3) var(--ease-snap), translate var(--dur-3) var(--ease-snap);
+}
+
+.hsteps__item.is-open .hsteps__ghost {
+  opacity: 1;
+  translate: -2% -50%;
+  -webkit-text-stroke-color: var(--ink-4);
+}
+
+.hsteps__trigger {
+  position: relative;
+  display: grid;
+  grid-template-columns: 4rem 1fr auto;
+  align-items: center;
+  gap: var(--gutter);
+  width: 100%;
+  padding: var(--space-5) 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+}
+
+.hsteps__num {
+  font-size: var(--step--2);
+  color: var(--ink-3);
+}
+
+.hsteps__title {
+  font-size: var(--step-3);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+.hsteps__icon {
+  transition: transform var(--dur-3) var(--ease-snap);
+}
+
+.hsteps__item.is-open .hsteps__icon {
+  transform: rotate(45deg);
+}
+
+.hsteps__panel {
+  height: 0;
+  overflow: hidden;
+}
+
+.hsteps__body {
+  position: relative;
+  max-width: 52ch;
+  padding: 0 0 var(--space-6) calc(4rem + var(--gutter));
+  font-size: var(--step-1);
+  color: var(--ink-2);
+}
+
+@media (max-width: 640px) {
+  .hsteps__trigger {
+    grid-template-columns: 2.25rem 1fr auto;
+  }
+
+  .hsteps__body {
+    padding-left: calc(2.25rem + var(--gutter));
+  }
+}
+

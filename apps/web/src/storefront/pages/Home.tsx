@@ -1,143 +1,27 @@
-import { useRef } from 'react';
-import { ArrowRight } from 'lucide-react';
-import { useCatalog, useTenantData } from '../../api/queries.ts';
-import { useT } from '../../i18n/i18n.ts';
-import { gsap, useGSAP } from '../../motion/gsap.ts';
-import { prefersReducedMotion } from '../../motion/preferences.ts';
-import { ScrambleText } from '../../motion/ScrambleText.tsx';
-import { Magnetic } from '../../motion/Magnetic.tsx';
-import { NumberTicker } from '../../motion/NumberTicker.tsx';
-import { ButtonLink } from '../../design/components/Button.tsx';
-import { SectionHeading } from '../../design/components/SectionHeading.tsx';
-import { TextLink } from '../../design/components/TextLink.tsx';
+import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from 'react';
+import { useSession, useTenantData } from '../../api/queries.ts';
 import { useDocumentTitle } from '../../app/useDocumentTitle.ts';
-import { FeaturedPanels, HowSteps, Statement } from './HomeSections.tsx';
-import { SaunaGlyph } from '../components/SaunaGlyph.tsx';
-import { DrawOn } from '../components/DrawOn.tsx';
-import { LogoMark } from '../../design/brand/Logo.tsx';
-import { specsOf } from '../components/specs.ts';
-import './Home.css';
+import { LAYOUT_LOADERS, resolveLayout, type LayoutId } from '../layouts/registry.ts';
 
+const homes = new Map<LayoutId, LazyExoticComponent<ComponentType>>();
+const homeOf = (id: LayoutId) => {
+  let c = homes.get(id);
+  if (!c) {
+    c = lazy(() => LAYOUT_LOADERS[id]().then(m => ({ default: m.Home })));
+    homes.set(id, c);
+  }
+  return c;
+};
+
+/** The home page belongs to the reseller's chosen layout; each layout is its own chunk. */
 export default function Home() {
-  const { t } = useT();
   const tenant = useTenantData();
-  const catalog = useCatalog();
-  const name = tenant.branding.displayName;
-  const vars = { name, manufacturer: tenant.manufacturer.name };
+  const session = useSession().data;
   useDocumentTitle(null);
-  const hero = useRef<HTMLElement>(null);
-
-  useGSAP(
-    () => {
-      if (prefersReducedMotion()) return;
-      // Wait for the loader's curtain on a first load, so the entrance is seen.
-      const w = document.getElementById('splash') ? 0.9 : 0;
-      gsap.from('.home-hero__line-inner', { yPercent: 110, duration: 1.3, stagger: 0.12, ease: 'sk.snap', delay: 0.45 + w });
-      gsap.from('.home-hero__after', { autoAlpha: 0, y: 18, duration: 1, stagger: 0.08, ease: 'sk.outSoft', delay: 0.9 + w });
-      gsap.from('.home-hero__glow', { autoAlpha: 0, scale: 0.85, duration: 2.2, ease: 'sk.outSoft' });
-      gsap.to('.home-hero__scroll-dot', { yPercent: 260, repeat: -1, duration: 1.6, ease: 'sk.snap' });
-    },
-    { scope: hero },
-  );
-
-  const items = catalog.data?.items ?? [];
-  const featured = items.slice(0, 3);
-  const heroModel = items.find(i => specsOf(i).form === 'panorama') ?? items[0];
-  const hs = heroModel ? specsOf(heroModel) : null;
-  const maxSeats = items.reduce((mx, i) => Math.max(mx, specsOf(i).persons), 0) || 8;
-
+  const LayoutHome = homeOf(resolveLayout(tenant, session));
   return (
-    <div className="home">
-      <section ref={hero} className="home-hero">
-        <div className="home-hero__scene" aria-hidden="true">
-          <div className="home-hero__glow" />
-          {hs && (
-            <DrawOn delay={0.9} className="home-hero__art">
-              <SaunaGlyph form={hs.form} widthMm={hs.widthMm} depthMm={hs.depthMm} heightMm={hs.heightMm} strokeWidth={0.6} />
-            </DrawOn>
-          )}
-          <div className="home-hero__floor" />
-        </div>
-
-        <div className="home-hero__center container">
-          <LogoMark className="home-hero__mark" size={44} draw delay={document.getElementById('splash') ? 1 : 0.2} />
-          <ScrambleText as="p" className="eyebrow home-hero__after" text={t('home.eyebrow', vars)} />
-          <h1 className="home-hero__title">
-            <span className="sr-only">{`${t('home.heroTitleA')} ${t('home.heroTitleB')} ${t('home.heroTitleC')}`}</span>
-            {[t('home.heroTitleA'), t('home.heroTitleB'), t('home.heroTitleC')].map((line, i) => (
-              <span key={i} className={`home-hero__line home-hero__line--${i}`} aria-hidden="true">
-                <span className="home-hero__line-inner">{line}</span>
-              </span>
-            ))}
-          </h1>
-          <p className="lede home-hero__lede home-hero__after">{t('home.heroLede', vars)}</p>
-          <div className="home-hero__ctas home-hero__after">
-            <Magnetic>
-              <ButtonLink to="/saunas" size="lg" iconAfter={ArrowRight}>
-                {t('home.ctaPrimary')}
-              </ButtonLink>
-            </Magnetic>
-            <ButtonLink to="/how-it-works" size="lg" variant="ghost">
-              {t('home.ctaSecondary')}
-            </ButtonLink>
-          </div>
-        </div>
-
-        <div className="home-hero__base container home-hero__after">
-          <p className="eyebrow">N° {String(tenant.catalogVersion).padStart(3, '0')}</p>
-          <span className="home-hero__scroll" aria-hidden="true">
-            <span className="home-hero__scroll-line">
-              <span className="home-hero__scroll-dot" />
-            </span>
-            <span className="mono">{t('home.scroll')}</span>
-          </span>
-          <dl className="home-hero__stats">
-            <div>
-              <dt>{t('home.stats.models')}</dt>
-              <dd>
-                <NumberTicker value={items.length || 6} format={n => String(Math.round(n)).padStart(2, '0')} />
-              </dd>
-            </div>
-            <div>
-              <dt>{t('home.stats.seats')}</dt>
-              <dd>
-                <NumberTicker value={maxSeats} format={n => String(Math.round(n)).padStart(2, '0')} />
-              </dd>
-            </div>
-            <div>
-              <dt>{t('home.stats.days')}</dt>
-              <dd>
-                <NumberTicker value={30} format={n => String(Math.round(n)).padStart(2, '0')} />
-              </dd>
-            </div>
-          </dl>
-        </div>
-      </section>
-
-      <Statement name={name} />
-
-      <section className="section" aria-labelledby="featured">
-        <div className="container">
-          <SectionHeading
-            index="01"
-            eyebrow={t('home.featuredEyebrow')}
-            title={t('home.featuredTitle')}
-            id="featured"
-            lede={t('home.featuredLede', vars)}
-            action={
-              <TextLink to="/saunas" tone="underline">
-                {t('home.viewAll')}
-              </TextLink>
-            }
-          />
-        </div>
-        {catalog.isPending ? <div className="fpanels fpanels--pending" /> : <FeaturedPanels items={featured} currency={catalog.data?.currency ?? 'EUR'} />}
-      </section>
-
-      <section className="section container home-how">
-        <SectionHeading index="02" eyebrow={t('home.howEyebrow')} title={t('home.howTitle')} />
-        <HowSteps name={name} />
-      </section>
-    </div>
+    <Suspense fallback={<div className="layout-pending" style={{ minHeight: '100svh' }} />}>
+      <LayoutHome />
+    </Suspense>
   );
 }

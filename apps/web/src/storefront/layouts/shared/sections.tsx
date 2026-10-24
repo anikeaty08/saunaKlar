@@ -1,15 +1,16 @@
 import { useId, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowUpRight, Plus } from 'lucide-react';
-import type { CatalogItem } from '../../api/types.ts';
-import { useT } from '../../i18n/i18n.ts';
-import { useFormat } from '../../i18n/format.ts';
-import { gsap, useGSAP } from '../../motion/gsap.ts';
-import { prefersReducedMotion } from '../../motion/preferences.ts';
-import { Icon } from '../../design/components/Icon.tsx';
-import { LazyImage } from '../../design/components/LazyImage.tsx';
-import { SaunaGlyph } from '../components/SaunaGlyph.tsx';
-import { specsOf } from '../components/specs.ts';
+import type { CatalogItem } from '../../../api/types.ts';
+import { useT } from '../../../i18n/i18n.ts';
+import { useFormat } from '../../../i18n/format.ts';
+import { gsap, useGSAP } from '../../../motion/gsap.ts';
+import { prefersReducedMotion } from '../../../motion/preferences.ts';
+import { Icon } from '../../../design/components/Icon.tsx';
+import { LazyImage } from '../../../design/components/LazyImage.tsx';
+import { SaunaGlyph } from '../../components/SaunaGlyph.tsx';
+import { specsOf } from '../../components/specs.ts';
+import './sections.css';
 
 /** Pinning and fanning need room and motion; below this they are plain stacks. */
 const ROOMY = '(min-width: 1024px) and (min-height: 640px) and (prefers-reduced-motion: no-preference)';

@@ -818,6 +818,17 @@ const messages = {
     },
     branding: {
       lede: 'Your storefront’s name, colour, logo and contact details.',
+      layout: "Storefront layout",
+      layoutHint: "How your home page, header and cards look. Your colour, logo and texts stay the same in every layout.",
+      layoutPreview: "Preview",
+      layoutPreviewHint: "Opens your shop in a new tab with this layout, only for you.",
+      layouts: {
+        atelier: { name: "Atelier", body: "Editorial and calm: a centred serif headline, lots of white space, a refined grid." },
+        showroom: { name: "Showroom", body: "Dark and cinematic: a full-screen photo, light type, a sideways rail of saunas." },
+        nordic: { name: "Nordic", body: "Warm and crafted: wood-and-paper tones, a split hero, rounded cards, a materials band." },
+        catalogue: { name: "Catalogue", body: "Product first: a short hero, then every sauna with filters, sorting and prices." },
+        journal: { name: "Journal", body: "A magazine story: very large type, chapters on heat, wood and ritual, then the collection." },
+      },
       identity: 'Identity',
       displayName: 'Storefront name',
       tagline: 'Tagline',

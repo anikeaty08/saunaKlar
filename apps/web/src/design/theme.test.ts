@@ -17,9 +17,10 @@ describe('colour maths', () => {
 describe('deriveTheme', () => {
   const brands = ['#5a6b7b', '#2d4a38', '#1c1c1a', '#1a1a1a', '#1d4ed8', '#fde047', '#16a34a', '#be123c', '#ffffff', '#000000'];
 
-  it('keeps ink readable on paper in both modes for any brand colour', () => {
-    for (const b of brands) {
-      const t = deriveTheme(b);
+  it('keeps ink readable on paper in both modes for any brand colour and layout flavour', () => {
+    for (const b of brands)
+    for (const flavour of ['default', 'warm', 'dark'] as const) {
+      const t = deriveTheme(b, flavour);
       expect(inkOnPaperContrast(t, 'light')).toBeGreaterThan(7);
       expect(inkOnPaperContrast(t, 'dark')).toBeGreaterThan(7);
       // Muted text (ink-3) still meets AA for body copy.
@@ -49,6 +50,15 @@ describe('deriveTheme', () => {
   it('tints surfaces with the hue instead of pure grey', () => {
     const t = deriveTheme('#2d4a38').light;
     for (const k of ['--paper', '--paper-2', '--line'] as const) expect(rgbToOklch(parseHex(t[k]!)!).c, k).toBeGreaterThan(0.005);
+  });
+
+  it('warm surfaces lean towards wood, dark serves the dark set in both modes', () => {
+    const warm = deriveTheme('#1d4ed8', 'warm').light;
+    const h = rgbToOklch(parseHex(warm['--paper']!)!).h;
+    expect(Math.abs(h - 75)).toBeLessThan(Math.abs(h - rgbToOklch(parseHex('#1d4ed8')!).h));
+    const dark = deriveTheme('#1d4ed8', 'dark');
+    expect(dark.scheme).toBe('dark');
+    expect(dark.light['--paper']).toBe(dark.dark['--paper']);
   });
 
   it('falls back to the default for invalid input', () => {

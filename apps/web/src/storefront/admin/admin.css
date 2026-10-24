@@ -545,3 +545,76 @@
 .cell-stack {
   display: grid;
 }
+
+/* Layout picker (Branding) */
+.lpick {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 12.5rem), 1fr));
+  gap: var(--space-3);
+}
+
+.lpick__item {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  border: var(--hair) solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  overflow: hidden;
+  transition: border-color var(--dur-2), box-shadow var(--dur-2);
+}
+
+.lpick__item:hover {
+  border-color: var(--line-strong);
+}
+
+.lpick__item.is-on {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+.lpick__card {
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+  padding: var(--space-3);
+  cursor: pointer;
+}
+
+.lpick__card:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: -4px;
+}
+
+.lpick__thumb {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-bottom: var(--space-2);
+  border-radius: 6px;
+  border: var(--hair) solid var(--line);
+}
+
+.lpick__name {
+  font-weight: 600;
+}
+
+.lpick__body {
+  font-size: var(--step--1);
+  color: var(--ink-3);
+  line-height: 1.4;
+}
+
+.lpick__preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: var(--space-2) var(--space-3);
+  border-top: var(--hair) solid var(--line);
+  font-size: var(--step--1);
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.lpick__preview:hover {
+  background: var(--paper-2);
+}

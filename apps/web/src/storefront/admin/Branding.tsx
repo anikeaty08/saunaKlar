@@ -16,6 +16,8 @@ import { Icon } from '../../design/components/Icon.tsx';
 import { useDocumentTitle } from '../../app/useDocumentTitle.ts';
 import { PageHead, Panel } from '../../staff/PageHead.tsx';
 import { useAdminMutation } from './helpers.ts';
+import { LayoutPicker } from './LayoutPicker.tsx';
+import { isLayoutId } from '../layouts/registry.ts';
 
 type Branding = ResponseOf<'adminBranding'>;
 type Kind = 'LOGO' | 'FAVICON';
@@ -73,6 +75,7 @@ function BrandingForm({ branding }: { branding: Branding }) {
         legalName: nil(draft.legalName),
         legalAddress: nil(draft.legalAddress),
         vatDisplay: draft.vatDisplay,
+        storefrontLayout: draft.storefrontLayout,
       },
       {
         onError: err => {
@@ -107,6 +110,9 @@ function BrandingForm({ branding }: { branding: Branding }) {
                 <input type="color" aria-label={t('admin.branding.color')} value={HEX.test(draft.primaryColor) ? draft.primaryColor : '#000000'} onChange={e => set('primaryColor', e.target.value)} className="color-field__picker" />
               </div>
             </div>
+          </Panel>
+          <Panel title={t('admin.branding.layout')} lede={t('admin.branding.layoutHint')}>
+            <LayoutPicker value={isLayoutId(draft.storefrontLayout) ? draft.storefrontLayout : 'atelier'} color={HEX.test(draft.primaryColor) ? draft.primaryColor : '#5a6b7b'} onChange={id => set('storefrontLayout', id)} />
           </Panel>
           <Panel title={t('admin.branding.contactTitle')}>
             <div className="staff-form">

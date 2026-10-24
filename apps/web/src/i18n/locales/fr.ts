@@ -846,6 +846,17 @@ export const fr: Messages = {
     },
     branding: {
       lede: 'Nom, couleur, logo et coordonnées de votre boutique.',
+      layout: "Mise en page de la boutique",
+      layoutHint: "L’apparence de votre page d’accueil, de l’en-tête et des cartes. Votre couleur, votre logo et vos textes restent les mêmes dans chaque mise en page.",
+      layoutPreview: "Aperçu",
+      layoutPreviewHint: "Ouvre votre boutique avec cette mise en page dans un nouvel onglet, pour vous seul.",
+      layouts: {
+        atelier: { name: "Atelier", body: "Éditorial et calme : un grand titre à empattements centré, beaucoup d’espace, une grille raffinée." },
+        showroom: { name: "Showroom", body: "Sombre et cinématographique : une photo plein écran, une typographie claire, un défilé latéral de saunas." },
+        nordic: { name: "Nordic", body: "Chaleureux et artisanal : tons bois et papier, accueil en deux parties, cartes arrondies, un bandeau matières." },
+        catalogue: { name: "Catalogue", body: "Le produit d’abord : une courte introduction, puis tous les saunas avec filtres, tri et prix." },
+        journal: { name: "Journal", body: "Un récit de magazine : très grande typographie, chapitres sur la chaleur, le bois et le rituel, puis la collection." },
+      },
       identity: 'Identité',
       displayName: 'Nom de la boutique',
       tagline: 'Slogan',

@@ -16,6 +16,11 @@
   position: relative;
   background: var(--paper);
   backface-visibility: hidden;
+}
+
+/* Only while turning: preserve-3d makes the page a containing block for
+   fixed descendants, which would break pinned (ScrollTrigger) sections. */
+.is-flipping .locale-page {
   transform-style: preserve-3d;
 }
 

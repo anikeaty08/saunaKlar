@@ -826,6 +826,17 @@ export const it: Messages = {
     },
     branding: {
       lede: 'Nome, colore, logo e recapiti del Suo negozio.',
+      layout: "Layout del negozio",
+      layoutHint: "L’aspetto di home page, intestazione e schede. Colore, logo e testi restano Suoi in ogni layout.",
+      layoutPreview: "Anteprima",
+      layoutPreviewHint: "Apre il Suo negozio con questo layout in una nuova scheda, solo per Lei.",
+      layouts: {
+        atelier: { name: "Atelier", body: "Editoriale e calmo: titolo con grazie centrato, molto spazio bianco, una griglia raffinata." },
+        showroom: { name: "Showroom", body: "Scuro e cinematografico: foto a tutto schermo, testo chiaro, una galleria laterale di saune." },
+        nordic: { name: "Nordic", body: "Caldo e artigianale: toni di legno e carta, apertura divisa, schede arrotondate, una fascia sui materiali." },
+        catalogue: { name: "Catalogo", body: "Prima il prodotto: una breve apertura, poi tutte le saune con filtri, ordinamento e prezzi." },
+        journal: { name: "Journal", body: "Un racconto da rivista: testo molto grande, capitoli su calore, legno e rituale, poi la collezione." },
+      },
       identity: 'Identità',
       displayName: 'Nome del negozio',
       tagline: 'Slogan',

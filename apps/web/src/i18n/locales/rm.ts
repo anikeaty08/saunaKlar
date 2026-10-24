@@ -832,6 +832,17 @@ export const rm: Messages = {
     },
     branding: {
       lede: 'Num, colur, logo e datas da contact da Vossa butia.',
+      layout: "Layout da la butia",
+      layoutHint: "L’aspect da la pagina d’entrada, da la colonna superiura e da las cartas. Colur, logo e texts restan Voss en mintga layout.",
+      layoutPreview: "Prevista",
+      layoutPreviewHint: "Avra Vossa butia cun quest layout en in nov tab, mo per Vus.",
+      layouts: {
+        atelier: { name: "Atelier", body: "Editorial e quiet: in titel cun serifas al center, bler spazi, ina rasteraziun fina." },
+        showroom: { name: "Showroom", body: "Stgir e cinematografic: ina foto sin l’entir visur, scrittira clera, ina galaria laterala da saunas." },
+        nordic: { name: "Nordic", body: "Chaud e artisanal: tuns da lain e palpiri, ina entrada partida, cartas radundas, ina strivla da materials." },
+        catalogue: { name: "Catalog", body: "L’product l’emprim: ina curta entrada, lura tut las saunas cun filters, zavrada e pretschs." },
+        journal: { name: "Journal", body: "Ina istorgia da revista: scrittira fitg gronda, chapitels davart chalur, lain e ritual, lura la collecziun." },
+      },
       identity: 'Identitad',
       displayName: 'Num da la butia',
       tagline: 'Slogan',
