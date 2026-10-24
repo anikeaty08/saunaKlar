@@ -18,6 +18,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1156.0",
     "@saunaklar/db": "*",
+    "@saunaklar/objects": "0.1.0",
     "@saunaklar/pricing": "*",
     "pg": "^8.16.3",
     "tsx": "^4.23.15",

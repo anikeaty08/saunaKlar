@@ -10,22 +10,22 @@
  *     tools/catalog-import/examples/models, for every model (it is our one real asset).
  *   - Anything else (USDZ, option/room meshes, reseller branding) is left alone.
  *
- * Layout = what the local server reads (services/api/src/adapters/storage/local.ts):
+ * Written through @saunaklar/objects, the layout the local server reads:
  *   <LOCAL_OBJECTS_DIR or <repo>/var/objects>/<S3_ASSETS_BUCKET or assets>/data/<key>
  *   ... /meta/<key>.json  { contentType, byteSize }
- * Existing files are kept, so running it again only fills gaps. `--force` rewrites everything.
+ * Existing objects are kept, so running it again only fills gaps. `--force` rewrites everything.
  *
- * Run by `npm run db:seed` (after the database seed) and by scripts/dev.mjs.
+ * Run by `npm run db:seed` (after the database seed), by scripts/dev.mjs and by the e2e global
+ * setup (`seedMedia({ databaseUrl, objectsDir })`).
  */
-import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve, sep } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import { bucketFromEnv, LocalObjectFiles, objectsDirFromEnv } from '@saunaklar/objects';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://sauna:sauna@127.0.0.1:5432/sauna';
-const OBJECTS = resolve(process.env.LOCAL_OBJECTS_DIR || join(ROOT, 'var', 'objects'));
-const BUCKET = process.env.S3_ASSETS_BUCKET || 'assets';
 const FORCE = process.argv.includes('--force');
 const SAMPLE_GLB = {
   low: join(ROOT, 'tools/catalog-import/examples/models/espoo-compact-low.glb'),
@@ -38,33 +38,6 @@ const FONT = `'Inter Display', Inter, 'Helvetica Neue', Helvetica, Arial, sans-s
 const MONO = `'JetBrains Mono', 'DejaVu Sans Mono', Menlo, Consolas, monospace`;
 
 const say = (msg) => console.log(`[seed-media] ${msg}`);
-
-// ---- object store ---------------------------------------------------------------
-
-const KEY_RE = /^[A-Za-z0-9][A-Za-z0-9/._-]*$/;
-function objectPath(kind, key) {
-  if (!KEY_RE.test(key) || key.includes('..') || key.includes('//')) throw new Error(`invalid object key ${key}`);
-  const base = join(OBJECTS, BUCKET, kind);
-  const full = resolve(base, key + (kind === 'meta' ? '.json' : ''));
-  if (!full.startsWith(base + sep)) throw new Error(`invalid object key ${key}`);
-  return full;
-}
-
-async function exists(path) {
-  return stat(path).then((s) => s.isFile(), () => false);
-}
-
-async function atomicWrite(path, body) {
-  await mkdir(dirname(path), { recursive: true });
-  const tmp = `${path}.${process.pid}.tmp`;
-  await writeFile(tmp, body);
-  await rename(tmp, path);
-}
-
-async function putObject(key, body, contentType) {
-  await atomicWrite(objectPath('data', key), body);
-  await atomicWrite(objectPath('meta', key), JSON.stringify({ contentType, byteSize: body.byteLength }));
-}
 
 // ---- drawing helpers ------------------------------------------------------------------
 
@@ -598,7 +571,12 @@ function plan(row) {
   return null;
 }
 
-export async function seedMedia({ databaseUrl = DATABASE_URL, force = FORCE } = {}) {
+/**
+ * Fills the local object store for every catalogue asset row in the database.
+ * objectsDir / bucket default to LOCAL_OBJECTS_DIR (else <repo>/var/objects) / S3_ASSETS_BUCKET (else assets).
+ */
+export async function seedMedia({ databaseUrl = DATABASE_URL, force = FORCE, objectsDir, bucket, log = say } = {}) {
+  const store = new LocalObjectFiles(objectsDir ?? objectsDirFromEnv(process.env, ROOT), bucket ?? bucketFromEnv());
   const client = new pg.Client({ connectionString: databaseUrl });
   await client.connect();
   let rows;
@@ -618,8 +596,7 @@ export async function seedMedia({ databaseUrl = DATABASE_URL, force = FORCE } = 
       counts.skipped++;
       continue;
     }
-    const dataPath = objectPath('data', row.storage_key);
-    if (!force && (await exists(dataPath)) && (await exists(objectPath('meta', row.storage_key)))) {
+    if (!force && (await store.exists(row.storage_key))) {
       counts.kept++;
       continue;
     }
@@ -629,10 +606,10 @@ export async function seedMedia({ databaseUrl = DATABASE_URL, force = FORCE } = 
       sharp ??= await loadSharp();
       body = await render(sharp, job.svg(), row.content_type);
     }
-    await putObject(row.storage_key, body, row.content_type);
+    await store.put(row.storage_key, body, row.content_type);
     counts.written++;
   }
-  say(`${counts.written} written, ${counts.kept} already present, ${counts.skipped} without a generator → ${join(OBJECTS, BUCKET)}`);
+  log(`${counts.written} written, ${counts.kept} already present, ${counts.skipped} without a generator → ${store.base}`);
   return counts;
 }
 

@@ -25,9 +25,9 @@ npx catalog-import catalog --target s3://saunaklar-prod-assets --media-bucket sa
 | `--dry-run` | Validate and print the plan. Nothing is uploaded or written. |
 | `--validate-only` | Check manifests and files only (no database), e.g. in a PR check. |
 | `--database-url` | Defaults to `$DATABASE_URL`, then `postgres://sauna:sauna@127.0.0.1:5432/sauna`. |
-| `--target` | `local` (default: `<repo>/var/objects/<key>`) or `s3://<assets-bucket>`. |
+| `--target` | `local` (default) or `s3://<assets-bucket>`. `local` writes the layout the local API server reads: `<objects>/<bucket>/data/<key>` plus `meta/<key>.json`, with `<objects>` = `$LOCAL_OBJECTS_DIR` or `<repo root>/var/objects` and `<bucket>` = `$S3_ASSETS_BUCKET` or `assets` (shared code in `@saunaklar/objects`). |
 | `--media-bucket` | Public bucket for `media/*` keys with an S3 target (default `$MEDIA_BUCKET`). |
-| `--var-dir` | Local var directory (default `<repo root>/var`). |
+| `--var-dir` | Local var directory; objects then go to `<dir>/objects` (overrides `$LOCAL_OBJECTS_DIR`). |
 | `--manufacturer` | Owner of new saunas/rooms (name or uuid), needed only when several exist. |
 | `--allow-oversize` | Turns the model size budget errors (design A3) into warnings. |
 
@@ -63,7 +63,7 @@ Colours are used only when stdout is a TTY (and `NO_COLOR` is unset).
    tier is `assets/lo` (MODEL_GLB_LOW, ROOM_GLB_LOW), `assets/hi` (MODEL_GLB_HIGH, MODEL_AR_GLB,
    MODEL_AR_USDZ, ROOM_GLB_HIGH) or `media` (thumbnails, gallery). Rooms use `rooms/{code}` as the
    owner segment. Objects are immutable (`Cache-Control: public, max-age=31536000, immutable`),
-   so an existing key is never rewritten. Locally the key is a path under `var/objects/`; on S3
+   so an existing key is never rewritten. Locally the key is a path under `var/objects/assets/data/` (plus a meta JSON); on S3
    `assets/*` goes to the private bucket and `media/*` to the public one.
 5. **Apply** - one transaction per sauna and per room, as role `catalog_admin` (`withTx` from
    `@saunaklar/db`). Upserts only touch rows whose values differ, so a re-run is a no-op and the

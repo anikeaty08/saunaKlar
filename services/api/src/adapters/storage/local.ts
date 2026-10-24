@@ -1,6 +1,5 @@
-import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve, sep } from 'node:path';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import { LocalObjectFiles } from '@saunaklar/objects';
 import type { ObjectHead, ObjectStore, PresignedPut } from '../types.ts';
 import { assertObjectKey } from './keys.ts';
 
@@ -38,33 +37,20 @@ export function verifyLocalUpload(secret: string, token: string, now = Date.now(
   }
 }
 
-interface Meta {
-  contentType: string;
-  byteSize: number;
-  cacheControl?: string;
-}
-
 /**
- * Filesystem object store: `<root>/<bucket>/data/<key>` plus `<root>/<bucket>/meta/<key>.json`.
+ * Filesystem object store: `<root>/<bucket>/data/<key>` plus `<root>/<bucket>/meta/<key>.json`
+ * (layout shared with the import CLI and the media seed, in @saunaklar/objects).
  * Presigned PUTs point at the local server's `/dev/uploads/<token>` route.
  */
 export class LocalObjectStore implements ObjectStore {
-  private readonly base: string;
+  private readonly files: LocalObjectFiles;
 
   constructor(
     readonly bucket: string,
     private readonly config: { rootDir: string; secret: string; uploadUrlPrefix?: string },
   ) {
-    if (!/^[a-z0-9][a-z0-9.-]{1,62}$/.test(bucket)) throw new Error('Invalid bucket name');
     if (Buffer.byteLength(config.secret) < 32) throw new Error('Local upload signing secret must be at least 32 bytes');
-    this.base = resolve(config.rootDir, bucket);
-  }
-
-  private path(kind: 'data' | 'meta', key: string): string {
-    const root = join(this.base, kind);
-    const full = resolve(root, assertObjectKey(key) + (kind === 'meta' ? '.json' : ''));
-    if (!full.startsWith(root + sep)) throw new Error('Invalid object key');
-    return full;
+    this.files = new LocalObjectFiles(config.rootDir, bucket);
   }
 
   async presignPut(input: { key: string; contentType: string; byteSize: number; ttlSeconds: number }): Promise<PresignedPut> {
@@ -89,40 +75,19 @@ export class LocalObjectStore implements ObjectStore {
     return grant && grant.bucket === this.bucket ? grant : null;
   }
 
-  async get(key: string): Promise<Buffer | null> {
-    try {
-      return await readFile(this.path('data', key));
-    } catch (e) {
-      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null;
-      throw e;
-    }
+  get(key: string): Promise<Buffer | null> {
+    return this.files.get(key);
   }
 
-  async put(key: string, body: Uint8Array, contentType: string, cacheControl?: string): Promise<void> {
-    const meta: Meta = { contentType, byteSize: body.byteLength, ...(cacheControl ? { cacheControl } : {}) };
-    await atomicWrite(this.path('data', key), body);
-    await atomicWrite(this.path('meta', key), JSON.stringify(meta));
+  put(key: string, body: Uint8Array, contentType: string, cacheControl?: string): Promise<void> {
+    return this.files.put(key, body, contentType, cacheControl);
   }
 
-  async delete(key: string): Promise<void> {
-    await rm(this.path('data', key), { force: true });
-    await rm(this.path('meta', key), { force: true });
+  delete(key: string): Promise<void> {
+    return this.files.delete(key);
   }
 
   async head(key: string): Promise<ObjectHead | null> {
-    try {
-      const meta = JSON.parse(await readFile(this.path('meta', key), 'utf8')) as Meta;
-      return meta;
-    } catch (e) {
-      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null;
-      throw e;
-    }
+    return this.files.head(key);
   }
-}
-
-async function atomicWrite(file: string, data: Uint8Array | string): Promise<void> {
-  await mkdir(dirname(file), { recursive: true });
-  const tmp = `${file}.${randomUUID()}.tmp`;
-  await writeFile(tmp, data);
-  await rename(tmp, file);
 }

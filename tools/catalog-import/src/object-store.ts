@@ -3,9 +3,9 @@
  * (`assets/{lo|hi}/catalog/...` or `media/catalog/...`), so objects are immutable: an existing key
  * is never rewritten, and everything is served with a one-year immutable cache.
  */
-import { mkdir, rename, stat, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { dirname, join, resolve, sep } from 'node:path';
+import { join } from 'node:path';
+import { bucketFromEnv, LocalObjectFiles, objectsDirFromEnv } from '@saunaklar/objects';
 
 export const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable';
 
@@ -22,25 +22,19 @@ function assertKey(key: string): string {
   return key;
 }
 
-/** Local store: one root (default `var/objects/`), the key used as a relative path. */
+/**
+ * Local store, in the layout the local API server reads (shared via @saunaklar/objects):
+ * `<root>/<bucket>/data/<key>` plus `<root>/<bucket>/meta/<key>.json` with the content type,
+ * size and cache control. An object counts as present only when both files exist.
+ */
 export class LocalObjectStore implements ObjectStore {
-  readonly root: string;
-  constructor(root: string) { this.root = resolve(root); }
-  get description(): string { return `local ${this.root}`; }
-  private path(key: string): string {
-    const full = resolve(this.root, assertKey(key));
-    if (!full.startsWith(this.root + sep)) throw new Error(`invalid object key ${key}`);
-    return full;
-  }
-  async exists(key: string): Promise<boolean> {
-    return stat(this.path(key)).then((s) => s.isFile(), () => false);
-  }
-  async put(key: string, bytes: Uint8Array): Promise<void> {
-    const p = this.path(key);
-    await mkdir(dirname(p), { recursive: true });
-    const tmp = `${p}.${process.pid}.${Date.now()}.tmp`;
-    await writeFile(tmp, bytes);
-    await rename(tmp, p);
+  readonly files: LocalObjectFiles;
+  constructor(root: string, bucket?: string) { this.files = new LocalObjectFiles(root, bucket); }
+  get root(): string { return this.files.rootDir; }
+  get description(): string { return this.files.description; }
+  exists(key: string): Promise<boolean> { return this.files.exists(assertKey(key)); }
+  put(key: string, bytes: Uint8Array, contentType: string, cacheControl: string): Promise<void> {
+    return this.files.put(assertKey(key), bytes, contentType, cacheControl);
   }
 }
 
@@ -97,15 +91,25 @@ export class S3ObjectStore implements ObjectStore {
 
 const BUCKET_RE = /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/;
 
-/** Parses `--target`: `local` (default, `<varDir>/objects`) or `s3://<assets-bucket>`. */
-export function objectStoreFromTarget(target: string, opts: { varDir: string; mediaBucket?: string | undefined }): ObjectStore {
+/**
+ * Parses `--target`: `local` (default) or `s3://<assets-bucket>`. The local root is
+ * `<varDir>/objects` when a var dir is given, else $LOCAL_OBJECTS_DIR, else `<repo root>/var/objects`;
+ * the bucket folder is $S3_ASSETS_BUCKET or `assets`, the same as the local API server.
+ */
+export function objectStoreFromTarget(
+  target: string,
+  opts: { varDir?: string | undefined; mediaBucket?: string | undefined; env?: Record<string, string | undefined> } = {},
+): ObjectStore {
+  const env = opts.env ?? process.env;
   if (target.startsWith('s3://')) {
     const bucket = target.slice(5).replace(/\/+$/, '');
     if (!BUCKET_RE.test(bucket)) throw new Error(`invalid S3 bucket name in "${target}"`);
-    const media = opts.mediaBucket ?? process.env.MEDIA_BUCKET ?? null;
+    const media = opts.mediaBucket ?? env.MEDIA_BUCKET ?? null;
     if (media !== null && !BUCKET_RE.test(media)) throw new Error(`invalid media bucket name "${media}"`);
-    return new S3ObjectStore(bucket, media, process.env.AWS_REGION);
+    return new S3ObjectStore(bucket, media, env.AWS_REGION);
   }
-  if (target === 'local') return new LocalObjectStore(join(opts.varDir, 'objects'));
+  if (target === 'local') {
+    return new LocalObjectStore(opts.varDir ? join(opts.varDir, 'objects') : objectsDirFromEnv(env), bucketFromEnv(env));
+  }
   throw new Error(`unknown --target "${target}" (use local or s3://<assets-bucket>)`);
 }

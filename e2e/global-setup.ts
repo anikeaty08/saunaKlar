@@ -1,14 +1,21 @@
 /**
- * Creates a fresh seeded database, builds the SPA, starts the local server against it and
- * waits until it answers. Returns the teardown (stop server, drop database).
+ * Creates a fresh seeded database, writes its media and model files into a local object store
+ * (scripts/seed-media.mjs), builds the SPA, starts the local server against both and waits until
+ * it answers. Returns the teardown (stop server, drop database, remove the temporary store).
  *
  * Env: E2E_PORT (default 8799), E2E_SKIP_BUILD=1 (use an existing apps/web/dist),
+ * E2E_OBJECTS_DIR (object store to fill and serve, kept afterwards, e.g. var/objects to reuse the
+ * dev files; default a fresh temporary directory, removed on teardown),
  * E2E_SERVER_LOG=1 (pipe server output), TEST_DATABASE_URL / DATABASE_URL (admin connection).
  */
 import { execSync, spawn, type ChildProcess } from 'node:child_process';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { request } from 'node:http';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createTestDatabase } from '@saunaklar/db';
+import { seedMedia } from '../scripts/seed-media.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const PORT = Number(process.env.E2E_PORT ?? 8799);
@@ -60,6 +67,19 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   const db = await createTestDatabase({ seed: true });
   process.env.E2E_DATABASE_URL = db.url; // owner URL, for tests that assert on the database
 
+  // Thumbnails, gallery images and GLBs for every asset row the seed inserted, so pages load
+  // real files instead of 404s. A temporary store keeps runs independent of var/objects.
+  const ownObjects = !process.env.E2E_OBJECTS_DIR;
+  const objectsDir = ownObjects ? await mkdtemp(join(tmpdir(), 'saunaklar-e2e-objects-')) : resolve(ROOT, process.env.E2E_OBJECTS_DIR!);
+  const removeObjects = async () => { if (ownObjects) await rm(objectsDir, { recursive: true, force: true }); };
+  try {
+    await seedMedia({ databaseUrl: db.url, objectsDir, bucket: 'assets' });
+  } catch (err) {
+    await db.drop();
+    await removeObjects();
+    throw err;
+  }
+
   const server = spawn('npm', ['run', 'start', '-w', '@saunaklar/api'], {
     cwd: ROOT,
     detached: true,
@@ -73,6 +93,8 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
       DATABASE_URL: db.url,
       LOCAL_IDP: '1',
       ADAPTERS: 'local',
+      LOCAL_OBJECTS_DIR: objectsDir,
+      S3_ASSETS_BUCKET: 'assets',
       PLATFORM_DOMAIN: 'localhost',
       ADMIN_HOST: 'admin.localhost',
       STAFF_MFA: 'OPTIONAL',
@@ -86,11 +108,13 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   } catch (err) {
     await stop(server);
     await db.drop();
+    await removeObjects();
     throw err;
   }
 
   return async () => {
     await stop(server);
     await db.drop();
+    await removeObjects();
   };
 }

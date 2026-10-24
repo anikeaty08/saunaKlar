@@ -8,7 +8,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type pg from 'pg';
 import { createPool, createTestDatabase } from '@saunaklar/db';
 import { dbAccess } from '../src/db.ts';
-import { LocalObjectStore } from '../src/object-store.ts';
+import { LocalObjectFiles } from '@saunaklar/objects';
+import { IMMUTABLE_CACHE, LocalObjectStore } from '../src/object-store.ts';
 import { memoryOutput } from '../src/output.ts';
 import { planIsEmpty } from '../src/plan.ts';
 import { runImport, type RunOptions } from '../src/pipeline.ts';
@@ -77,7 +78,12 @@ describe('catalog import', () => {
       WHERE ma.sauna_model_id = $1 AND ma.asset_role = 'MODEL_GLB_HIGH'`, [m.id]);
     expect(asset.storage_key).toMatch(/^assets\/hi\/catalog\/cedar-100\/model-glb-high-[0-9a-f]{12}\.glb$/);
     expect(asset).toMatchObject({ content_type: 'model/gltf-binary', owner_reseller_id: null });
-    expect(await readdir(join(objects, 'assets/hi/catalog/cedar-100'))).toContain(asset.storage_key.split('/').pop());
+    // Written in the local API server's layout: <root>/<bucket>/data/<key> + meta/<key>.json.
+    expect(await readdir(join(objects, 'assets', 'data', 'assets/hi/catalog/cedar-100'))).toContain(asset.storage_key.split('/').pop());
+    const files = new LocalObjectFiles(objects, 'assets');
+    const bytes = await files.get(asset.storage_key);
+    expect(bytes?.subarray(0, 4).toString('latin1')).toBe('glTF');
+    expect(await files.head(asset.storage_key)).toEqual({ contentType: 'model/gltf-binary', byteSize: bytes!.byteLength, cacheControl: IMMUTABLE_CACHE });
 
     const room = await one(`SELECT preset, status FROM room_scenes WHERE code = 'bathroom'`);
     expect(room).toEqual({ status: 'ACTIVE', preset: { widthMm: 3600, depthMm: 3000, heightMm: 2600, floor: 'tiles', wallColor: '#e9e5dd', windowWall: 'east' } });
