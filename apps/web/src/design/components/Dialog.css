@@ -1,0 +1,108 @@
+@property --backdrop {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+
+html.has-modal {
+  overflow: hidden;
+}
+
+.dialog {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+}
+
+.dialog::backdrop {
+  background: color-mix(in oklab, var(--ink) calc(var(--backdrop, 1) * 45%), transparent);
+  backdrop-filter: blur(calc(var(--backdrop, 1) * 3px));
+}
+
+.dialog__panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  box-shadow: var(--shadow-2);
+  max-height: calc(100dvh - 2rem);
+}
+
+.dialog--dialog {
+  width: min(100% - 2rem, var(--dialog-w, 34rem));
+  margin: auto;
+}
+
+.dialog--dialog .dialog__panel {
+  border-radius: var(--radius-lg);
+}
+
+.dialog--sm {
+  --dialog-w: 26rem;
+}
+
+.dialog--lg {
+  --dialog-w: 52rem;
+}
+
+.dialog--drawer {
+  margin: 0 0 0 auto;
+  height: 100dvh;
+  width: min(100%, var(--dialog-w, 30rem));
+}
+
+.dialog--drawer .dialog__panel {
+  height: 100%;
+  max-height: none;
+}
+
+.dialog__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: clamp(1.25rem, 1rem + 1vw, 2rem) clamp(1.25rem, 1rem + 1vw, 2rem) 0;
+}
+
+.dialog__title {
+  font-size: var(--step-2);
+  letter-spacing: -0.03em;
+}
+
+.dialog__desc {
+  margin-top: 0.5rem;
+  color: var(--ink-3);
+  font-size: var(--step--1);
+}
+
+.dialog__body {
+  padding: var(--space-5) clamp(1.25rem, 1rem + 1vw, 2rem);
+  overflow-y: auto;
+  flex: 1;
+}
+
+.dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-4) clamp(1.25rem, 1rem + 1vw, 2rem) clamp(1.25rem, 1rem + 1vw, 2rem);
+  border-top: var(--hair) solid var(--line);
+}
+
+@media (max-width: 640px) {
+  .dialog--drawer {
+    margin: auto 0 0;
+    width: 100%;
+    height: auto;
+    max-height: 92dvh;
+  }
+
+  .dialog--drawer .dialog__panel {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    max-height: 92dvh;
+  }
+}

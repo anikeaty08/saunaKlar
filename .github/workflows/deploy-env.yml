@@ -1,0 +1,129 @@
+name: Deploy environment
+
+# Reusable: deploys one environment from a release artifact.
+#   terraform plan + apply → Lambda versions (+ native layer) → migrations (worker {"task":"migrate"})
+#   → alias shift (canary with alarm rollback) → web upload + index.html invalidation → smoke test.
+#
+# Per GitHub environment (Settings → Environments → staging / production):
+#   vars.AWS_DEPLOY_ROLE_ARN   role from infra/bootstrap (OIDC, no long-lived keys)
+#   vars.TF_STATE_BUCKET       state bucket from infra/bootstrap
+#   vars.TFVARS                full contents of the environment's terraform.tfvars
+#   vars.PLATFORM_DOMAIN       e.g. saunas.example.com
+#   vars.SMOKE_HOSTS           e.g. "demo.saunas.example.com admin.saunas.example.com"
+#   production: required reviewers (this is the manual approval gate).
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      tf_dir:
+        type: string
+        required: true
+      artifact:
+        type: string
+        required: true
+      canary_percent:
+        type: number
+        default: 0
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: eu-central-1
+  TF_VERSION: 1.16.7
+  TF_IN_AUTOMATION: '1'
+  TF_INPUT: '0'
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment:
+      name: ${{ inputs.environment }}
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact }}
+          path: artifacts
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: gha-${{ inputs.environment }}-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      # ---------------------------------------------------------------- infrastructure
+      - name: Write tfvars
+        env:
+          TFVARS: ${{ vars.TFVARS }}
+        run: |
+          test -n "$TFVARS" || { echo "vars.TFVARS is empty for ${{ inputs.environment }}" >&2; exit 1; }
+          printf '%s\n' "$TFVARS" > "${{ inputs.tf_dir }}/terraform.tfvars"
+
+      - name: terraform init
+        run: terraform -chdir="${{ inputs.tf_dir }}" init -lockfile=readonly -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+
+      - name: terraform plan
+        run: |
+          terraform -chdir="${{ inputs.tf_dir }}" plan -out=tfplan -lock-timeout=5m -no-color | tee plan.txt
+          {
+            echo "### Terraform plan (${{ inputs.environment }})"
+            echo '```'
+            grep -E '^(Plan:|No changes)' plan.txt || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: terraform apply
+        run: terraform -chdir="${{ inputs.tf_dir }}" apply -lock-timeout=5m -auto-approve tfplan
+
+      - name: Read outputs
+        id: tf
+        run: |
+          out="$(terraform -chdir="${{ inputs.tf_dir }}" output -json platform)"
+          {
+            echo "name_prefix=$(jq -r .name_prefix <<<"$out")"
+            echo "web_bucket=$(jq -r .web_bucket <<<"$out")"
+            echo "distribution_id=$(jq -r .distribution_id <<<"$out")"
+            echo "codedeploy_app=$(jq -r '.codedeploy_app_name // ""' <<<"$out")"
+            echo "functions=$(jq -c .function_names <<<"$out")"
+          } >> "$GITHUB_OUTPUT"
+
+      # ---------------------------------------------------------------- application
+      - name: Lambdas (layer, versions, migrations, alias shift)
+        env:
+          FUNCTIONS_JSON: ${{ steps.tf.outputs.functions }}
+          NAME_PREFIX: ${{ steps.tf.outputs.name_prefix }}
+          CODEDEPLOY_APP: ${{ steps.tf.outputs.codedeploy_app }}
+          CANARY_PERCENT: ${{ inputs.canary_percent }}
+          CANARY_MINUTES: '5'
+        run: .github/scripts/deploy-lambdas.sh
+
+      - name: Web (S3 + invalidate index.html)
+        env:
+          WEB_BUCKET: ${{ steps.tf.outputs.web_bucket }}
+          DISTRIBUTION_ID: ${{ steps.tf.outputs.distribution_id }}
+        run: .github/scripts/deploy-web.sh
+
+      - name: Smoke test
+        env:
+          SMOKE_HOSTS: ${{ vars.SMOKE_HOSTS }}
+          PLATFORM_DOMAIN: ${{ vars.PLATFORM_DOMAIN }}
+        run: .github/scripts/smoke.sh
+
+      - name: Clean up tfvars
+        if: always()
+        run: rm -f "${{ inputs.tf_dir }}/terraform.tfvars" "${{ inputs.tf_dir }}/tfplan"

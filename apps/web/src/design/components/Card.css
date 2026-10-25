@@ -1,0 +1,40 @@
+.card {
+  position: relative;
+  padding: clamp(1.1rem, 0.8rem + 1vw, 1.75rem);
+  border-radius: var(--radius-lg);
+}
+
+.card--outline {
+  border: var(--hair) solid var(--line);
+  background: var(--paper);
+}
+
+.card--filled {
+  background: var(--paper-2);
+}
+
+.card--plain {
+  padding: 0;
+}
+
+.card--interactive {
+  transition: border-color var(--dur-2) var(--ease-out), transform var(--dur-3) var(--ease-out), box-shadow var(--dur-3) var(--ease-out);
+}
+
+.card--interactive:hover {
+  border-color: var(--ink-4);
+  box-shadow: var(--shadow-1);
+}
+
+.card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: var(--space-4);
+}
+
+.card__title {
+  font-size: var(--step-1);
+  letter-spacing: -0.02em;
+}

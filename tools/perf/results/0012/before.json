@@ -1,0 +1,229 @@
+[
+  {
+    "name": "configurations: admin list, page 1",
+    "medianMs": 30000,
+    "minMs": 30000,
+    "sharedHit": 0,
+    "sharedRead": 0,
+    "rows": 0,
+    "scans": "Bitmap Heap Scan configurations, Bitmap Index Scan configurations_offered_idx, Seq Scan sauna_models, Seq Scan sauna_model_translations, Index Scan configuration_price_snapshots_pkey, Index Only Scan configurations_id_reseller_customer_key, Index Scan configuration_requests_reseller_created_idx, Seq Scan sauna_model_assets, Seq Scan assets, Seq Scan option_assets, Index Only Scan sauna_model_options_pkey, Seq Scan room_scene_assets, Seq Scan reseller_room_scenes",
+    "timedOut": true
+  },
+  {
+    "name": "configurations: admin list, page 200",
+    "medianMs": 30000,
+    "minMs": 30000,
+    "sharedHit": 0,
+    "sharedRead": 0,
+    "rows": 0,
+    "scans": "Bitmap Heap Scan configurations, Bitmap Index Scan configurations_offered_idx, Seq Scan sauna_models, Seq Scan sauna_model_translations, Index Scan configuration_price_snapshots_pkey, Index Only Scan configurations_id_reseller_customer_key, Index Scan configuration_requests_reseller_created_idx, Seq Scan sauna_model_assets, Seq Scan assets, Seq Scan option_assets, Index Only Scan sauna_model_options_pkey, Seq Scan room_scene_assets, Seq Scan reseller_room_scenes",
+    "timedOut": true
+  },
+  {
+    "name": "configurations: customer list",
+    "medianMs": 4.447,
+    "minMs": 4.406,
+    "sharedHit": 242,
+    "sharedRead": 0,
+    "rows": 8,
+    "scans": "Index Scan configurations_customer_idx, Seq Scan sauna_models, Seq Scan sauna_model_translations, Index Scan configuration_price_snapshots_pkey, Index Only Scan configurations_id_reseller_customer_key, Index Scan configuration_requests_configuration_idx, Seq Scan sauna_model_assets, Seq Scan assets, Seq Scan option_assets, Index Only Scan sauna_model_options_pkey, Seq Scan room_scene_assets, Seq Scan reseller_room_scenes"
+  },
+  {
+    "name": "requests: admin list, page 1",
+    "medianMs": 458.578,
+    "minMs": 453.704,
+    "sharedHit": 263729,
+    "sharedRead": 9267,
+    "rows": 26,
+    "scans": "Seq Scan sauna_models, Seq Scan sauna_model_translations, Bitmap Heap Scan customers, Bitmap Index Scan customers_reseller_created_idx, Index Scan configuration_requests_customer_idx, Index Scan configuration_price_snapshots_pkey, Index Only Scan configurations_id_reseller_customer_key, Index Scan configurations_pkey"
+  },
+  {
+    "name": "requests: admin list, page 200",
+    "medianMs": 311.214,
+    "minMs": 292.89,
+    "sharedHit": 208565,
+    "sharedRead": 6159,
+    "rows": 26,
+    "scans": "Seq Scan sauna_models, Seq Scan sauna_model_translations, Bitmap Heap Scan customers, Bitmap Index Scan customers_reseller_created_idx, Index Scan configuration_requests_customer_idx, Index Scan configuration_price_snapshots_pkey, Index Only Scan configurations_id_reseller_customer_key, Index Scan configurations_pkey"
+  },
+  {
+    "name": "requests: status SUBMITTED",
+    "medianMs": 119.401,
+    "minMs": 109.124,
+    "sharedHit": 102012,
+    "sharedRead": 0,
+    "rows": 26,
+    "scans": "Seq Scan sauna_models, Seq Scan sauna_model_translations, Bitmap Heap Scan customers, Bitmap Index Scan customers_reseller_created_idx, Index Scan configuration_requests_customer_idx, Index Scan configuration_price_snapshots_pkey, Index Only Scan configurations_id_reseller_customer_key, Index Scan configurations_pkey"
+  },
+  {
+    "name": "requests: search \"virtanen\"",
+    "medianMs": 383.654,
+    "minMs": 375.807,
+    "sharedHit": 263602,
+    "sharedRead": 9394,
+    "rows": 26,
+    "scans": "Seq Scan sauna_models, Seq Scan sauna_model_translations, Bitmap Heap Scan customers, Bitmap Index Scan customers_reseller_created_idx, Index Scan configuration_requests_customer_idx, Index Scan configuration_price_snapshots_pkey, Index Only Scan configurations_id_reseller_customer_key, Index Scan configurations_pkey"
+  },
+  {
+    "name": "requests: customer list",
+    "medianMs": 1.563,
+    "minMs": 1.405,
+    "sharedHit": 91,
+    "sharedRead": 0,
+    "rows": 3,
+    "scans": "Index Scan configuration_requests_customer_idx, Index Scan configuration_price_snapshots_pkey, Index Only Scan configurations_id_reseller_customer_key, Index Scan configurations_pkey, Index Scan sauna_models_pkey, Seq Scan sauna_model_translations, Index Scan customers_id_reseller_key"
+  },
+  {
+    "name": "customers: list, page 1",
+    "medianMs": 0.669,
+    "minMs": 0.52,
+    "sharedHit": 216,
+    "sharedRead": 0,
+    "rows": 26,
+    "scans": "Index Scan customers_reseller_created_idx, Bitmap Heap Scan configurations, Bitmap Index Scan configurations_customer_idx, Index Only Scan configuration_requests_customer_idx"
+  },
+  {
+    "name": "customers: list, page 400",
+    "medianMs": 5.693,
+    "minMs": 5.651,
+    "sharedHit": 587,
+    "sharedRead": 0,
+    "rows": 26,
+    "scans": "Bitmap Heap Scan customers, Bitmap Index Scan customers_reseller_created_idx, Bitmap Heap Scan configurations, Bitmap Index Scan configurations_customer_idx, Index Only Scan configuration_requests_customer_idx"
+  },
+  {
+    "name": "customers: search \"anna\" (common)",
+    "medianMs": 20.083,
+    "minMs": 19.13,
+    "sharedHit": 707,
+    "sharedRead": 0,
+    "rows": 26,
+    "scans": "Bitmap Heap Scan customers, Bitmap Index Scan customers_reseller_created_idx, Bitmap Heap Scan configurations, Bitmap Index Scan configurations_customer_idx, Index Only Scan configuration_requests_customer_idx"
+  },
+  {
+    "name": "customers: search one e-mail (rare)",
+    "medianMs": 36.541,
+    "minMs": 35.311,
+    "sharedHit": 530,
+    "sharedRead": 0,
+    "rows": 1,
+    "scans": "Bitmap Heap Scan customers, Bitmap Index Scan customers_reseller_created_idx, Bitmap Heap Scan configurations, Bitmap Index Scan configurations_customer_idx, Index Only Scan configuration_requests_customer_idx"
+  },
+  {
+    "name": "customers: search \"zzqx\" (no match)",
+    "medianMs": 29.021,
+    "minMs": 25.967,
+    "sharedHit": 522,
+    "sharedRead": 0,
+    "rows": 0,
+    "scans": "Bitmap Heap Scan customers, Bitmap Index Scan customers_reseller_created_idx, Bitmap Heap Scan configurations, Bitmap Index Scan configurations_customer_idx, Index Only Scan configuration_requests_customer_idx"
+  },
+  {
+    "name": "auth: login lookup by e-mail",
+    "medianMs": 12.787,
+    "minMs": 11.497,
+    "sharedHit": 522,
+    "sharedRead": 0,
+    "rows": 1,
+    "scans": "Bitmap Heap Scan customers, Bitmap Index Scan customers_reseller_created_idx"
+  },
+  {
+    "name": "analytics: totals 30 d",
+    "medianMs": 7.273,
+    "minMs": 7.252,
+    "sharedHit": 1977,
+    "sharedRead": 0,
+    "rows": 1,
+    "scans": "Bitmap Heap Scan customers, Bitmap Index Scan customers_reseller_created_idx, Index Only Scan configurations_reseller_created_idx, Index Scan configuration_requests_reseller_created_idx, Index Only Scan share_link_views_reseller_idx, Index Scan configuration_requests_reseller_status_idx"
+  },
+  {
+    "name": "analytics: totals 365 d",
+    "medianMs": 51.962,
+    "minMs": 51.657,
+    "sharedHit": 2258,
+    "sharedRead": 0,
+    "rows": 1,
+    "scans": "Bitmap Heap Scan customers, Bitmap Index Scan customers_reseller_created_idx, Index Only Scan configurations_reseller_created_idx, Bitmap Heap Scan configuration_requests, Bitmap Index Scan configuration_requests_reseller_created_idx, Index Only Scan share_link_views_reseller_idx, Bitmap Index Scan configuration_requests_reseller_status_idx"
+  },
+  {
+    "name": "analytics: by status 365 d",
+    "medianMs": 12.593,
+    "minMs": 12.134,
+    "sharedHit": 397,
+    "sharedRead": 0,
+    "rows": 7,
+    "scans": "Bitmap Heap Scan configuration_requests, Bitmap Index Scan configuration_requests_reseller_created_idx"
+  },
+  {
+    "name": "analytics: daily 30 d",
+    "medianMs": 8.01,
+    "minMs": 5.073,
+    "sharedHit": 1794,
+    "sharedRead": 0,
+    "rows": 30,
+    "scans": "Function Scan, Index Scan configuration_requests_reseller_created_idx, Index Only Scan configurations_reseller_created_idx, Index Only Scan share_link_views_reseller_idx"
+  },
+  {
+    "name": "analytics: daily 365 d",
+    "medianMs": 55.982,
+    "minMs": 55.334,
+    "sharedHit": 22524,
+    "sharedRead": 0,
+    "rows": 365,
+    "scans": "Function Scan, Index Scan configuration_requests_reseller_created_idx, Index Only Scan configurations_reseller_created_idx, Index Only Scan share_link_views_reseller_idx"
+  },
+  {
+    "name": "analytics: top saunas 30 d",
+    "medianMs": 13010.157,
+    "minMs": 12278.047,
+    "sharedHit": 26388,
+    "sharedRead": 0,
+    "rows": 5,
+    "scans": "Index Scan configurations_reseller_created_idx, Seq Scan sauna_models, Seq Scan sauna_model_translations, Index Scan configuration_requests_reseller_created_idx"
+  },
+  {
+    "name": "analytics: top saunas 365 d",
+    "medianMs": 303.99,
+    "minMs": 293.315,
+    "sharedHit": 19721,
+    "sharedRead": 0,
+    "rows": 5,
+    "scans": "Bitmap Heap Scan configurations, Bitmap Index Scan configurations_offered_idx, Seq Scan sauna_models, Seq Scan sauna_model_translations, Index Scan configuration_requests_reseller_created_idx"
+  },
+  {
+    "name": "share links of a configuration (view counts)",
+    "medianMs": 0.343,
+    "minMs": 0.336,
+    "sharedHit": 12,
+    "sharedRead": 0,
+    "rows": 1,
+    "scans": "Index Scan share_links_configuration_idx, Index Only Scan share_link_views_link_idx, Index Scan share_link_views_link_idx"
+  },
+  {
+    "name": "catalog: storefront listing",
+    "medianMs": 3.382,
+    "minMs": 3.346,
+    "sharedHit": 97,
+    "sharedRead": 0,
+    "rows": 4,
+    "scans": "Seq Scan sauna_models, Seq Scan sauna_model_prices, Index Scan reseller_saunas_pkey, Seq Scan sauna_model_translations, Seq Scan reseller_sauna_discounts, Seq Scan reseller_default_discounts"
+  },
+  {
+    "name": "manufacturer: reseller list (500)",
+    "medianMs": 594.018,
+    "minMs": 551.678,
+    "sharedHit": 98941,
+    "sharedRead": 36800,
+    "rows": 500,
+    "scans": "Seq Scan resellers, Function Scan, Index Only Scan reseller_saunas_pkey"
+  },
+  {
+    "name": "manufacturer: analytics 30 d",
+    "medianMs": 679.79,
+    "minMs": 583.715,
+    "sharedHit": 97944,
+    "sharedRead": 36796,
+    "rows": 500,
+    "scans": "Seq Scan resellers, Function Scan"
+  }
+]

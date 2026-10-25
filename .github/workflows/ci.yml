@@ -1,0 +1,194 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Postgres service containers below create the superuser `sauna` (migrations and tests only).
+  DATABASE_URL: postgres://sauna:sauna@localhost:5432/sauna
+  TF_VERSION: 1.16.7
+
+jobs:
+  # ------------------------------------------------------------------------------------------
+  typecheck-unit:
+    name: Typecheck + unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Typecheck (tsc --noEmit in every workspace)
+        run: npm run typecheck
+      - name: Unit tests
+        run: npx vitest run --project unit
+
+  # ------------------------------------------------------------------------------------------
+  db-api:
+    name: Database + API tests (Postgres 16)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sauna
+          POSTGRES_PASSWORD: sauna
+          POSTGRES_DB: sauna
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U sauna"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      LOCAL_IDP: '1'
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Database tests (schema, rules, RLS isolation)
+        run: npx vitest run --project db
+      - name: API integration tests
+        run: npx vitest run --project api
+
+  # ------------------------------------------------------------------------------------------
+  build:
+    name: Build (web + Lambda bundles)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Bundle sizes
+        run: |
+          {
+            echo '### Lambda bundles'
+            echo '| Function | Size |'
+            echo '|---|---|'
+            for f in services/api/dist/lambda/*/index.mjs; do
+              echo "| $(basename "$(dirname "$f")") | $(du -h "$f" | cut -f1) |"
+            done
+            echo
+            echo "Web build: $(du -sh apps/web/dist | cut -f1)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ------------------------------------------------------------------------------------------
+  e2e:
+    name: End-to-end (Playwright)
+    needs: [typecheck-unit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sauna
+          POSTGRES_PASSWORD: sauna
+          POSTGRES_DB: sauna
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U sauna"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      LOCAL_IDP: '1'
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      # e2e/global-setup.ts builds the SPA, creates a fresh seeded database from DATABASE_URL
+      # (createTestDatabase) and starts the local server against it; no db:reset needed.
+      - name: Playwright
+        run: npm run test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  # ------------------------------------------------------------------------------------------
+  terraform:
+    name: Terraform fmt / validate / offline plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - name: Format
+        run: terraform fmt -check -recursive -diff infra
+      - name: Validate environments and bootstrap
+        run: |
+          for dir in infra/envs/dev infra/envs/staging infra/envs/prod infra/bootstrap; do
+            echo "::group::$dir"
+            terraform -chdir="$dir" init -backend=false -input=false -lockfile=readonly
+            terraform -chdir="$dir" validate
+            echo "::endgroup::"
+          done
+      - name: Offline plan with mocked providers (cycles, for_each, validations)
+        run: |
+          terraform -chdir=infra/modules/platform init -backend=false -input=false
+          terraform -chdir=infra/modules/platform test
+
+  # ------------------------------------------------------------------------------------------
+  audit:
+    name: Dependency audit (non-blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: npm audit --audit-level=high
+
+  # ------------------------------------------------------------------------------------------
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # The gitleaks CLI in its official container (no licence needed, unlike the action).
+      - name: gitleaks
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3 \
+            git /repo --redact --verbose --exit-code 1

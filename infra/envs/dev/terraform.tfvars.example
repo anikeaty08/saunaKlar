@@ -1,0 +1,26 @@
+# Copy to terraform.tfvars (git-ignored) or pass with -var-file. Values are examples.
+
+allowed_account_ids = ["111111111111"] # the dev AWS account
+
+platform_domain = "dev.saunas.example.com"
+admin_host      = "admin.dev.saunas.example.com"
+zone_id         = "Z0123456789ABCDEFGHIJ" # hosted zone of dev.saunas.example.com
+# admin_zone_id = "Z…" # only if admin_host is in another zone / registrable domain
+
+email_domain = "mail.dev.saunas.example.com"
+mail_from_name = "Saunaklar"
+
+# openssl genrsa -out signing-k1.pem 2048 && openssl rsa -in signing-k1.pem -pubout -out signing-k1.pub.pem
+# The PRIVATE key goes to Secrets Manager (see infra/README.md), never into tfvars.
+signing_public_keys = {
+  k1 = <<-PEM
+    -----BEGIN PUBLIC KEY-----
+    (paste the contents of signing-k1.pub.pem)
+    -----END PUBLIC KEY-----
+  PEM
+}
+active_signing_key = "k1"
+
+alarm_emails       = ["ops@example.com"]
+monthly_budget_usd = 300
+budget_emails      = ["finance@example.com", "ops@example.com"]

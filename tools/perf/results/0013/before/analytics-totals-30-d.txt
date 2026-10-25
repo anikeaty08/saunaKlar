@@ -1,0 +1,90 @@
+analytics: totals 30 d
+
+select (select count(*) from customers where reseller_id = $1 and status = 'ACTIVE' and created_at >= now() - make_interval(days => $2)) as customers,
+         (select count(*) from configurations where reseller_id = $1 and created_at >= now() - make_interval(days => $2)) as configurations,
+         (select count(*) from configuration_requests where reseller_id = $1 and created_at >= now() - make_interval(days => $2)) as requests,
+         (select count(*) from share_link_views where reseller_id = $1 and viewed_at >= now() - make_interval(days => $2)) as views,
+         (select count(*) from configuration_requests where reseller_id = $1 and status_code = 'ACCEPTED' and created_at >= now() - make_interval(days => $2)) as accepted
+
+Result  (cost=5299.90..5299.91 rows=1 width=40) (actual time=6.620..6.631 rows=1 loops=1)
+  Buffers: shared hit=1988
+  InitPlan 4 (returns $3)
+    ->  Aggregate  (cost=2001.99..2002.00 rows=1 width=8) (actual time=0.609..0.612 rows=1 loops=1)
+          Buffers: shared hit=172
+          InitPlan 1 (returns $0)
+            ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.087..0.087 rows=1 loops=1)
+          InitPlan 2 (returns $1)
+            ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.037..0.037 rows=1 loops=1)
+          InitPlan 3 (returns $2)
+            ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+          ->  Result  (cost=32.49..2001.20 rows=4 width=0) (actual time=0.206..0.562 rows=804 loops=1)
+                One-Time Filter: ($0 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                Buffers: shared hit=172
+                ->  Bitmap Heap Scan on customers  (cost=32.49..2001.20 rows=4 width=0) (actual time=0.118..0.400 rows=804 loops=1)
+                      Recheck Cond: ((reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid) AND (created_at >= (now() - '30 days'::interval)) AND (status = 'ACTIVE'::text))
+                      Filter: (($1 IS NULL) OR (id = $2))
+                      Heap Blocks: exact=163
+                      Buffers: shared hit=172
+                      ->  Bitmap Index Scan on customers_reseller_active_idx  (cost=0.00..32.48 rows=806 width=0) (actual time=0.059..0.060 rows=804 loops=1)
+                            Index Cond: ((reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid) AND (created_at >= (now() - '30 days'::interval)))
+                            Buffers: shared hit=9
+  InitPlan 6 (returns $5)
+    ->  Aggregate  (cost=387.67..387.68 rows=1 width=8) (actual time=2.298..2.300 rows=1 loops=1)
+          Buffers: shared hit=56
+          InitPlan 5 (returns $4)
+            ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.063..0.064 rows=1 loops=1)
+          ->  Result  (cost=0.43..366.63 rows=8310 width=0) (actual time=0.085..1.809 rows=8223 loops=1)
+                One-Time Filter: ($4 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                Buffers: shared hit=56
+                ->  Index Only Scan using configurations_reseller_created_idx on configurations  (cost=0.43..366.63 rows=8310 width=0) (actual time=0.020..0.984 rows=8223 loops=1)
+                      Index Cond: ((reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid) AND (created_at >= (now() - '30 days'::interval)))
+                      Heap Fetches: 0
+                      Buffers: shared hit=56
+  InitPlan 10 (returns $9)
+    ->  Aggregate  (cost=2085.20..2085.21 rows=1 width=8) (actual time=1.190..1.192 rows=1 loops=1)
+          Buffers: shared hit=1516
+          InitPlan 7 (returns $6)
+            ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.091..0.092 rows=1 loops=1)
+          InitPlan 8 (returns $7)
+            ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.045..0.046 rows=1 loops=1)
+          InitPlan 9 (returns $8)
+            ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+          ->  Result  (cost=0.42..2084.41 rows=7 width=0) (actual time=0.159..1.070 rows=1500 loops=1)
+                One-Time Filter: ($6 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                Buffers: shared hit=1516
+                ->  Index Scan using configuration_requests_reseller_created_id_idx on configuration_requests  (cost=0.42..2084.41 rows=7 width=0) (actual time=0.066..0.830 rows=1500 loops=1)
+                      Index Cond: ((reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid) AND (created_at >= (now() - '30 days'::interval)))
+                      Filter: (($7 IS NULL) OR (customer_id = $8))
+                      Buffers: shared hit=1516
+  InitPlan 12 (returns $11)
+    ->  Aggregate  (cost=457.87..457.88 rows=1 width=8) (actual time=2.171..2.173 rows=1 loops=1)
+          Buffers: shared hit=47
+          InitPlan 11 (returns $10)
+            ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.079..0.079 rows=1 loops=1)
+          ->  Result  (cost=0.43..434.81 rows=9119 width=0) (actual time=0.097..1.700 rows=8434 loops=1)
+                One-Time Filter: ($10 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                Buffers: shared hit=47
+                ->  Index Only Scan using share_link_views_reseller_idx on share_link_views  (cost=0.43..434.81 rows=9119 width=0) (actual time=0.016..0.874 rows=8434 loops=1)
+                      Index Cond: ((reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid) AND (viewed_at >= (now() - '30 days'::interval)))
+                      Heap Fetches: 0
+                      Buffers: shared hit=47
+  InitPlan 16 (returns $15)
+    ->  Aggregate  (cost=367.12..367.13 rows=1 width=8) (actual time=0.345..0.346 rows=1 loops=1)
+          Buffers: shared hit=197
+          InitPlan 13 (returns $12)
+            ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.096..0.096 rows=1 loops=1)
+          InitPlan 14 (returns $13)
+            ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.054..0.055 rows=1 loops=1)
+          InitPlan 15 (returns $14)
+            ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+          ->  Result  (cost=0.42..366.34 rows=1 width=0) (actual time=0.179..0.328 rows=193 loops=1)
+                One-Time Filter: ($12 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                Buffers: shared hit=197
+                ->  Index Scan using configuration_requests_reseller_status_created_idx on configuration_requests configuration_requests_1  (cost=0.42..366.34 rows=1 width=0) (actual time=0.081..0.209 rows=193 loops=1)
+                      Index Cond: ((reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid) AND (status_code = 'ACCEPTED'::text) AND (created_at >= (now() - '30 days'::interval)))
+                      Filter: (($13 IS NULL) OR (customer_id = $14))
+                      Buffers: shared hit=197
+Planning:
+  Buffers: shared hit=2
+Planning Time: 0.461 ms
+Execution Time: 6.703 ms

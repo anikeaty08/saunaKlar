@@ -1,0 +1,80 @@
+name: Deploy
+
+# main → CI → build once → staging (automatic) → production (manual approval: the
+# `production` GitHub environment must have required reviewers).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: How far to deploy
+        type: choice
+        options: [staging, production]
+        default: staging
+      canary_percent:
+        description: Canary weight for API functions (0 = all at once)
+        type: number
+        default: 10
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Package Lambda bundles, native layer and web build
+        run: .github/scripts/build-lambda-artifacts.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ github.sha }}
+          path: artifacts/
+          retention-days: 30
+          if-no-files-found: error
+
+  staging:
+    needs: build
+    uses: ./.github/workflows/deploy-env.yml
+    with:
+      environment: staging
+      tf_dir: infra/envs/staging
+      artifact: release-${{ github.sha }}
+      canary_percent: 0
+    secrets: inherit
+    permissions:
+      contents: read
+      id-token: write
+
+  production:
+    needs: staging
+    if: github.event_name == 'push' || inputs.target == 'production'
+    uses: ./.github/workflows/deploy-env.yml
+    with:
+      environment: production
+      tf_dir: infra/envs/prod
+      artifact: release-${{ github.sha }}
+      # format() keeps an explicit 0 (a bare 0 would be falsy and fall through to the default).
+      canary_percent: ${{ fromJSON(github.event_name == 'workflow_dispatch' && format('{0}', inputs.canary_percent) || '10') }}
+    secrets: inherit
+    permissions:
+      contents: read
+      id-token: write

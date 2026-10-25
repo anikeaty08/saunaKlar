@@ -1,0 +1,210 @@
+.auth {
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 6fr);
+  gap: var(--space-6);
+  min-height: calc(100svh - var(--header-h));
+  padding: var(--space-3) var(--gutter) 0;
+}
+
+.auth__form {
+  width: 100%;
+  max-width: 30rem;
+  margin-inline: auto;
+  padding-block: var(--space-7);
+  display: grid;
+  gap: var(--space-4);
+  align-content: center;
+}
+
+.auth__modes {
+  position: relative;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  justify-self: start;
+  margin-bottom: var(--space-4);
+  padding: 4px;
+  border: var(--hair) solid var(--line-strong);
+  border-radius: 999px;
+}
+
+.auth__mode {
+  position: relative;
+  z-index: 1;
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  font-size: var(--step--1);
+  text-align: center;
+  text-decoration: none;
+  color: var(--ink-3);
+  transition: color var(--dur-3) var(--ease-snap);
+}
+
+.auth__mode[aria-current='page'] {
+  color: var(--on-ink);
+}
+
+.auth__mode-ink {
+  position: absolute;
+  inset: 4px auto 4px 4px;
+  width: calc(50% - 4px);
+  border-radius: 999px;
+  background: var(--ink);
+  transition: translate var(--dur-3) var(--ease-snap);
+}
+
+.auth__mode[aria-current='page'] ~ .auth__mode-ink {
+  translate: 100% 0;
+}
+
+.auth__mode:first-child[aria-current='page'] ~ .auth__mode-ink {
+  translate: 0 0;
+}
+
+.auth__title {
+  font-family: var(--font-serif);
+  font-size: var(--step-5);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.auth__lede {
+  color: var(--ink-3);
+  font-size: var(--step-1);
+}
+
+.auth__fields {
+  display: grid;
+  gap: var(--space-5);
+  margin-top: var(--space-4);
+}
+
+.auth__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.auth__checks {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.auth__row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: calc(-1 * var(--space-3));
+}
+
+.auth__small {
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.auth__error {
+  padding: 0.85rem 1rem;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius);
+  font-size: var(--step--1);
+  font-weight: 500;
+}
+
+.auth__foot {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: var(--hair) solid var(--line);
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.auth__code .control__input {
+  font-family: var(--font-mono);
+  font-size: var(--step-3);
+  letter-spacing: 0.4em;
+}
+
+.auth__art {
+  position: sticky;
+  top: calc(var(--header-h) + var(--space-3));
+  height: calc(100svh - var(--header-h) - var(--space-6));
+  min-height: 30rem;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: var(--space-6);
+  border-radius: clamp(16px, 2vw, 28px);
+  background: var(--night);
+  color: var(--on-night);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.auth__art-in {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  display: grid;
+  place-items: center;
+}
+
+.auth__photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.auth__art-in::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--night) 55%, transparent), transparent 35%, transparent 55%, color-mix(in oklab, var(--night) 85%, transparent));
+}
+
+.auth__glyph {
+  width: 70%;
+  color: var(--night-muted);
+}
+
+.auth__glyph .glyph__face {
+  fill: var(--night) !important;
+}
+
+.auth__logo {
+  height: 2.25rem;
+  width: auto;
+}
+
+.auth__art-foot {
+  grid-row: 3;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.auth__brand {
+  font-family: var(--font-serif);
+  font-size: var(--step-3);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.auth__tag {
+  max-width: 32ch;
+  color: color-mix(in oklab, var(--on-night) 78%, transparent);
+}
+
+@media (max-width: 900px) {
+  .auth {
+    grid-template-columns: 1fr;
+  }
+
+  .auth__art {
+    display: none;
+  }
+
+  .auth__pair {
+    grid-template-columns: 1fr;
+  }
+}

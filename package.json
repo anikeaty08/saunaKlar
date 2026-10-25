@@ -1,0 +1,40 @@
+{
+  "name": "saunaklar",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Multi-tenant sauna configurator platform: manufacturer, resellers on their own subdomains, customers.",
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "apps/*",
+    "tools/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "db:migrate": "npm run migrate -w @saunaklar/db",
+    "db:seed": "npm run seed -w @saunaklar/db && node scripts/seed-media.mjs",
+    "db:media": "node scripts/seed-media.mjs",
+    "db:reset": "npm run reset -w @saunaklar/db && node scripts/seed-media.mjs",
+    "openapi": "tsx packages/shared/scripts/openapi.ts",
+    "build": "npm run build -w @saunaklar/web && npm run build -w @saunaklar/api",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run typecheck",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:db": "vitest run --project db",
+    "test:api": "vitest run --project api",
+    "test:e2e": "playwright test",
+    "start": "node services/api/dist/local.js"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^22.20.5",
+    "fast-check": "^4.10.2",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

@@ -1,0 +1,16 @@
+auth: login lookup by e-mail
+
+select id, status, created_at, locale from customers where email_lower = lower($1) and status in ('PENDING', 'ACTIVE') and status <> 'ANONYMISED'
+
+Index Scan using customers_reseller_email_key on customers  (cost=1.20..9.22 rows=1 width=34) (actual time=0.121..0.122 rows=1 loops=1)
+  Index Cond: ((reseller_id = $0) AND (email_lower = 'mia.müller.1.14483@example.test'::text))
+  Filter: ((($1 IS NULL) OR (id = $2)) AND (status = ANY ('{PENDING,ACTIVE}'::text[])))
+  Buffers: shared hit=4
+  InitPlan 1 (returns $0)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.070..0.071 rows=1 loops=1)
+  InitPlan 2 (returns $1)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.031..0.032 rows=1 loops=1)
+  InitPlan 3 (returns $2)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+Planning Time: 0.101 ms
+Execution Time: 0.135 ms

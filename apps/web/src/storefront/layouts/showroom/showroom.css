@@ -1,0 +1,447 @@
+/* Showroom: dark and cinematic. The theme is the dark set in both schemes
+   (flavour "dark"); type is tight Geist with light weights at large sizes. */
+
+/* Shared header: transparent over the hero until the page scrolls. */
+html[data-layout='showroom'] .header:not(.is-compact) {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Shared cards: photo-first, square corners, light type on dark. */
+html[data-layout='showroom'] .scard__media {
+  border-radius: 4px;
+  background: var(--card);
+}
+
+html[data-layout='showroom'] .scard__name {
+  font-weight: 300;
+  letter-spacing: -0.03em;
+}
+
+html[data-layout='showroom'] .page-title,
+html[data-layout='showroom'] .sh__title {
+  font-weight: 300;
+  letter-spacing: -0.05em;
+}
+
+/* ---- hero ---- */
+
+.sw-hero {
+  position: relative;
+  display: grid;
+  align-items: end;
+  min-height: 100svh;
+  margin-top: calc(-1 * var(--header-h));
+  overflow: hidden;
+  isolation: isolate;
+  color: var(--on-night);
+  background: var(--night);
+}
+
+.sw-hero__media {
+  position: absolute;
+  inset: -6% 0 0;
+  z-index: -2;
+  will-change: transform;
+}
+
+.sw-hero__img,
+.sw-hero__img .lazy-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.sw-hero__img img {
+  object-fit: cover;
+}
+
+.sw-hero__img .sw-glyph {
+  width: min(80vw, 70rem);
+  color: var(--night-muted);
+  opacity: 0.35;
+}
+
+.sw-glyph .glyph__face {
+  fill: transparent !important;
+}
+
+.sw-hero__shade {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--night) 70%, transparent) 0%, transparent 28%, transparent 45%, var(--night) 100%),
+    radial-gradient(80% 60% at 50% 100%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 70%);
+}
+
+.sw-hero__content {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-4);
+  padding-block: calc(var(--header-h) + var(--space-8)) clamp(4rem, 3rem + 4vw, 7rem);
+  text-align: center;
+}
+
+.sw-badge {
+  padding: 0.4rem 0.9rem;
+  border: var(--hair) solid color-mix(in oklab, var(--on-night) 30%, transparent);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.sw-hero__title {
+  font-size: clamp(3.2rem, 1rem + 8.5vw, 10rem);
+  font-weight: 300;
+  line-height: 0.9;
+  letter-spacing: -0.06em;
+}
+
+.sw-hero__line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.05em;
+}
+
+.sw-hero__line > span {
+  display: block;
+}
+
+.sw-hero__line:nth-child(4) {
+  font-weight: 600;
+}
+
+.sw-hero__lede {
+  max-width: 46ch;
+  color: color-mix(in oklab, var(--on-night) 80%, transparent);
+}
+
+.sw-hero__ctas {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.sw-hero__ctas .btn--ghost {
+  color: var(--on-night);
+  border-color: color-mix(in oklab, var(--on-night) 50%, transparent);
+}
+
+.sw-hero__tag {
+  position: absolute;
+  right: var(--gutter);
+  bottom: var(--space-5);
+  display: grid;
+  gap: 0.15rem;
+  padding: var(--space-3) var(--space-4);
+  border-left: var(--hair) solid color-mix(in oklab, var(--on-night) 40%, transparent);
+  font-size: var(--step--1);
+  color: var(--on-night);
+  text-decoration: none;
+}
+
+.sw-hero__tag .mono {
+  font-size: 0.6875rem;
+  color: var(--night-muted);
+}
+
+/* ---- rail ---- */
+
+.sw-rail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  gap: var(--space-6);
+  min-height: 100svh;
+  padding-block: var(--space-8);
+  overflow: hidden;
+}
+
+.sw-rail__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: end;
+  gap: var(--space-4) var(--space-7);
+}
+
+.sw-h2 {
+  max-width: 18ch;
+  margin-top: var(--space-3);
+  font-size: clamp(2.2rem, 1.2rem + 3.4vw, 4.6rem);
+  font-weight: 300;
+  line-height: 0.98;
+  letter-spacing: -0.05em;
+}
+
+.sw-rail__lede {
+  max-width: 38ch;
+  color: var(--ink-3);
+}
+
+.sw-rail__track {
+  display: flex;
+  gap: var(--gutter);
+  padding-inline: var(--gutter);
+  will-change: transform;
+}
+
+.sw-card {
+  flex: 0 0 auto;
+  width: clamp(17rem, 34vw, 34rem);
+  aspect-ratio: 4 / 5;
+}
+
+.sw-card__link {
+  position: relative;
+  display: block;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--on-night);
+  text-decoration: none;
+}
+
+.sw-card__media,
+.sw-card__media .lazy-img {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.sw-card__media img {
+  object-fit: cover;
+  transition: transform 1.2s var(--ease-out-soft);
+}
+
+.sw-card__media .sw-glyph {
+  width: 78%;
+  color: var(--ink-4);
+}
+
+.sw-card__link:hover .sw-card__media img {
+  transform: scale(1.05);
+}
+
+.sw-card__link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 50%, color-mix(in oklab, var(--night) 85%, transparent));
+}
+
+.sw-card__num {
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  z-index: 1;
+  font-size: 0.6875rem;
+  color: var(--night-muted);
+}
+
+.sw-card__body {
+  position: absolute;
+  inset: auto var(--space-4) var(--space-4);
+  z-index: 1;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.sw-card__name {
+  font-size: var(--step-3);
+  font-weight: 300;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.sw-card__meta {
+  font-size: 0.75rem;
+  color: color-mix(in oklab, var(--on-night) 75%, transparent);
+}
+
+.sw-card__go {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--on-night);
+  color: var(--night);
+  transform: scale(0.8);
+  opacity: 0;
+  transition: transform var(--dur-3) var(--ease-snap), opacity var(--dur-2);
+}
+
+.sw-card__link:hover .sw-card__go,
+.sw-card__link:focus-visible .sw-card__go {
+  transform: none;
+  opacity: 1;
+}
+
+.sw-card--all .sw-card__link {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-4);
+  border: var(--hair) solid var(--line-strong);
+  background: transparent;
+  color: var(--ink);
+}
+
+.sw-card--all .sw-card__link::after {
+  content: none;
+}
+
+.sw-rail__hint {
+  font-size: 0.6875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+}
+
+/* Without the pinned scrub the rail is a swipeable strip. */
+@media not ((min-width: 1024px) and (min-height: 640px) and (prefers-reduced-motion: no-preference)) {
+  .sw-rail {
+    min-height: 0;
+  }
+
+  .sw-rail__track {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    padding-bottom: var(--space-2);
+  }
+
+  .sw-card {
+    scroll-snap-align: center;
+    width: min(78vw, 26rem);
+  }
+}
+
+/* ---- statement, steps, visit ---- */
+
+.sw-statement {
+  display: grid;
+  gap: var(--space-5);
+  padding-block: clamp(5rem, 3rem + 6vw, 9rem) 0;
+}
+
+.sw-statement__text {
+  max-width: 24ch;
+  font-size: clamp(2rem, 1rem + 3.6vw, 4.8rem);
+  font-weight: 300;
+  line-height: 1.04;
+  letter-spacing: -0.045em;
+}
+
+.sw-section {
+  padding-top: clamp(5rem, 3rem + 6vw, 9rem);
+}
+
+.sw-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--gutter);
+  margin-top: var(--space-7);
+}
+
+.sw-steps li {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-height: 18rem;
+  padding: var(--space-5);
+  border-radius: 6px;
+  background: var(--card);
+}
+
+.sw-steps__num {
+  font-size: var(--step-5);
+  font-weight: 200;
+  line-height: 1;
+  letter-spacing: -0.06em;
+  color: var(--accent);
+}
+
+.sw-steps h3 {
+  margin-top: auto;
+  font-size: var(--step-1);
+  font-weight: 500;
+}
+
+.sw-steps p,
+.sw-visit__trust p {
+  color: var(--ink-3);
+  font-size: var(--step--1);
+}
+
+.sw-visit {
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  gap: var(--space-7) var(--gutter);
+  align-items: end;
+  padding-top: clamp(5rem, 3rem + 6vw, 9rem);
+}
+
+.sw-visit__body {
+  max-width: 46ch;
+  margin-block: var(--space-4) var(--space-6);
+  color: var(--ink-2);
+}
+
+.sw-visit__trust {
+  display: grid;
+}
+
+.sw-visit__trust li {
+  display: grid;
+  gap: 0.35rem;
+  padding-block: var(--space-4);
+  border-top: var(--hair) solid var(--line);
+}
+
+.sw-visit__trust h3 {
+  font-size: var(--step-0);
+  font-weight: 500;
+}
+
+@media (max-width: 900px) {
+  .sw-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sw-visit {
+    grid-template-columns: 1fr;
+  }
+
+  .sw-hero__tag {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .sw-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .sw-steps li {
+    min-height: 0;
+  }
+}

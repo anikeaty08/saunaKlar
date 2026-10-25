@@ -1,0 +1,29 @@
+.dotword {
+  display: block;
+  height: 1em;
+  width: auto;
+  overflow: visible;
+}
+
+.dotplay {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  touch-action: pan-y;
+  text-align: left;
+}
+
+.dotplay svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.dotplay__stop {
+  color: var(--night-muted, currentColor);
+}

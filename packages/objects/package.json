@@ -1,0 +1,13 @@
+{
+  "name": "@saunaklar/objects",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "description": "Local filesystem object store shared by the API, the catalog import CLI and the dev media seed: <root>/<bucket>/data/<key> plus meta/<key>.json.",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p ."
+  }
+}

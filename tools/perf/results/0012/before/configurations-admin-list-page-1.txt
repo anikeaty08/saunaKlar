@@ -1,0 +1,97 @@
+configurations: admin list, page 1
+
+select c.id, c.name, c.locked_at, c.customer_id, c.created_at, c.updated_at,
+         m.id as model_id, m.slug, coalesce(t.name, m.name) as model_name,
+         (select a.storage_key from sauna_model_assets x join assets a on a.id = x.asset_id where x.sauna_model_id = m.id and x.asset_role = 'MODEL_THUMBNAIL' order by x.position limit 1) as thumb,
+         s.final_price_minor, r.id as request_id, r.status_code
+    from configurations c
+    join sauna_models m on m.id = c.sauna_model_id
+    left join sauna_model_translations t on t.sauna_model_id = m.id and t.locale = $2
+    left join configuration_price_snapshots s on s.configuration_id = c.id
+    left join configuration_requests r on r.configuration_id = c.id
+   where c.reseller_id = $1 
+   order by c.updated_at desc, c.id desc
+   limit $3
+
+TIMED OUT after 30000 ms; estimated plan:
+Limit  (cost=209319.38..209622.21 rows=26 width=213)
+  InitPlan 25 (returns $24)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16)
+  InitPlan 32 (returns $31)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16)
+  InitPlan 33 (returns $32)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16)
+  InitPlan 34 (returns $33)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16)
+  ->  Result  (cost=209318.34..598950.51 rows=33452 width=213)
+        ->  Sort  (cost=209318.34..209401.97 rows=33452 width=181)
+              Sort Key: c.updated_at DESC, c.id DESC
+              ->  Result  (cost=1319.36..208364.88 rows=33452 width=181)
+                    One-Time Filter: ($24 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                    ->  Nested Loop Left Join  (cost=1319.36..208364.88 rows=33452 width=175)
+                          Join Filter: (r.configuration_id = c.id)
+                          ->  Nested Loop Left Join  (cost=1318.94..206741.37 rows=33452 width=151)
+                                ->  Hash Left Join  (cost=1318.52..17789.31 rows=33452 width=143)
+                                      Hash Cond: (m.id = t.sauna_model_id)
+                                      ->  Hash Join  (cost=1312.77..17633.73 rows=33452 width=130)
+                                            Hash Cond: (c.sauna_model_id = m.id)
+                                            ->  Bitmap Heap Scan on configurations c  (cost=1310.18..17181.63 rows=100356 width=104)
+                                                  Recheck Cond: (reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                                                  ->  Bitmap Index Scan on configurations_offered_idx  (cost=0.00..1285.10 rows=100356 width=0)
+                                                        Index Cond: (reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                                            ->  Hash  (cost=2.56..2.56 rows=2 width=42)
+                                                  ->  Seq Scan on sauna_models m  (cost=0.00..2.56 rows=2 width=42)
+                                                        Filter: app_offers_model(id)
+                                      ->  Hash  (cost=5.73..5.73 rows=2 width=29)
+                                            ->  Seq Scan on sauna_model_translations t  (cost=0.00..5.73 rows=2 width=29)
+                                                  Filter: ((locale = 'de'::text) AND app_offers_model(sauna_model_id))
+                                ->  Index Scan using configuration_price_snapshots_pkey on configuration_price_snapshots s  (cost=0.42..5.65 rows=1 width=24)
+                                      Index Cond: (configuration_id = c.id)
+                                      Filter: (SubPlan 28)
+                                      SubPlan 28
+                                        ->  Result  (cost=0.95..4.96 rows=1 width=0)
+                                              One-Time Filter: ($27 = $25)
+                                              InitPlan 26 (returns $25)
+                                                ->  Result  (cost=0.00..0.26 rows=1 width=16)
+                                              InitPlan 27 (returns $27)
+                                                ->  Result  (cost=0.00..0.26 rows=1 width=16)
+                                              ->  Index Only Scan using configurations_id_reseller_customer_key on configurations c_1  (cost=0.95..4.96 rows=1 width=0)
+                                                    Index Cond: ((id = s.configuration_id) AND (reseller_id = $25))
+                          ->  Materialize  (cost=0.42..619.95 rows=2 width=40)
+                                ->  Index Scan using configuration_requests_reseller_created_idx on configuration_requests r  (cost=0.42..619.94 rows=2 width=40)
+                                      Index Cond: (reseller_id = $31)
+                                      Filter: (($32 IS NULL) OR (customer_id = $33))
+        SubPlan 24
+          ->  Limit  (cost=11.63..11.63 rows=1 width=48)
+                InitPlan 1 (returns $1)
+                  ->  Result  (cost=0.00..0.26 rows=1 width=16)
+                ->  Sort  (cost=11.37..11.38 rows=1 width=48)
+                      Sort Key: x."position"
+                      ->  Nested Loop  (cost=0.00..11.36 rows=1 width=48)
+                            Join Filter: (x.asset_id = a_3.id)
+                            ->  Seq Scan on sauna_model_assets x  (cost=0.00..2.06 rows=1 width=18)
+                                  Filter: ((sauna_model_id = m.id) AND (asset_role = 'MODEL_THUMBNAIL'::text) AND app_offers_model(sauna_model_id))
+                            ->  Seq Scan on assets a_3  (cost=0.00..9.25 rows=4 width=62)
+                                  Filter: ((owner_reseller_id = $1) OR ((owner_reseller_id IS NULL) AND ((hashed SubPlan 3) OR (SubPlan 6) OR (SubPlan 16))))
+                                  SubPlan 3
+                                    ->  Seq Scan on sauna_model_assets a  (cost=0.00..2.04 rows=1 width=16)
+                                          Filter: app_offers_model(sauna_model_id)
+                                  SubPlan 6
+                                    ->  Seq Scan on option_assets a_1  (cost=0.00..0.00 rows=1 width=0)
+                                          Filter: ((asset_id = a_3.id) AND (SubPlan 4))
+                                          SubPlan 4
+                                            ->  Index Only Scan using sauna_model_options_pkey on sauna_model_options o  (cost=0.14..10.52 rows=2 width=0)
+                                                  Index Cond: (option_id = a_1.option_id)
+                                                  Filter: app_offers_model(sauna_model_id)
+                                  SubPlan 16
+                                    ->  Seq Scan on room_scene_assets a_2  (cost=0.00..0.00 rows=1 width=0)
+                                          Filter: ((asset_id = a_3.id) AND (hashed SubPlan 15))
+                                          SubPlan 15
+                                            ->  Result  (cost=0.52..1.60 rows=2 width=16)
+                                                  One-Time Filter: ($16 = $15)
+                                                  InitPlan 13 (returns $15)
+                                                    ->  Result  (cost=0.00..0.26 rows=1 width=16)
+                                                  InitPlan 14 (returns $16)
+                                                    ->  Result  (cost=0.00..0.26 rows=1 width=16)
+                                                  ->  Seq Scan on reseller_room_scenes rr  (cost=0.52..1.60 rows=2 width=16)
+                                                        Filter: (reseller_id = $15)

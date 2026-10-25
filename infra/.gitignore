@@ -1,0 +1,6 @@
+# Real tfvars hold account ids, domains and e-mail addresses; CI writes them from the GitHub
+# environment variable TFVARS. Only the *.example files are committed.
+*.tfvars
+!*.tfvars.example
+tfplan
+*.tfplan

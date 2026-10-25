@@ -1,0 +1,188 @@
+.pf {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.pf main {
+  flex: 1;
+}
+
+.pf__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: var(--header-h);
+}
+
+.pf__logo {
+  display: inline-flex;
+  align-items: center;
+}
+
+.pf__admin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  font-size: var(--step--1);
+  margin-right: 0.5rem;
+}
+
+.pf__hero {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-5);
+  padding-block: var(--space-9) var(--space-8);
+  text-align: center;
+}
+
+.pf__hero--unknown {
+  min-height: 55dvh;
+  align-content: center;
+}
+
+.pf__title {
+  max-width: 18ch;
+  font-size: clamp(2.6rem, 1rem + 5.6vw, 6.4rem);
+  font-weight: 500;
+  letter-spacing: -0.05em;
+  line-height: 0.95;
+}
+
+.pf__title em {
+  display: block;
+  font-family: var(--font-serif);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+
+.pf__lede {
+  max-width: 52ch;
+}
+
+.pf__ctas {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.pf__section {
+  padding-block: var(--space-8) 0;
+}
+
+.pf__h2 {
+  max-width: 22ch;
+  margin-top: var(--space-3);
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 1.2rem + 2.6vw, 3.6rem);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.pf__benefits {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: var(--gutter);
+  margin-top: var(--space-7);
+}
+
+.pf__benefit {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-height: 16rem;
+  padding: var(--space-5);
+  border: var(--hair) solid var(--line);
+  border-radius: 20px;
+  background: var(--card);
+}
+
+.pf__benefit h3 {
+  margin-top: auto;
+  font-size: var(--step-1);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.pf__benefit p,
+.pf__steps p {
+  color: var(--ink-3);
+}
+
+.pf__steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-6) var(--gutter);
+  margin-top: var(--space-7);
+}
+
+.pf__steps li {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: var(--hair) solid var(--ink);
+}
+
+.pf__step-num {
+  font-family: var(--font-serif);
+  font-size: var(--step-4);
+  line-height: 1;
+  color: var(--ink-4);
+}
+
+.pf__steps h3 {
+  font-size: var(--step-1);
+  font-weight: 500;
+}
+
+.pf__num {
+  font-size: var(--step--2);
+  color: var(--ink-3);
+}
+
+.pf__examples {
+  padding-block: var(--space-8) 0;
+}
+
+.pf__examples-lede {
+  margin-top: var(--space-2);
+  color: var(--ink-3);
+}
+
+.pf__examples ul {
+  margin-top: var(--space-4);
+  border-top: var(--hair) solid var(--ink);
+}
+
+.pf__example {
+  display: grid;
+  grid-template-columns: 3rem 1fr auto;
+  align-items: center;
+  padding-block: 1.1rem;
+  border-bottom: var(--hair) solid var(--line);
+  text-decoration: none;
+  font-family: var(--font-display);
+  font-size: var(--step-3);
+  letter-spacing: -0.04em;
+  transition: padding var(--dur-3) var(--ease-out);
+}
+
+.pf__example:hover {
+  padding-left: 0.75rem;
+}
+
+.pf__example .flip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pf__note {
+  max-width: 28ch;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}

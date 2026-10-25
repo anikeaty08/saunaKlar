@@ -1,0 +1,59 @@
+analytics: daily 30 d
+
+select to_char(d, 'YYYY-MM-DD') as day,
+         (select count(*) from configuration_requests r where r.reseller_id = $1 and r.created_at >= d and r.created_at < d + interval '1 day') as requests,
+         (select count(*) from configurations c where c.reseller_id = $1 and c.created_at >= d and c.created_at < d + interval '1 day') as configurations,
+         (select count(*) from share_link_views v where v.reseller_id = $1 and v.viewed_at >= d and v.viewed_at < d + interval '1 day') as views
+    from generate_series(date_trunc('day', now()) - make_interval(days => $2 - 1), date_trunc('day', now()), interval '1 day') as d
+   order by d
+
+Sort  (cost=81155.93..81158.43 rows=1000 width=64) (actual time=7.997..8.003 rows=30 loops=1)
+  Sort Key: d.d
+  Sort Method: quicksort  Memory: 27kB
+  Buffers: shared hit=1859
+  ->  Function Scan on generate_series d  (cost=0.02..81106.10 rows=1000 width=64) (actual time=0.659..7.981 rows=30 loops=1)
+        Buffers: shared hit=1859
+        SubPlan 4
+          ->  Aggregate  (cost=47.06..47.07 rows=1 width=8) (actual time=0.054..0.055 rows=1 loops=30)
+                Buffers: shared hit=1584
+                InitPlan 1 (returns $1)
+                  ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.120..0.120 rows=1 loops=1)
+                InitPlan 2 (returns $2)
+                  ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.078..0.078 rows=1 loops=1)
+                InitPlan 3 (returns $3)
+                  ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                ->  Result  (cost=0.42..46.28 rows=1 width=0) (actual time=0.013..0.050 rows=49 loops=30)
+                      One-Time Filter: ($1 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                      Buffers: shared hit=1584
+                      ->  Index Scan using configuration_requests_reseller_created_id_idx on configuration_requests r  (cost=0.42..46.28 rows=1 width=0) (actual time=0.008..0.039 rows=49 loops=30)
+                            Index Cond: ((reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid) AND (created_at >= d.d) AND (created_at < (d.d + '1 day'::interval)))
+                            Filter: (($2 IS NULL) OR (customer_id = $3))
+                            Buffers: shared hit=1584
+        SubPlan 6
+          ->  Aggregate  (cost=17.71..17.72 rows=1 width=8) (actual time=0.103..0.103 rows=1 loops=30)
+                Buffers: shared hit=142
+                InitPlan 5 (returns $5)
+                  ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.061..0.061 rows=1 loops=1)
+                ->  Result  (cost=0.43..16.19 rows=505 width=0) (actual time=0.011..0.081 rows=270 loops=30)
+                      One-Time Filter: ($5 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                      Buffers: shared hit=142
+                      ->  Index Only Scan using configurations_reseller_created_idx on configurations c  (cost=0.43..16.19 rows=505 width=0) (actual time=0.008..0.047 rows=270 loops=30)
+                            Index Cond: ((reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid) AND (created_at >= d.d) AND (created_at < (d.d + '1 day'::interval)))
+                            Heap Fetches: 0
+                            Buffers: shared hit=142
+        SubPlan 8
+          ->  Aggregate  (cost=16.29..16.30 rows=1 width=8) (actual time=0.104..0.104 rows=1 loops=30)
+                Buffers: shared hit=133
+                InitPlan 7 (returns $7)
+                  ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.054..0.054 rows=1 loops=1)
+                ->  Result  (cost=0.43..14.91 rows=448 width=0) (actual time=0.011..0.081 rows=278 loops=30)
+                      One-Time Filter: ($7 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                      Buffers: shared hit=133
+                      ->  Index Only Scan using share_link_views_reseller_idx on share_link_views v  (cost=0.43..14.91 rows=448 width=0) (actual time=0.009..0.047 rows=278 loops=30)
+                            Index Cond: ((reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid) AND (viewed_at >= d.d) AND (viewed_at < (d.d + '1 day'::interval)))
+                            Heap Fetches: 0
+                            Buffers: shared hit=133
+Planning:
+  Buffers: shared hit=2
+Planning Time: 0.439 ms
+Execution Time: 8.090 ms

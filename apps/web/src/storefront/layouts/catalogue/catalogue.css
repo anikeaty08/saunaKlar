@@ -1,0 +1,306 @@
+/* Catalogue: product first. A compact header, a short hero and a dense grid
+   of every sauna with a filter and sort bar. Sans throughout, tight corners. */
+
+html[data-layout='catalogue'] {
+  --header-h: 3.5rem;
+}
+
+html[data-layout='catalogue'] .scard__media {
+  border-radius: 8px;
+}
+
+html[data-layout='catalogue'] .page-title,
+html[data-layout='catalogue'] .sh__title {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+}
+
+/* ---- hero ---- */
+
+.ct-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  align-items: end;
+  gap: var(--space-5) var(--gutter);
+  padding-block: clamp(2rem, 1rem + 3vw, 3.5rem) var(--space-6);
+  border-bottom: var(--hair) solid var(--line);
+}
+
+.ct-badge {
+  display: inline-flex;
+  margin-bottom: var(--space-3);
+  padding: 0.3rem 0.7rem;
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--accent) 12%, var(--paper));
+  color: var(--accent);
+  font-size: var(--step--1);
+  font-weight: 500;
+}
+
+.ct-hero__title {
+  font-size: clamp(2.2rem, 1.4rem + 3vw, 4rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.ct-hero__side {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--ink-2);
+}
+
+.ct-hero__local {
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+/* ---- filter bar ---- */
+
+.ct-bar {
+  position: sticky;
+  top: var(--header-h);
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-4) var(--space-5);
+  margin-inline: calc(-1 * var(--space-3));
+  padding: var(--space-4) var(--space-3);
+  background: color-mix(in oklab, var(--paper) 92%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: var(--hair) solid var(--line);
+}
+
+.ct-bar__sort {
+  min-width: 12rem;
+}
+
+.ct-bar__sort .field__req {
+  display: none;
+}
+
+.ct-bar__count {
+  margin-left: auto;
+  padding-bottom: 0.6rem;
+  font-size: 0.75rem;
+  color: var(--ink-3);
+}
+
+/* ---- grid ---- */
+
+.ct-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-6) var(--space-4);
+  padding-top: var(--space-6);
+}
+
+.ct-card__link {
+  display: grid;
+  gap: var(--space-2);
+  color: inherit;
+  text-decoration: none;
+}
+
+.ct-card__media {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--paper-3);
+}
+
+.ct-card__media .lmedia img {
+  transition: transform 0.8s var(--ease-out-soft);
+}
+
+.ct-card__link:hover .ct-card__media .lmedia img {
+  transform: scale(1.04);
+}
+
+.ct-card__media .lmedia__glyph {
+  width: 74%;
+  color: var(--ink-4);
+}
+
+.ct-card__save {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 1;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--paper);
+  font-size: 0.6875rem;
+}
+
+.ct-card__name {
+  margin-top: var(--space-1);
+  font-size: var(--step-0);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.ct-card__link:hover .ct-card__name {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.ct-card__specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.7rem;
+  font-size: 0.75rem;
+  color: var(--ink-3);
+}
+
+.ct-card__specs span:empty {
+  display: none;
+}
+
+.ct-card__price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem;
+  padding-top: var(--space-2);
+  border-top: var(--hair) solid var(--line);
+}
+
+.ct-card__from {
+  font-size: 0.75rem;
+  color: var(--ink-3);
+}
+
+.ct-card__price s {
+  font-size: 0.75rem;
+  color: var(--ink-4);
+}
+
+.ct-card__amount {
+  margin-left: auto;
+  font-size: var(--step-0);
+  font-weight: 600;
+}
+
+.ct-empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-8);
+  color: var(--ink-3);
+}
+
+/* ---- how ---- */
+
+.ct-how {
+  margin-top: clamp(4rem, 3rem + 4vw, 7rem);
+  padding-top: var(--space-6);
+  border-top: var(--hair) solid var(--line);
+}
+
+.ct-h2 {
+  font-size: clamp(1.6rem, 1.2rem + 1.4vw, 2.4rem);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+}
+
+.ct-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+  counter-reset: step;
+}
+
+.ct-steps li {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: 8px;
+  background: var(--paper-2, var(--paper-3));
+}
+
+.ct-steps__num {
+  font-size: 0.75rem;
+  color: var(--accent);
+}
+
+.ct-steps h3 {
+  font-size: var(--step-0);
+  font-weight: 600;
+}
+
+.ct-steps p {
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.ct-how__cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5);
+  margin-top: var(--space-6);
+}
+
+.ct-how__contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ink);
+}
+
+@media (max-width: 1100px) {
+  .ct-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .ct-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .ct-grid,
+  .ct-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ct-bar {
+    position: static;
+  }
+}
+
+@media (max-width: 560px) {
+  .ct-grid {
+    gap: var(--space-5) var(--space-3);
+  }
+
+  .ct-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .ct-bar {
+    gap: var(--space-3);
+  }
+
+  .ct-bar__sort {
+    flex: 1 1 100%;
+  }
+
+  .ct-bar__count {
+    margin-left: 0;
+  }
+
+  .ct-card__amount {
+    margin-left: 0;
+  }
+}

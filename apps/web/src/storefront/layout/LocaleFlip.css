@@ -1,0 +1,35 @@
+@property --flip-shade {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
+.locale-stage {
+  position: relative;
+}
+
+.locale-stage.is-flipping {
+  overflow: clip;
+}
+
+.locale-page {
+  position: relative;
+  background: var(--paper);
+  backface-visibility: hidden;
+}
+
+/* Only while turning: preserve-3d makes the page a containing block for
+   fixed descendants, which would break pinned (ScrollTrigger) sections. */
+.is-flipping .locale-page {
+  transform-style: preserve-3d;
+}
+
+.is-flipping .locale-page::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  background: var(--ink);
+  opacity: var(--flip-shade);
+}

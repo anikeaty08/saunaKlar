@@ -1,0 +1,23 @@
+{
+  "name": "@saunaklar/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "description": "PostgreSQL schema (migrations), migration runner, dev seed and typed pg client with transaction-scoped tenant context.",
+  "scripts": {
+    "migrate": "node --disable-warning=ExperimentalWarning src/migrate.ts",
+    "seed": "node --disable-warning=ExperimentalWarning src/seed.ts",
+    "reset": "node --disable-warning=ExperimentalWarning src/reset.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@saunaklar/pricing": "0.1.0",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.5"
+  }
+}

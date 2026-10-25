@@ -1,0 +1,40 @@
+.filters {
+  display: grid;
+  grid-template-columns: auto auto repeat(3, minmax(10rem, 1fr));
+  gap: var(--space-5);
+  align-items: end;
+  padding-block: var(--space-5);
+  border-top: var(--hair) solid var(--ink);
+}
+
+.filters .field__opt,
+.filters .field__req {
+  display: none;
+}
+
+.saunas-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-block: var(--space-3) var(--space-6);
+  border-top: var(--hair) solid var(--line);
+  font-size: var(--step--1);
+  color: var(--ink-3);
+  min-height: 3.5rem;
+}
+
+@media (max-width: 1100px) {
+  .filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .filters .segmented__track {
+    overflow-x: auto;
+  }
+}

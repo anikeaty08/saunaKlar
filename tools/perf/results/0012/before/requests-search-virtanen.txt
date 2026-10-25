@@ -1,0 +1,101 @@
+requests: search "virtanen"
+
+select r.id, r.status_code, coalesce(t.name, m.name) as model_name, c.name as config_name, s.final_price_minor, s.currency_code,
+         r.created_at, r.updated_at, cu.first_name, cu.last_name, cu.email
+    from configuration_requests r
+    join configurations c on c.id = r.configuration_id
+    join sauna_models m on m.id = c.sauna_model_id
+    left join sauna_model_translations t on t.sauna_model_id = m.id and t.locale = $2
+    join configuration_price_snapshots s on s.configuration_id = c.id
+    join customers cu on cu.id = r.customer_id
+   where r.reseller_id = $1 and (cu.email ilike $4 or (cu.first_name || ' ' || cu.last_name) ilike $4 or c.name ilike $4)
+   order by r.created_at desc, r.id desc
+   limit $3
+
+Limit  (cost=1219.52..1219.53 rows=1 width=161) (actual time=396.360..396.396 rows=26 loops=1)
+  Buffers: shared hit=264027 read=8969
+  InitPlan 1 (returns $0)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.131..0.132 rows=1 loops=1)
+  InitPlan 2 (returns $1)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.033..0.033 rows=1 loops=1)
+  InitPlan 3 (returns $2)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  InitPlan 4 (returns $3)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.028..0.029 rows=1 loops=1)
+  InitPlan 11 (returns $10)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.022..0.022 rows=1 loops=1)
+  InitPlan 12 (returns $11)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.148..0.148 rows=1 loops=1)
+  InitPlan 13 (returns $12)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  ->  Sort  (cost=1217.70..1217.71 rows=1 width=161) (actual time=396.358..396.386 rows=26 loops=1)
+        Sort Key: r.created_at DESC, r.id DESC
+        Sort Method: top-N heapsort  Memory: 36kB
+        Buffers: shared hit=264027 read=8969
+        ->  Result  (cost=16.69..1217.69 rows=1 width=161) (actual time=2.905..395.706 rows=650 loops=1)
+              One-Time Filter: ($0 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+              Buffers: shared hit=264027 read=8969
+              ->  Nested Loop  (cost=16.69..1217.69 rows=1 width=155) (actual time=2.770..395.355 rows=650 loops=1)
+                    Join Filter: (m.id = c.sauna_model_id)
+                    Rows Removed by Join Filter: 2600
+                    Buffers: shared hit=264027 read=8969
+                    ->  Nested Loop Left Join  (cost=0.00..8.35 rows=2 width=42) (actual time=0.426..2.004 rows=5 loops=1)
+                          Join Filter: (t.sauna_model_id = m.id)
+                          Rows Removed by Join Filter: 10
+                          Buffers: shared hit=34
+                          ->  Seq Scan on sauna_models m  (cost=0.00..2.56 rows=2 width=29) (actual time=0.259..1.355 rows=5 loops=1)
+                                Filter: app_offers_model(id)
+                                Rows Removed by Filter: 1
+                                Buffers: shared hit=18
+                          ->  Materialize  (cost=0.00..5.74 rows=2 width=29) (actual time=0.033..0.127 rows=3 loops=5)
+                                Buffers: shared hit=16
+                                ->  Seq Scan on sauna_model_translations t  (cost=0.00..5.73 rows=2 width=29) (actual time=0.164..0.628 rows=5 loops=1)
+                                      Filter: ((locale = 'de'::text) AND app_offers_model(sauna_model_id))
+                                      Rows Removed by Filter: 8
+                                      Buffers: shared hit=16
+                    ->  Materialize  (cost=16.69..1209.31 rows=1 width=145) (actual time=0.319..78.516 rows=650 loops=5)
+                          Buffers: shared hit=263993 read=8969
+                          ->  Nested Loop  (cost=16.69..1209.31 rows=1 width=145) (actual time=1.590..391.095 rows=650 loops=1)
+                                Join Filter: ((r.configuration_id = c.id) AND ((cu.email ~~* '%virtanen%'::text) OR (((cu.first_name || ' '::text) || cu.last_name) ~~* '%virtanen%'::text) OR (c.name ~~* '%virtanen%'::text)))
+                                Rows Removed by Join Filter: 17364
+                                Buffers: shared hit=263993 read=8969
+                                ->  Nested Loop  (cost=16.26..1208.32 rows=1 width=129) (actual time=1.542..269.562 rows=18014 loops=1)
+                                      Buffers: shared hit=193639 read=7267
+                                      ->  Nested Loop  (cost=15.84..1194.99 rows=1 width=101) (actual time=1.458..94.047 rows=18014 loops=1)
+                                            Buffers: shared hit=74274 read=533
+                                            ->  Bitmap Heap Scan on customers cu  (cost=15.42..1178.09 rows=2 width=61) (actual time=1.401..8.498 rows=20002 loops=1)
+                                                  Recheck Cond: (reseller_id = $10)
+                                                  Filter: (($11 IS NULL) OR (id = $12))
+                                                  Heap Blocks: exact=374
+                                                  Buffers: shared read=522
+                                                  ->  Bitmap Index Scan on customers_reseller_created_idx  (cost=0.00..15.42 rows=400 width=0) (actual time=1.203..1.203 rows=20002 loops=1)
+                                                        Index Cond: (reseller_id = $10)
+                                                        Buffers: shared read=148
+                                            ->  Index Scan using configuration_requests_customer_idx on configuration_requests r  (cost=0.42..8.44 rows=1 width=72) (actual time=0.004..0.004 rows=1 loops=20002)
+                                                  Index Cond: ((customer_id = cu.id) AND (reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid))
+                                                  Filter: (($1 IS NULL) OR (customer_id = $2))
+                                                  Buffers: shared hit=74274 read=11
+                                      ->  Index Scan using configuration_price_snapshots_pkey on configuration_price_snapshots s  (cost=0.42..13.32 rows=1 width=28) (actual time=0.009..0.009 rows=1 loops=18014)
+                                            Index Cond: (configuration_id = r.configuration_id)
+                                            Filter: (SubPlan 7)
+                                            Buffers: shared hit=119365 read=6734
+                                            SubPlan 7
+                                              ->  Result  (cost=0.95..4.96 rows=1 width=0) (actual time=0.005..0.005 rows=1 loops=18014)
+                                                    One-Time Filter: ($6 = $4)
+                                                    Buffers: shared hit=47313 read=6730
+                                                    InitPlan 5 (returns $4)
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.026..0.027 rows=1 loops=1)
+                                                    InitPlan 6 (returns $6)
+                                                      ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.033..0.034 rows=1 loops=1)
+                                                    ->  Index Only Scan using configurations_id_reseller_customer_key on configurations c_1  (cost=0.95..4.96 rows=1 width=0) (actual time=0.005..0.005 rows=1 loops=18014)
+                                                          Index Cond: ((id = s.configuration_id) AND (reseller_id = $4))
+                                                          Heap Fetches: 0
+                                                          Buffers: shared hit=47313 read=6730
+                                ->  Index Scan using configurations_pkey on configurations c  (cost=0.42..0.97 rows=1 width=64) (actual time=0.005..0.005 rows=1 loops=18014)
+                                      Index Cond: (id = s.configuration_id)
+                                      Filter: (reseller_id = $3)
+                                      Buffers: shared hit=70354 read=1702
+Planning:
+  Buffers: shared hit=62 read=13
+Planning Time: 2.406 ms
+Execution Time: 396.563 ms

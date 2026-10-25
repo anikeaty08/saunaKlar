@@ -1,0 +1,26 @@
+analytics: by status 365 d
+
+select status_code, count(*) as n from configuration_requests where reseller_id = $1 and created_at >= now() - make_interval(days => $2) group by status_code
+
+GroupAggregate  (cost=2023.01..2023.77 rows=7 width=16) (actual time=12.980..14.907 rows=7 loops=1)
+  Group Key: configuration_requests.status_code
+  Buffers: shared hit=18129
+  InitPlan 1 (returns $0)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.187..0.188 rows=1 loops=1)
+  InitPlan 2 (returns $1)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.078..0.078 rows=1 loops=1)
+  InitPlan 3 (returns $2)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  ->  Sort  (cost=2022.23..2022.46 rows=92 width=8) (actual time=12.657..13.489 rows=17999 loops=1)
+        Sort Key: configuration_requests.status_code
+        Sort Method: quicksort  Memory: 1150kB
+        Buffers: shared hit=18129
+        ->  Result  (cost=0.42..2019.22 rows=92 width=8) (actual time=0.296..9.801 rows=17999 loops=1)
+              One-Time Filter: ($0 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+              Buffers: shared hit=18129
+              ->  Index Scan using configuration_requests_reseller_created_id_idx on configuration_requests  (cost=0.42..2019.22 rows=92 width=8) (actual time=0.103..7.391 rows=17999 loops=1)
+                    Index Cond: ((reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid) AND (created_at >= (now() - '365 days'::interval)))
+                    Filter: (($1 IS NULL) OR (customer_id = $2))
+                    Buffers: shared hit=18129
+Planning Time: 0.256 ms
+Execution Time: 14.967 ms

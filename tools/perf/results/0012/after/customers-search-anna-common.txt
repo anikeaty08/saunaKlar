@@ -1,0 +1,67 @@
+customers: search "anna" (common)
+
+select cu.id, cu.email, cu.first_name, cu.last_name, cu.status, cu.created_at,
+         (select count(*) from configurations x where x.customer_id = cu.id) as configurations,
+         (select count(*) from configuration_requests r where r.customer_id = cu.id) as requests
+    from customers cu
+   where cu.reseller_id = $1 and (cu.email ilike $3 or (coalesce(cu.first_name, '') || ' ' || coalesce(cu.last_name, '')) ilike $3)
+   order by cu.created_at desc, cu.id desc
+   limit $2
+
+Limit  (cost=4973.03..5040.59 rows=2 width=92) (actual time=34.620..35.040 rows=26 loops=1)
+  Buffers: shared hit=705
+  InitPlan 7 (returns $6)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.106..0.106 rows=1 loops=1)
+  InitPlan 8 (returns $7)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.123..0.123 rows=1 loops=1)
+  InitPlan 9 (returns $8)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  ->  Result  (cost=4972.25..5039.81 rows=2 width=92) (actual time=34.618..35.030 rows=26 loops=1)
+        Buffers: shared hit=705
+        ->  Sort  (cost=4972.25..4972.25 rows=2 width=76) (actual time=34.237..34.242 rows=26 loops=1)
+              Sort Key: cu.created_at DESC, cu.id DESC
+              Sort Method: top-N heapsort  Memory: 30kB
+              Buffers: shared hit=520
+              ->  Result  (cost=730.61..4972.24 rows=2 width=76) (actual time=1.449..33.997 rows=668 loops=1)
+                    One-Time Filter: ($6 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                    Buffers: shared hit=520
+                    ->  Bitmap Heap Scan on customers cu  (cost=730.61..4972.24 rows=2 width=76) (actual time=1.340..33.731 rows=668 loops=1)
+                          Recheck Cond: (reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                          Filter: ((($7 IS NULL) OR (id = $8)) AND ((email ~~* '%anna%'::text) OR (((COALESCE(first_name, ''::text) || ' '::text) || COALESCE(last_name, ''::text)) ~~* '%anna%'::text)))
+                          Rows Removed by Filter: 19334
+                          Heap Blocks: exact=374
+                          Buffers: shared hit=520
+                          ->  Bitmap Index Scan on customers_reseller_created_id_idx  (cost=0.00..730.61 rows=20025 width=0) (actual time=1.151..1.151 rows=20002 loops=1)
+                                Index Cond: (reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+                                Buffers: shared hit=146
+        SubPlan 2
+          ->  Aggregate  (cost=24.52..24.53 rows=1 width=8) (actual time=0.018..0.018 rows=1 loops=26)
+                Buffers: shared hit=105
+                InitPlan 1 (returns $1)
+                  ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.200..0.201 rows=1 loops=1)
+                ->  Bitmap Heap Scan on configurations x  (cost=4.46..24.26 rows=1 width=0) (actual time=0.015..0.016 rows=5 loops=26)
+                      Recheck Cond: (customer_id = cu.id)
+                      Filter: (reseller_id = $1)
+                      Heap Blocks: exact=27
+                      Buffers: shared hit=105
+                      ->  Bitmap Index Scan on configurations_customer_updated_idx  (cost=0.00..4.46 rows=5 width=0) (actual time=0.005..0.005 rows=5 loops=26)
+                            Index Cond: (customer_id = cu.id)
+                            Buffers: shared hit=78
+        SubPlan 6
+          ->  Aggregate  (cost=9.22..9.23 rows=1 width=8) (actual time=0.010..0.010 rows=1 loops=26)
+                Buffers: shared hit=80
+                InitPlan 3 (returns $3)
+                  ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.059..0.060 rows=1 loops=1)
+                InitPlan 4 (returns $4)
+                  ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.047..0.048 rows=1 loops=1)
+                InitPlan 5 (returns $5)
+                  ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+                ->  Index Only Scan using configuration_requests_customer_idx on configuration_requests r  (cost=0.42..8.44 rows=1 width=0) (actual time=0.007..0.007 rows=1 loops=26)
+                      Index Cond: ((customer_id = cu.id) AND (reseller_id = $3))
+                      Filter: (($4 IS NULL) OR (customer_id = $5))
+                      Heap Fetches: 7
+                      Buffers: shared hit=80
+Planning:
+  Buffers: shared hit=1
+Planning Time: 0.344 ms
+Execution Time: 35.121 ms

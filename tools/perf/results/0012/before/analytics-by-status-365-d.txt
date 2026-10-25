@@ -1,0 +1,30 @@
+analytics: by status 365 d
+
+select status_code, count(*) as n from configuration_requests where reseller_id = $1 and created_at >= now() - make_interval(days => $2) group by status_code
+
+GroupAggregate  (cost=3802.76..3803.55 rows=7 width=16) (actual time=10.185..12.768 rows=7 loops=1)
+  Group Key: configuration_requests.status_code
+  Buffers: shared hit=397
+  InitPlan 1 (returns $0)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.091..0.091 rows=1 loops=1)
+  InitPlan 2 (returns $1)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.141..0.141 rows=1 loops=1)
+  InitPlan 3 (returns $2)
+    ->  Result  (cost=0.00..0.26 rows=1 width=16) (never executed)
+  ->  Sort  (cost=3801.98..3802.22 rows=95 width=8) (actual time=9.772..10.894 rows=18010 loops=1)
+        Sort Key: configuration_requests.status_code
+        Sort Method: quicksort  Memory: 1150kB
+        Buffers: shared hit=397
+        ->  Result  (cost=665.50..3798.86 rows=95 width=8) (actual time=1.451..6.861 rows=18010 loops=1)
+              One-Time Filter: ($0 = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid)
+              Buffers: shared hit=397
+              ->  Bitmap Heap Scan on configuration_requests  (cost=665.50..3798.86 rows=95 width=8) (actual time=1.358..4.286 rows=18010 loops=1)
+                    Recheck Cond: ((reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid) AND (created_at >= (now() - '365 days'::interval)))
+                    Filter: (($1 IS NULL) OR (customer_id = $2))
+                    Heap Blocks: exact=272
+                    Buffers: shared hit=397
+                    ->  Bitmap Index Scan on configuration_requests_reseller_created_idx  (cost=0.00..665.48 rows=18905 width=0) (actual time=1.171..1.172 rows=18015 loops=1)
+                          Index Cond: ((reseller_id = 'f0a3410a-4c3f-51d9-9315-ec4a4f45514b'::uuid) AND (created_at >= (now() - '365 days'::interval)))
+                          Buffers: shared hit=125
+Planning Time: 0.172 ms
+Execution Time: 12.808 ms
