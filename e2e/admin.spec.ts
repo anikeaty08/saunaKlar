@@ -3,7 +3,8 @@ import { ADMIN, en, expect, loginWithForm, test } from './fixtures.ts';
 test('reseller admin logs in at /admin and sees the requests list', async ({ page }) => {
   await loginWithForm(page, '/admin', 'owner@alpha.test');
   await expect(page.getByRole('heading', { name: en.admin.title }).or(page.getByRole('navigation').getByText(en.admin.nav.dashboard))).toBeVisible();
-  await page.getByRole('link', { name: en.admin.nav.requests }).click();
+  // The dashboard also links to the submitted requests once its data loads; use the menu entry.
+  await page.getByRole('navigation').getByRole('link', { name: en.admin.nav.requests }).click();
   const rows = page.getByRole('row');
   await expect(rows.filter({ hasText: 'Anna Virtanen' }).filter({ hasText: en.status.IN_REVIEW })).toHaveCount(1);
   await expect(rows.filter({ hasText: 'Anna Virtanen' }).filter({ hasText: en.status.QUOTED })).toHaveCount(1);
