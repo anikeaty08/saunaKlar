@@ -1,6 +1,7 @@
 import { defaultSelection, type ModelRules } from '@saunaklar/rules';
 import type { SaunaDetail } from '../../api/types.ts';
 import type { ViewerOptions } from '../../three/types.ts';
+import { kitOptionsOf } from '../../three/kit/spec.ts';
 
 export function rulesOf(s: Pick<SaunaDetail, 'groups' | 'rules'>): ModelRules {
   return {
@@ -15,23 +16,11 @@ export function defaultSelectionOf(s: Pick<SaunaDetail, 'groups' | 'rules'>): st
 }
 
 /**
- * Maps selected options onto the parametric model's inputs by group/option
- * code (wood colour from the swatch, door type, lighting). Unknown codes are
- * ignored, so a catalogue with other options still renders.
+ * Maps selected options onto the construction kit (wood, door, heater, bench
+ * styles, backrests, lights, extras) by option code; see three/kit/spec.ts for
+ * the codes it understands. Unknown codes are ignored, so any catalogue renders.
  */
-export function viewerOptionsOf(s: Pick<SaunaDetail, 'groups'>, selection: readonly string[]): ViewerOptions {
-  const sel = new Set(selection);
-  const chosen = (code: string) => s.groups.find(g => g.code === code)?.options.filter(o => sel.has(o.id)) ?? [];
-  const wood = chosen('wood')[0];
-  const door = chosen('door')[0]?.code ?? 'clear';
-  const lights = chosen('lighting').map(o => o.code);
-  const heater = chosen('heater')[0]?.code ?? 'electric-6';
-  return {
-    woodColor: wood?.swatchColor ?? '#d9b98a',
-    door: door === 'timber' ? 'timber' : door === 'bronze' ? 'bronze' : door === 'satin' ? 'satin' : 'clear',
-    backrestLight: lights.includes('backrest-led'),
-    benchLight: lights.includes('bench-led'),
-    starCeiling: lights.includes('starlight'),
-    woodStove: heater === 'wood-stove',
-  };
+export function viewerOptionsOf(s: Pick<SaunaDetail, 'groups' | 'attributes'>, selection: readonly string[]): ViewerOptions {
+  const levels = s.attributes.find(a => a.code === 'bench_levels')?.value;
+  return kitOptionsOf(s.groups, selection, typeof levels === 'number' && levels < 2 ? 1 : 2);
 }

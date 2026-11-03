@@ -43,7 +43,10 @@ interface Props {
  * progress, and the 3D chunk is requested only when the slot is near the
  * viewport (or on demand with data saver).
  */
-export function ViewerSlot({ name, specs, options, lowUrl, highUrl, allowHigh, thumbnailUrl, eager, shareToken }: Props) {
+export function ViewerSlot({ name, specs, options, lowUrl: assetLow, highUrl: assetHigh, allowHigh, thumbnailUrl, eager, shareToken }: Props) {
+  // Kit-built saunas follow the selected options; an uploaded GLB is used only when the model asks for it.
+  const lowUrl = specs.source === 'asset' ? assetLow : null;
+  const highUrl = specs.source === 'asset' ? assetHigh : null;
   const { t } = useT();
   const [ref, inView] = useInView<HTMLDivElement>('100px');
   const [requested, setRequested] = useState(false);

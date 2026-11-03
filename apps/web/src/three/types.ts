@@ -1,20 +1,19 @@
 import type { SaunaForm } from '../storefront/components/SaunaGlyph.tsx';
+import { DEFAULT_KIT_OPTIONS, type KitOptions } from './kit/spec.ts';
 
-/** What the parametric model needs from the selected options. */
-export interface ViewerOptions {
-  woodColor: string;
-  door: 'clear' | 'bronze' | 'satin' | 'timber';
-  backrestLight: boolean;
-  benchLight: boolean;
-  starCeiling: boolean;
-  woodStove: boolean;
-}
+/** What the 3D sauna needs from the selected options (see kit/spec.ts). */
+export type ViewerOptions = KitOptions;
 
 export interface ViewerSpecs {
   form: SaunaForm;
   widthMm: number;
   depthMm: number;
   heightMm: number;
+  /**
+   * `kit` (default): built by the construction kit from form, size and options.
+   * `asset`: show the model's uploaded GLB instead (a fixed model that ignores options).
+   */
+  source?: 'kit' | 'asset';
 }
 
 /** Room placement as stored with a configuration (millimetres, degrees). */
@@ -24,11 +23,4 @@ export interface PlacementValue {
   rotationDeg: number;
 }
 
-export const DEFAULT_VIEWER_OPTIONS: ViewerOptions = {
-  woodColor: '#dcc39b',
-  door: 'clear',
-  backrestLight: true,
-  benchLight: false,
-  starCeiling: false,
-  woodStove: false,
-};
+export const DEFAULT_VIEWER_OPTIONS: ViewerOptions = DEFAULT_KIT_OPTIONS;

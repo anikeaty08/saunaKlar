@@ -3,7 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { ContactShadows, Environment, Lightformer, OrbitControls, useGLTF, useProgress } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
-import { ParametricSauna } from './ParametricSauna.tsx';
+import { KitSauna } from './kit/KitSauna.tsx';
 import { DRACO_PATH, useProgressiveModel } from './useProgressiveModel.ts';
 import type { ViewerOptions, ViewerSpecs } from './types.ts';
 
@@ -117,7 +117,7 @@ export default function SaunaViewer({ specs, options, lowUrl = null, highUrl = n
         <Lightformer form="ring" intensity={0.6} position={[0, 2, 6]} scale={3} />
       </Environment>
       <Suspense fallback={null}>
-        <group>{model.lowUrl ? <ProgressiveGlb lowUrl={model.lowUrl} highUrl={model.highUrl} /> : <ParametricSauna specs={specs} options={options} />}</group>
+        <group>{specs.source === 'asset' && model.lowUrl ? <ProgressiveGlb lowUrl={model.lowUrl} highUrl={model.highUrl} /> : <KitSauna specs={specs} options={options} />}</group>
       </Suspense>
       <ContactShadows position={[0, 0.001, 0]} opacity={0.42} scale={radius * 3.5} blur={2.4} far={h * 1.2} resolution={512} />
       <OrbitControls makeDefault enableDamping dampingFactor={0.08} target={[0, h * 0.45, 0]} minPolarAngle={0.25} maxPolarAngle={Math.PI / 2 - 0.06} enablePan={false} />
