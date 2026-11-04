@@ -109,3 +109,51 @@
   color: var(--ink-3);
   pointer-events: none;
 }
+
+/* Exterior / Interior switch, as in the studio: a small white segmented tab at the top. */
+.vslot__views {
+  position: absolute;
+  top: 0.9rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: #fff;
+  border: 1px solid #e5e3de;
+  border-radius: 8px;
+}
+
+.vslot__views button {
+  padding: 7px 16px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1c1c1c;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.vslot__views button:hover:not(.is-active) {
+  background: #efeeea;
+}
+
+.vslot__views button.is-active {
+  background: #1c1c1c;
+  color: #fff;
+}
+
+@media (pointer: coarse) {
+  .vslot__views button {
+    padding: 9px 18px;
+  }
+}
+
+@media (max-width: 860px) {
+  .vslot__views {
+    top: auto;
+    bottom: 0.9rem;
+  }
+}

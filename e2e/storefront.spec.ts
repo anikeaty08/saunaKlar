@@ -1,6 +1,6 @@
 import { ALPHA, en, expect, fill, fr, test } from './fixtures.ts';
 
-const VISIBLE = ['Espoo Compact', 'Lappi Barrel', 'Turku Panorama', 'Kuopio Cube'];
+const VISIBLE = ['Espoo Compact', 'Kelo Barrel', 'Fjord Panorama', 'Aurora Hex'];
 
 test.describe('storefront', () => {
   test('home loads with the reseller branding and the catalogue lists its saunas', async ({ page }) => {
@@ -15,8 +15,8 @@ test.describe('storefront', () => {
     for (const name of VISIBLE) {
       await expect(page.getByRole('link', { name: fill(en.saunas.view, { name }) })).toBeVisible();
     }
-    // oulu-corner is assigned to alpha but hidden
-    await expect(page.getByRole('link', { name: fill(en.saunas.view, { name: 'Oulu Corner' }) })).toHaveCount(0);
+    // lappi-corner is assigned to alpha but hidden
+    await expect(page.getByRole('link', { name: fill(en.saunas.view, { name: 'Lappi Corner' }) })).toHaveCount(0);
   });
 
   test('the language switcher changes the UI and the catalogue texts to French', async ({ page }) => {

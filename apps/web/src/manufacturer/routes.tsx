@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router';
+import { createAppRouter } from '../app/router.ts';
 import { RouteErrorPage } from '../design/components/ErrorBoundary.tsx';
 
 /**
@@ -6,7 +6,7 @@ import { RouteErrorPage } from '../design/components/ErrorBoundary.tsx';
  * lazy chunks; the storefront never downloads any of them.
  */
 export function createManufacturerRouter() {
-  return createBrowserRouter([
+  return createAppRouter([
     {
       path: '/',
       errorElement: <RouteErrorPage />,

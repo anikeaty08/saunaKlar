@@ -152,17 +152,68 @@ const GROUPS: GroupSeed[] = [
     ],
   },
   {
+    code: 'bench-layout', name: 'Bench layout', selectionType: 'SINGLE', required: false, options: [
+      { code: 'bench-straight', name: 'Straight', description: 'Upper and lower bench along the back wall.', price: 0 },
+      { code: 'bench-l', name: 'L-shaped', description: 'The upper bench turns the corner onto the side wall.', price: 39000, isDefault: true },
+      { code: 'bench-u', name: 'U-shaped', description: 'Upper benches on three walls; the heater moves to a corner.', price: 69000 },
+    ],
+  },
+  {
+    code: 'bench-wood', name: 'Bench wood', selectionType: 'SINGLE', required: false, options: [
+      { code: 'bench-aspen', name: 'Aspen', description: 'Pale, splinter-free and cool to sit on.', price: 0, swatch: '#efe3c8', isDefault: true },
+      { code: 'bench-alder', name: 'Alder', price: 29000, swatch: '#c48d5e' },
+      { code: 'bench-thermo-aspen', name: 'Thermo aspen', price: 45000, swatch: '#a8774a' },
+    ],
+  },
+  {
+    code: 'bench-front', name: 'Bench front', selectionType: 'SINGLE', required: false, options: [
+      { code: 'front-boards', name: 'Closed boards', price: 0, isDefault: true },
+      { code: 'front-framed', name: 'Framed slats', description: 'Vertical slats set in a mitred frame.', price: 19000 },
+      { code: 'front-open', name: 'Open frame', description: 'Lighter look, easier to clean underneath.', price: 0 },
+    ],
+  },
+  {
+    code: 'bench-end', name: 'Bench ends', selectionType: 'SINGLE', required: false, options: [
+      { code: 'end-waterfall', name: 'Waterfall', description: 'Vertical slats from the seat to the floor.', price: 14000, isDefault: true },
+      { code: 'end-framed', name: 'Framed', price: 9000 },
+      { code: 'end-plain', name: 'Plain', price: 0 },
+    ],
+  },
+  {
+    code: 'bench-edge', name: 'Bench edge', selectionType: 'SINGLE', required: false, options: [
+      { code: 'edge-rounded', name: 'Rounded', price: 0, isDefault: true },
+      { code: 'edge-square', name: 'Square', price: 0 },
+    ],
+  },
+  {
+    code: 'backrest', name: 'Backrest', selectionType: 'SINGLE', required: false, options: [
+      { code: 'backrest-continuous', name: 'Continuous', price: 0, isDefault: true },
+      { code: 'backrest-panels', name: 'Separate panels', price: 18000 },
+      { code: 'backrest-none', name: 'None', price: 0 },
+    ],
+  },
+  {
+    code: 'exterior', name: 'Exterior cladding', selectionType: 'SINGLE', required: false, options: [
+      { code: 'exterior-wood', name: 'Wood', price: 0, isDefault: true },
+      { code: 'exterior-thermo', name: 'Thermowood', price: 89000 },
+      { code: 'exterior-slate', name: 'Slate', price: 149000 },
+    ],
+  },
+  {
     code: 'lighting', name: 'Lighting', selectionType: 'MULTI', required: false, options: [
       { code: 'backrest-led', name: 'Backrest LED strip', description: 'Warm 2700 K strip behind the backrest.', price: 29000, isDefault: true },
       { code: 'bench-led', name: 'Under-bench LED', description: 'Indirect light under the upper bench.', price: 24000 },
       { code: 'starlight', name: 'Fibre-optic ceiling', description: 'Forty points of light. Requires the digital panel.', price: 59000 },
+      { code: 'ceiling-panel', name: 'LED ceiling panel', price: 26000 },
     ],
   },
   {
     code: 'extras', name: 'Extras', selectionType: 'MULTI', required: false, options: [
       { code: 'aroma', name: 'Aroma dispenser', price: 12000 },
       { code: 'bucket', name: 'Bucket and ladle set', description: 'Hand-turned, in the cabin wood.', price: 8900 },
-      { code: 'backrests', name: 'Ergonomic backrests', price: 24000 },
+      { code: 'ir-panel', name: 'Infrared back panel', description: 'Gentle radiant heat between sessions.', price: 59000 },
+      { code: 'headrests', name: 'Headrests', price: 9000 },
+      { code: 'thermometer', name: 'Thermo-hygrometer', price: 6000 },
       { code: 'stone-floor', name: 'Pebble floor tiles', price: 39000 },
     ],
   },
@@ -188,7 +239,7 @@ interface ModelSeed {
   placement: 'Indoor' | 'Outdoor' | 'Indoor or outdoor';
   listPrice: number;
   maxDiscountBps: number;
-  /** Groups to leave out (e.g. no wood stove indoors). */
+  /** Options (`group:option`) or whole groups (`group:*`) to leave out, e.g. no wood stove indoors. */
   omit?: string[];
   defaultWood?: string;
 }
@@ -198,7 +249,7 @@ const MODELS: ModelSeed[] = [
     slug: 'espoo-compact', sku: 'SK-ESP-140', name: 'Espoo Compact', form: 'box',
     description: 'A two-person sauna that fits where a shower cubicle would. Flat-pack modules, assembled in an afternoon, with a full-height glass front that makes a small bathroom feel larger.',
     widthMm: 1400, depthMm: 1200, heightMm: 2000, persons: 2, heaterKw: 4.5, weightKg: 240, placement: 'Indoor', listPrice: 690000, maxDiscountBps: 1500,
-    omit: ['heater:storage-10', 'heater:wood-stove', 'extras:stone-floor'],
+    omit: ['heater:storage-10', 'heater:wood-stove', 'extras:stone-floor', 'bench-layout:bench-u', 'exterior:*'],
   },
   {
     slug: 'fjord-panorama', sku: 'SK-FJD-220', name: 'Fjord Panorama', form: 'panorama',
@@ -209,12 +260,13 @@ const MODELS: ModelSeed[] = [
     slug: 'lappi-corner', sku: 'SK-LAP-160', name: 'Lappi Corner', form: 'corner',
     description: 'A corner sauna with a chamfered glass door that opens into the room on the diagonal. Built for apartments and basements where every metre counts.',
     widthMm: 1600, depthMm: 1600, heightMm: 2050, persons: 3, heaterKw: 6.8, weightKg: 330, placement: 'Indoor', listPrice: 890000, maxDiscountBps: 1500,
-    omit: ['heater:wood-stove'],
+    omit: ['heater:wood-stove', 'bench-layout:bench-u', 'exterior:*'],
   },
   {
     slug: 'kelo-barrel', sku: 'SK-KEL-240', name: 'Kelo Barrel', form: 'barrel',
     description: 'The classic barrel: staves of thick pine held by stainless bands, with a round heat-efficient profile that warms quickly even in January.',
     widthMm: 2000, depthMm: 2400, heightMm: 2050, persons: 6, heaterKw: 9, weightKg: 780, placement: 'Outdoor', listPrice: 1190000, maxDiscountBps: 1000, defaultWood: 'kelo',
+    omit: ['bench-layout:*', 'bench-front:*', 'bench-end:*', 'backrest:*', 'exterior:*', 'extras:ir-panel', 'extras:headrests'],
   },
   {
     slug: 'aurora-hex', sku: 'SK-AUR-240', name: 'Aurora Hex', form: 'hex',
@@ -258,7 +310,7 @@ function groups(m: ModelSeed): OptionGroupDto[] {
     selectionType: g.selectionType,
     required: g.required,
     options: g.options
-      .filter(o => !m.omit?.includes(`${g.code}:${o.code}`))
+      .filter(o => !m.omit?.includes(`${g.code}:${o.code}`) && !m.omit?.includes(`${g.code}:*`))
       .map(o => ({
         id: optId(g.code, o.code),
         code: o.code,
@@ -285,6 +337,9 @@ const RULES = {
   ],
 };
 
+/** Catalogue photos rendered in Blender (tools/blender/render_catalogue.py), served from public/catalogue. */
+const photo = (slug: string, view: 'exterior' | 'interior') => `${import.meta.env.BASE_URL}catalogue/${slug}-${view}.jpg`;
+
 export function saunaDetails(): SaunaDetail[] {
   return MODELS.map((m, i) => ({
     id: fid(`model:${m.slug}`),
@@ -293,7 +348,11 @@ export function saunaDetails(): SaunaDetail[] {
     name: m.name,
     description: m.description,
     attributes: attributes(m),
-    assets: { thumbnailUrl: null, gallery: [], lowGlbUrl: null, highGlbUrl: null, hasAr: false },
+    assets: {
+      thumbnailUrl: photo(m.slug, 'exterior'),
+      gallery: [photo(m.slug, 'exterior'), photo(m.slug, 'interior')],
+      lowGlbUrl: null, highGlbUrl: null, hasAr: false,
+    },
     listPriceMinor: m.listPrice,
     priceFromMinor: m.listPrice,
     discount: null,

@@ -73,7 +73,7 @@ describe('customer flow', () => {
   it('logs in, configures, submits a request and sees it', async () => {
     const c = h.client('alpha.localhost');
     await c.login('ben@example.test', SEED_PASSWORD);
-    const sauna = (await c.get('/api/catalog/saunas/turku-panorama')).body;
+    const sauna = (await c.get('/api/catalog/saunas/fjord-panorama')).body;
     const created = await c.post('/api/configurations', { saunaModelId: sauna.id });
     expect(created.status).toBe(201);
     const id = created.body.id as string;
@@ -97,7 +97,7 @@ describe('customer flow', () => {
   it('rejects a contradictory selection', async () => {
     const c = h.client('alpha.localhost');
     await c.login('ben@example.test', SEED_PASSWORD);
-    const sauna = (await c.get('/api/catalog/saunas/turku-panorama')).body;
+    const sauna = (await c.get('/api/catalog/saunas/fjord-panorama')).body;
     const created = await c.post('/api/configurations', { saunaModelId: sauna.id });
     const opt = (code: string) => sauna.groups.flatMap((g: { options: { id: string; code: string }[] }) => g.options).find((o: { code: string }) => o.code === code)?.id;
     const r = await c.put(`/api/configurations/${created.body.id}/selections`, { optionIds: [opt('heater-wood'), opt('control-wifi')].filter(Boolean) });
@@ -107,7 +107,7 @@ describe('customer flow', () => {
   it('refuses a write without the CSRF token', async () => {
     const c = h.client('alpha.localhost');
     await c.login('ben@example.test', SEED_PASSWORD);
-    const r = await c.req('POST', '/api/configurations', { saunaModelId: SEED.models('turku-panorama') }, { 'x-csrf-token': 'forged' });
+    const r = await c.req('POST', '/api/configurations', { saunaModelId: SEED.models('fjord-panorama') }, { 'x-csrf-token': 'forged' });
     expect(r.body.code).toBe('CSRF_FAILED');
   });
 });

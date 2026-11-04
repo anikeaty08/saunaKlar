@@ -84,12 +84,12 @@ describe('reseller admin: saunas and discounts', () => {
     expect(espoo.discount).toEqual({ type: 'FIXED', value: 50000 });
     expect(espoo.effectiveDiscount).toEqual({ type: 'FIXED', value: Math.min(50000, Math.floor(espoo.listPriceMinor * espoo.maxDiscountBps / 10000)) });
     expect(espoo.priceFromMinor).toBe(espoo.listPriceMinor - 50000);
-    const turku: any = bySlug.get('turku-panorama');
-    expect(turku.discount).toBeNull();
-    const turkuOff = Math.floor(turku.listPriceMinor * Math.min(1000, turku.maxDiscountBps) / 10000);
-    expect(turku.effectiveDiscount).toEqual({ type: 'FIXED', value: turkuOff });
-    expect(turku.priceFromMinor).toBe(turku.listPriceMinor - turkuOff);
-    expect((bySlug.get('oulu-corner') as any).isVisible).toBe(false);
+    const fjord: any = bySlug.get('fjord-panorama');
+    expect(fjord.discount).toBeNull();
+    const fjordOff = Math.floor(fjord.listPriceMinor * Math.min(1000, fjord.maxDiscountBps) / 10000);
+    expect(fjord.effectiveDiscount).toEqual({ type: 'FIXED', value: fjordOff });
+    expect(fjord.priceFromMinor).toBe(fjord.listPriceMinor - fjordOff);
+    expect((bySlug.get('lappi-corner') as any).isVisible).toBe(false);
   });
 
   it('refuses a discount above the cap with the database rule code', async () => {
@@ -110,21 +110,21 @@ describe('reseller admin: saunas and discounts', () => {
     const c = await alphaStaff();
     const visitor = h.client('alpha.localhost');
     const v1 = (await visitor.get('/api/tenant')).body.catalogVersion as number;
-    const kuopio = (await c.get('/api/admin/saunas')).body.items.find((s: { slug: string }) => s.slug === 'kuopio-cube');
-    const r = await c.patch(`/api/admin/saunas/${kuopio.id}`, { isVisible: false });
+    const aurora = (await c.get('/api/admin/saunas')).body.items.find((s: { slug: string }) => s.slug === 'aurora-hex');
+    const r = await c.patch(`/api/admin/saunas/${aurora.id}`, { isVisible: false });
     expect(r.status).toBe(200);
     expect(r.body.isVisible).toBe(false);
     // The API caches tenants for 60 s; read the counter directly as well as through a fresh request.
     const { rows } = await h.owner.query('select catalog_version from resellers where id = $1', [SEED.resellers.alpha]);
     expect(Number(rows[0].catalog_version)).toBeGreaterThan(v1);
     const catalog = await visitor.get(`/api/catalog?v=${rows[0].catalog_version}`);
-    if (catalog.status === 200) expect(catalog.body.items.some((i: { slug: string }) => i.slug === 'kuopio-cube')).toBe(false);
-    await c.patch(`/api/admin/saunas/${kuopio.id}`, { isVisible: true });
+    if (catalog.status === 200) expect(catalog.body.items.some((i: { slug: string }) => i.slug === 'aurora-hex')).toBe(false);
+    await c.patch(`/api/admin/saunas/${aurora.id}`, { isVisible: true });
   });
 
   it('cannot patch a sauna that is not assigned to the reseller', async () => {
     const c = await alphaStaff();
-    const r = await c.patch(`/api/admin/saunas/${SEED.models('helsinki-studio')}`, { isVisible: false });
+    const r = await c.patch(`/api/admin/saunas/${SEED.models('saimaa-garden-house')}`, { isVisible: false });
     expect(r.status).toBe(404);
   });
 });
@@ -132,7 +132,7 @@ describe('reseller admin: saunas and discounts', () => {
 describe('reseller admin: share links', () => {
   it('creates a link (locks the configuration, returns the URL once) and revokes it', async () => {
     const c = await alphaStaff();
-    const cfg = await c.post('/api/admin/configurations', { saunaModelId: SEED.models('turku-panorama'), name: 'Showroom Turku' });
+    const cfg = await c.post('/api/admin/configurations', { saunaModelId: SEED.models('fjord-panorama'), name: 'Showroom Fjord' });
     expect(cfg.status, JSON.stringify(cfg.body)).toBe(201);
     expect(cfg.body.locked).toBe(false);
 
@@ -196,7 +196,7 @@ describe('reseller admin: customers', () => {
 
 describe('reseller admin: requests and quotes', () => {
   it('lists, searches and pages requests newest first', async () => {
-    const { requestId } = await benSubmits('lappi-barrel', 'List and search');
+    const { requestId } = await benSubmits('kelo-barrel', 'List and search');
     const c = await alphaStaff();
     const all = await c.get('/api/admin/requests?limit=100');
     expect(all.status, JSON.stringify(all.body)).toBe(200);
@@ -229,7 +229,7 @@ describe('reseller admin: requests and quotes', () => {
 
   it('analytics counts the new request against its sauna', async () => {
     const before = (await (await alphaStaff()).get('/api/admin/analytics?days=30')).body;
-    await benSubmits('kuopio-cube', 'Analytics');
+    await benSubmits('aurora-hex', 'Analytics');
     const c = await alphaStaff();
     const r = await c.get('/api/admin/analytics?days=30');
     expect(r.status, JSON.stringify(r.body)).toBe(200);
@@ -253,7 +253,7 @@ describe('reseller admin: requests and quotes', () => {
   });
 
   it('quotes a request and the customer accepts it', async () => {
-    const { ben, requestId } = await benSubmits('lappi-barrel', 'Please quote with installation');
+    const { ben, requestId } = await benSubmits('kelo-barrel', 'Please quote with installation');
     const c = await alphaStaff();
     const list = await c.get('/api/admin/requests?status=SUBMITTED');
     expect(list.body.items.some((r: { id: string }) => r.id === requestId)).toBe(true);
@@ -296,14 +296,14 @@ describe('reseller admin: requests and quotes', () => {
   });
 
   it('a quote must be valid in the future', async () => {
-    const { requestId } = await benSubmits('kuopio-cube', 'Past quote');
+    const { requestId } = await benSubmits('aurora-hex', 'Past quote');
     const c = await alphaStaff();
     const r = await c.put(`/api/admin/requests/${requestId}/quote`, { amountMinor: 1, validUntil: new Date(Date.now() - DAY).toISOString() });
     expect(r.body.code).toBe('VALIDATION_FAILED');
   });
 
   it('staff of beta cannot see or act on alpha requests', async () => {
-    const { requestId } = await benSubmits('turku-panorama', 'Isolation check');
+    const { requestId } = await benSubmits('fjord-panorama', 'Isolation check');
     const beta = h.client('beta.localhost');
     await beta.staffLogin('owner@beta.test', SEED_PASSWORD);
     const list = await beta.get('/api/admin/requests?limit=100');

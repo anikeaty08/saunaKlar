@@ -247,6 +247,11 @@ const messages = {
     removed: 'Removed: {list}',
     blocked: 'Not possible: {reason}',
     tabs: { options: 'Options', room: 'Room', ar: 'AR' },
+    sections: { cabin: 'Cabin', benches: 'Benches', heat: 'Heater', extras: 'Light & extras', more: 'More' },
+    prevSection: 'Previous section',
+    nextSection: 'Next section',
+    priceDetails: 'Price details',
+    resetOptions: 'Reset',
     room: 'Room',
     roomLede: 'Place the sauna in a room to check the size. Drag on the floor to move it.',
     rotate: 'Rotate',
@@ -926,6 +931,9 @@ const messages = {
     exitFullscreen: 'Exit full screen',
     noWebgl: 'Your browser cannot show the 3D view. The drawings and specifications show every detail.',
     roomLabel: 'Room planner. Use the arrow keys to move the sauna and Q or E to rotate it.',
+    exterior: 'Exterior',
+    interior: 'Interior',
+    viewLabel: 'View',
   },
 } as const;
 

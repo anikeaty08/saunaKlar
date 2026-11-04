@@ -1,9 +1,11 @@
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { ContactShadows, Environment, Lightformer, OrbitControls, useGLTF, useProgress } from '@react-three/drei';
+import { ContactShadows, OrbitControls, useGLTF, useProgress } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
-import { ParametricSauna } from './ParametricSauna.tsx';
+import { KitSauna } from './kit/KitSauna.tsx';
+import { KitCamera, type CameraView } from './kit/KitCamera.tsx';
+import { KitEffects, KitLights, setupKitRenderer } from './kit/KitStage.tsx';
 import { DRACO_PATH, useProgressiveModel } from './useProgressiveModel.ts';
 import type { ViewerOptions, ViewerSpecs } from './types.ts';
 
@@ -19,6 +21,8 @@ export interface SaunaViewerProps {
   /** Increment to reset the camera. */
   resetKey?: number;
   background?: string;
+  /** Outside orbit, or standing inside (kit models only). */
+  view?: CameraView;
 }
 
 function Glb({ url }: { url: string }) {
@@ -82,13 +86,15 @@ function CameraRig({ resetKey, radius }: { resetKey: number; radius: number }) {
   return null;
 }
 
-export default function SaunaViewer({ specs, options, lowUrl = null, highUrl = null, allowHigh = false, label, onProgress, resetKey = 0, background }: SaunaViewerProps) {
+export default function SaunaViewer({ specs, options, lowUrl = null, highUrl = null, allowHigh = false, label, onProgress, resetKey = 0, background, view = 'exterior' }: SaunaViewerProps) {
   const model = useProgressiveModel(lowUrl, highUrl, allowHigh);
   const w = specs.widthMm / 1000;
   const d = specs.depthMm / 1000;
   const h = specs.heightMm / 1000;
   const radius = Math.max(w, d, h);
   const camPos: [number, number, number] = [radius * 1.45, h * 0.95 + radius * 0.35, radius * 2.0];
+  const kit = !(specs.source === 'asset' && model.lowUrl);
+  const kitSpec = useMemo(() => ({ ...options, form: specs.form, width: w, depth: d, height: h }), [options, specs.form, w, d, h]);
 
   return (
     <Canvas
@@ -97,31 +103,28 @@ export default function SaunaViewer({ specs, options, lowUrl = null, highUrl = n
       shadows
       camera={{ position: camPos, fov: 32, near: 0.05, far: 100 }}
       gl={{ antialias: true, preserveDrawingBuffer: false, powerPreference: 'high-performance' }}
-      onCreated={({ gl }) => {
-        gl.toneMapping = THREE.ACESFilmicToneMapping;
-        gl.toneMappingExposure = 1.05;
-      }}
+      onCreated={setupKitRenderer}
       aria-label={label}
       role="img"
     >
       {background && <color attach="background" args={[background]} />}
       <ProgressReporter onProgress={onProgress} />
-      <hemisphereLight args={['#ffffff', '#b8b2a8', 0.55]} />
-      <directionalLight position={[3.5, 6, 4]} intensity={1.6} castShadow shadow-mapSize={[1024, 1024]} shadow-bias={-0.0004} shadow-camera-left={-4} shadow-camera-right={4} shadow-camera-top={4} shadow-camera-bottom={-4} />
-      <directionalLight position={[-4, 3, -2]} intensity={0.35} />
-      {/* Procedural studio environment: soft boxes, no HDR download. */}
-      <Environment resolution={256} frames={1}>
-        <Lightformer form="rect" intensity={2.2} position={[0, 5, 0]} rotation-x={Math.PI / 2} scale={[8, 8, 1]} />
-        <Lightformer form="rect" intensity={1.2} position={[-5, 2, 1]} rotation-y={Math.PI / 2} scale={[6, 3, 1]} />
-        <Lightformer form="rect" intensity={0.8} position={[5, 2, -1]} rotation-y={-Math.PI / 2} scale={[6, 3, 1]} />
-        <Lightformer form="ring" intensity={0.6} position={[0, 2, 6]} scale={3} />
-      </Environment>
+      <KitLights interior={kit && view === 'interior'} />
       <Suspense fallback={null}>
-        <group>{model.lowUrl ? <ProgressiveGlb lowUrl={model.lowUrl} highUrl={model.highUrl} /> : <ParametricSauna specs={specs} options={options} />}</group>
+        <group>{!kit && model.lowUrl ? <ProgressiveGlb lowUrl={model.lowUrl} highUrl={model.highUrl} /> : <KitSauna specs={specs} options={options} />}</group>
       </Suspense>
-      <ContactShadows position={[0, 0.001, 0]} opacity={0.42} scale={radius * 3.5} blur={2.4} far={h * 1.2} resolution={512} />
-      <OrbitControls makeDefault enableDamping dampingFactor={0.08} target={[0, h * 0.45, 0]} minPolarAngle={0.25} maxPolarAngle={Math.PI / 2 - 0.06} enablePan={false} />
-      <CameraRig resetKey={resetKey} radius={radius} />
+      {view === 'exterior' && <ContactShadows position={[0, 0.001, 0]} opacity={0.42} scale={radius * 3.5} blur={2.4} far={h * 1.2} resolution={512} />}
+      {kit ? (
+        <>
+          <KitCamera spec={kitSpec} view={view} resetKey={resetKey} />
+          <KitEffects interior={view === 'interior'} />
+        </>
+      ) : (
+        <>
+          <OrbitControls makeDefault enableDamping dampingFactor={0.08} target={[0, h * 0.45, 0]} minPolarAngle={0.25} maxPolarAngle={Math.PI / 2 - 0.06} enablePan={false} />
+          <CameraRig resetKey={resetKey} radius={radius} />
+        </>
+      )}
     </Canvas>
   );
 }

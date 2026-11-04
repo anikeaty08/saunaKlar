@@ -2,7 +2,7 @@ import { Suspense, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
 import { ContactShadows, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { ParametricSauna } from './ParametricSauna.tsx';
+import { KitSauna } from './kit/KitSauna.tsx';
 import { floorTexture, type FloorKind } from './textures.ts';
 import type { PlacementValue, ViewerOptions, ViewerSpecs } from './types.ts';
 
@@ -135,7 +135,7 @@ function Draggable({ preset, specs, options, value, onChange, readOnly }: Omit<R
         onPointerOver={() => !readOnly && (document.body.style.cursor = 'grab')}
         onPointerOut={() => !dragging && (document.body.style.cursor = '')}
       >
-        <ParametricSauna specs={specs} options={options} />
+        <KitSauna specs={specs} options={options} />
         {dragging && (
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]}>
             <planeGeometry args={[specs.widthMm / 1000 + 0.1, specs.depthMm / 1000 + 0.1]} />

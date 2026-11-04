@@ -3,7 +3,9 @@
  * Writes a real file into the local object store for every catalogue asset the seed inserted,
  * so a fresh dev database shows images and 3D models instead of 404s.
  *
- *   - MODEL_THUMBNAIL / MODEL_GALLERY / OPTION_THUMBNAIL / ROOM_THUMBNAIL: line drawings in the
+ *   - MODEL_THUMBNAIL / MODEL_GALLERY: the Blender catalogue photos in apps/web/public/catalogue
+ *     (exterior, interior), or a line drawing for a model without photos.
+ *   - OPTION_THUMBNAIL / ROOM_THUMBNAIL: line drawings in the
  *     single brand ink, rendered from SVG with sharp (sauna silhouette, interior, plan view,
  *     option glyph, room perspective) with the item's name.
  *   - MODEL_GLB_LOW / MODEL_GLB_HIGH / MODEL_AR_GLB: the Espoo Compact sample GLBs from
@@ -31,6 +33,9 @@ const SAMPLE_GLB = {
   low: join(ROOT, 'tools/catalog-import/examples/models/espoo-compact-low.glb'),
   high: join(ROOT, 'tools/catalog-import/examples/models/espoo-compact.glb'),
 };
+
+/** Catalogue photos rendered in Blender (tools/blender/render_catalogue.py); used where a model has them. */
+const PHOTOS = join(ROOT, 'apps/web/public/catalogue');
 
 const INK = '#1c1c1a';
 const PAPER = '#f7f7f4';
@@ -524,7 +529,10 @@ async function loadSharp() {
 
 async function render(sharp, svg, contentType) {
   if (contentType === 'image/svg+xml') return Buffer.from(svg);
-  const img = sharp(Buffer.from(svg), { density: 96 });
+  return encode(sharp(Buffer.from(svg), { density: 96 }), contentType);
+}
+
+function encode(img, contentType) {
   if (contentType === 'image/png') return img.png({ compressionLevel: 9 }).toBuffer();
   if (contentType === 'image/jpeg') return img.jpeg({ quality: 86, mozjpeg: true }).toBuffer();
   return img.webp({ quality: 88, effort: 5 }).toBuffer();
@@ -560,8 +568,11 @@ function plan(row) {
   const num = (v) => (v === null || v === undefined ? null : Number(v));
   if (kind === 'model') {
     const m = { ...item, widthMm: num(item.widthMm), depthMm: num(item.depthMm), heightMm: num(item.heightMm), persons: num(item.persons) };
-    if (role === 'MODEL_THUMBNAIL') return { svg: () => modelThumbSvg(m) };
-    if (role === 'MODEL_GALLERY') return { svg: () => [modelInteriorSvg, modelPlanSvg, modelThumbSvg][position % 3](m) };
+    if (role === 'MODEL_THUMBNAIL') return { photo: join(PHOTOS, `${m.slug}-exterior.jpg`), svg: () => modelThumbSvg(m) };
+    if (role === 'MODEL_GALLERY') {
+      const view = position % 2 === 0 ? 'exterior' : 'interior';
+      return { photo: join(PHOTOS, `${m.slug}-${view}.jpg`), svg: () => [modelInteriorSvg, modelPlanSvg, modelThumbSvg][position % 3](m) };
+    }
     if (role === 'MODEL_GLB_LOW') return { file: SAMPLE_GLB.low };
     if (role === 'MODEL_GLB_HIGH' || role === 'MODEL_AR_GLB') return { file: SAMPLE_GLB.high };
     return null;
@@ -601,7 +612,11 @@ export async function seedMedia({ databaseUrl = DATABASE_URL, force = FORCE, obj
       continue;
     }
     let body;
-    if (job.file) body = await readFile(job.file);
+    const photo = job.photo ? await readFile(job.photo).catch(() => null) : null;
+    if (photo) {
+      sharp ??= await loadSharp();
+      body = await encode(sharp(photo), row.content_type);
+    } else if (job.file) body = await readFile(job.file);
     else {
       sharp ??= await loadSharp();
       body = await render(sharp, job.svg(), row.content_type);

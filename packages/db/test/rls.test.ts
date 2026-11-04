@@ -95,27 +95,27 @@ describe('rule 12: tenant isolation', () => {
       optionCurrencies: (await c.query<{ c: string }>('SELECT DISTINCT currency_code AS c FROM sauna_model_option_prices')).rows.map(r => r.c),
       rooms: await count(c, 'SELECT 1 FROM room_scenes'),
     }));
-    expect(alpha.models).toEqual(['espoo-compact', 'kuopio-cube', 'lappi-barrel', 'oulu-corner', 'turku-panorama']);
+    expect(alpha.models).toEqual(['aurora-hex', 'espoo-compact', 'fjord-panorama', 'kelo-barrel', 'lappi-corner']);
     expect(alpha.currencies).toEqual(['EUR']);
     expect(alpha.optionCurrencies).toEqual(['EUR']);
     expect(alpha.rooms).toBe(3);
     const gamma = await tenant(env, GAMMA, async c => ({
       currencies: (await c.query<{ c: string }>('SELECT DISTINCT currency_code AS c FROM sauna_model_prices')).rows.map(r => r.c),
-      helsinki: await count(c, 'SELECT 1 FROM sauna_model_option_groups WHERE sauna_model_id = $1', [M('helsinki-studio')]),
+      helsinki: await count(c, 'SELECT 1 FROM sauna_model_option_groups WHERE sauna_model_id = $1', [M('saimaa-garden-house')]),
       rooms: await count(c, 'SELECT 1 FROM room_scenes'),
       espooAssets: await count(c, `SELECT 1 FROM assets WHERE storage_key LIKE '%/espoo-compact/%'`),
       assets: await count(c, 'SELECT 1 FROM assets'),
     }));
-    // Gamma offers lappi-barrel, oulu-corner and kuopio-cube (6 assets each), the basement-spa room
-    // (1 thumbnail) and the 19 options those models carry (1 thumbnail each); nothing of Espoo.
-    expect(gamma).toEqual({ currencies: ['SEK'], helsinki: 0, rooms: 1, espooAssets: 0, assets: 3 * 6 + 1 + 19 });
+    // Gamma offers kelo-barrel, lappi-corner and aurora-hex (6 assets each), the basement-spa room
+    // (1 thumbnail) and the 43 options those models carry (1 thumbnail each); nothing of Espoo.
+    expect(gamma).toEqual({ currencies: ['SEK'], helsinki: 0, rooms: 1, espooAssets: 0, assets: 3 * 6 + 1 + 43 });
     // Beta offers espoo-compact: its 4 sample files plus 2 gallery images.
     expect(await tenant(env, BETA, c => count(c, `SELECT 1 FROM assets WHERE storage_key LIKE '%/espoo-compact/%'`))).toBe(6);
   });
 
   it('lets a tenant change its own visibility, order, share expiry and branding only', async () => {
     await tenant(env, ALPHA, async c => {
-      await c.query(`UPDATE reseller_saunas SET sort_order = 5 WHERE sauna_model_id = $1`, [M('kuopio-cube')]);
+      await c.query(`UPDATE reseller_saunas SET sort_order = 5 WHERE sauna_model_id = $1`, [M('aurora-hex')]);
       await c.query(`UPDATE resellers SET default_share_expiry_days = 14 WHERE id = $1`, [ALPHA]);
       await c.query(`UPDATE reseller_branding SET primary_color = '#203040' WHERE reseller_id = $1`, [ALPHA]);
     });

@@ -29,9 +29,9 @@ async function newModel(c: Queryable, slug: string, currencies: string[], option
 
 describe('rule 1: discounts within the cap', () => {
   it('accepts a per-sauna percent discount at the cap and rejects one above it', async () => {
-    // lappi-barrel: cap 1200 bps
-    await tenant(env, ALPHA, c => c.query(`UPDATE reseller_sauna_discounts SET discount_value = 1200 WHERE sauna_model_id = $1`, [M('lappi-barrel')]));
-    await expectCode(tenant(env, ALPHA, c => c.query(`UPDATE reseller_sauna_discounts SET discount_value = 1201 WHERE sauna_model_id = $1`, [M('lappi-barrel')])),
+    // kelo-barrel: cap 1200 bps
+    await tenant(env, ALPHA, c => c.query(`UPDATE reseller_sauna_discounts SET discount_value = 1200 WHERE sauna_model_id = $1`, [M('kelo-barrel')]));
+    await expectCode(tenant(env, ALPHA, c => c.query(`UPDATE reseller_sauna_discounts SET discount_value = 1201 WHERE sauna_model_id = $1`, [M('kelo-barrel')])),
       'DISCOUNT_EXCEEDS_CAP', 'PERCENT');
   });
 
@@ -43,13 +43,13 @@ describe('rule 1: discounts within the cap', () => {
   });
 
   it('checks a new per-sauna discount on insert', async () => {
-    // turku-panorama cap 1000
-    await expectCode(tenant(env, ALPHA, c => c.query(`INSERT INTO reseller_sauna_discounts VALUES ($1, $2, 'PERCENT', 1500)`, [ALPHA, M('turku-panorama')])), 'DISCOUNT_EXCEEDS_CAP');
-    await tenant(env, ALPHA, c => c.query(`INSERT INTO reseller_sauna_discounts VALUES ($1, $2, 'PERCENT', 900)`, [ALPHA, M('turku-panorama')]));
+    // fjord-panorama cap 1000
+    await expectCode(tenant(env, ALPHA, c => c.query(`INSERT INTO reseller_sauna_discounts VALUES ($1, $2, 'PERCENT', 1500)`, [ALPHA, M('fjord-panorama')])), 'DISCOUNT_EXCEEDS_CAP');
+    await tenant(env, ALPHA, c => c.query(`INSERT INTO reseller_sauna_discounts VALUES ($1, $2, 'PERCENT', 900)`, [ALPHA, M('fjord-panorama')]));
   });
 
   it('checks the default discount against the lowest cap of the assigned saunas', async () => {
-    // alpha's lowest cap is turku-panorama's 1000 bps
+    // alpha's lowest cap is fjord-panorama's 1000 bps
     await tenant(env, ALPHA, c => c.query(`UPDATE reseller_default_discounts SET discount_value = 1000`));
     await expectCode(tenant(env, ALPHA, c => c.query(`UPDATE reseller_default_discounts SET discount_value = 1001`)), 'DISCOUNT_EXCEEDS_CAP', 'PERCENT');
     const { min } = await one<{ min: number }>(env.owner,
@@ -69,7 +69,7 @@ describe('rule 1: discounts within the cap', () => {
 
 describe('rule 2: assignment', () => {
   it('assigns an ACTIVE, fully priced sauna of the same manufacturer', async () => {
-    await platform(env, c => c.query(`INSERT INTO reseller_saunas (reseller_id, sauna_model_id) VALUES ($1, $2)`, [ALPHA, M('helsinki-studio')]));
+    await platform(env, c => c.query(`INSERT INTO reseller_saunas (reseller_id, sauna_model_id) VALUES ($1, $2)`, [ALPHA, M('saimaa-garden-house')]));
     expect(await count(env.owner, 'SELECT 1 FROM reseller_saunas WHERE reseller_id = $1', [ALPHA])).toBe(6);
   });
 
@@ -106,8 +106,8 @@ describe('rule 2: assignment', () => {
       [M('espoo-compact'), O('aspen')])), 'SAUNA_NOT_ASSIGNABLE', 'ASSIGNED_PRICE_MISSING');
     await expectCode(platform(env, c => c.query(`DELETE FROM sauna_model_prices WHERE sauna_model_id = $1 AND currency_code = 'CHF'`, [M('espoo-compact')])),
       'SAUNA_NOT_ASSIGNABLE', 'ASSIGNED_PRICE_MISSING');
-    // Nobody sells helsinki-studio in SEK: removing that price is fine.
-    await platform(env, c => c.query(`DELETE FROM sauna_model_prices WHERE sauna_model_id = $1 AND currency_code = 'SEK'`, [M('helsinki-studio')]));
+    // Nobody sells saimaa-garden-house in SEK: removing that price is fine.
+    await platform(env, c => c.query(`DELETE FROM sauna_model_prices WHERE sauna_model_id = $1 AND currency_code = 'SEK'`, [M('saimaa-garden-house')]));
   });
 
   it('re-checks a new option on an assigned model at commit, allowing prices added in the same transaction', async () => {
@@ -131,14 +131,14 @@ describe('rule 2: assignment', () => {
   });
 
   it('app_tenant cannot assign saunas, change prices or create resellers', async () => {
-    await expectCode(tenant(env, ALPHA, c => c.query(`INSERT INTO reseller_saunas (reseller_id, sauna_model_id) VALUES ($1, $2)`, [ALPHA, M('helsinki-studio')])),
+    await expectCode(tenant(env, ALPHA, c => c.query(`INSERT INTO reseller_saunas (reseller_id, sauna_model_id) VALUES ($1, $2)`, [ALPHA, M('saimaa-garden-house')])),
       'INSUFFICIENT_PRIVILEGE');
     await expectCode(tenant(env, ALPHA, c => c.query(`UPDATE sauna_model_prices SET list_price_minor = 1 WHERE currency_code = 'EUR'`)), 'INSUFFICIENT_PRIVILEGE');
     await expectCode(tenant(env, ALPHA, c => c.query(`UPDATE sauna_model_option_prices SET price_delta_minor = 0`)), 'INSUFFICIENT_PRIVILEGE');
     await expectCode(tenant(env, ALPHA, c => c.query(
       `INSERT INTO resellers (manufacturer_id, slug, name, currency_code) VALUES ($1, 'rogue', 'Rogue', 'EUR')`, [SEED.manufacturerId])), 'INSUFFICIENT_PRIVILEGE');
     await expectCode(tenant(env, ALPHA, c => c.query(`UPDATE resellers SET status = 'ACTIVE' WHERE id = $1`, [ALPHA])), 'INSUFFICIENT_PRIVILEGE');
-    await expectCode(tenant(env, ALPHA, c => c.query(`UPDATE reseller_saunas SET sauna_model_id = $1`, [M('helsinki-studio')])), 'INSUFFICIENT_PRIVILEGE');
+    await expectCode(tenant(env, ALPHA, c => c.query(`UPDATE reseller_saunas SET sauna_model_id = $1`, [M('saimaa-garden-house')])), 'INSUFFICIENT_PRIVILEGE');
     await expectCode(tenant(env, ALPHA, c => c.query(`UPDATE resellers SET catalog_version = 1 WHERE id = $1`, [ALPHA])), 'INSUFFICIENT_PRIVILEGE');
   });
 });
@@ -169,7 +169,7 @@ describe('rule 9: catalog_version bumps only affected resellers', () => {
   it('a EUR price change bumps the EUR resellers offering the model only', async () => {
     const before = await versions();
     await platform(env, c => c.query(`UPDATE sauna_model_prices SET list_price_minor = list_price_minor + 100 WHERE sauna_model_id = $1 AND currency_code = 'EUR'`,
-      [M('kuopio-cube')]));
+      [M('aurora-hex')]));
     const after = await versions();
     expect(after[ALPHA]).toBe(before[ALPHA]! + 1);
     expect(after[BETA]).toBe(before[BETA]); // CHF
@@ -179,7 +179,7 @@ describe('rule 9: catalog_version bumps only affected resellers', () => {
   it('a CHF option price change bumps beta only', async () => {
     const before = await versions();
     await platform(env, c => c.query(`UPDATE sauna_model_option_prices SET price_delta_minor = price_delta_minor + 100
-      WHERE sauna_model_id = $1 AND currency_code = 'CHF'`, [M('turku-panorama')]));
+      WHERE sauna_model_id = $1 AND currency_code = 'CHF'`, [M('fjord-panorama')]));
     const after = await versions();
     expect([after[ALPHA]! - before[ALPHA]!, after[BETA]! - before[BETA]!, after[GAMMA]! - before[GAMMA]!]).toEqual([0, 1, 0]);
   });
@@ -187,7 +187,7 @@ describe('rule 9: catalog_version bumps only affected resellers', () => {
   it('tenant discount, visibility and branding changes bump that tenant only', async () => {
     const before = await versions();
     await tenant(env, BETA, async c => {
-      await c.query(`UPDATE reseller_saunas SET is_visible = false WHERE sauna_model_id = $1`, [M('kuopio-cube')]);
+      await c.query(`UPDATE reseller_saunas SET is_visible = false WHERE sauna_model_id = $1`, [M('aurora-hex')]);
       await c.query(`UPDATE reseller_branding SET tagline = 'New' WHERE reseller_id = $1`, [BETA]);
     });
     const after = await versions();
@@ -197,12 +197,12 @@ describe('rule 9: catalog_version bumps only affected resellers', () => {
 
   it('a model status/name change bumps every reseller offering it; an option rename bumps resellers whose models offer it', async () => {
     const before = await versions();
-    await platform(env, c => c.query(`UPDATE sauna_models SET sort_order = 99 WHERE id = $1`, [M('oulu-corner')])); // alpha, gamma
+    await platform(env, c => c.query(`UPDATE sauna_models SET sort_order = 99 WHERE id = $1`, [M('lappi-corner')])); // alpha, gamma
     const mid = await versions();
     expect([mid[ALPHA]! - before[ALPHA]!, mid[BETA]! - before[BETA]!, mid[GAMMA]! - before[GAMMA]!]).toEqual([1, 0, 1]);
     await as(env, 'catalog_admin', {}, c => c.query(`UPDATE options SET name = 'Wood stove' WHERE id = $1`, [O('heater-wood')]));
     const after = await versions();
-    // heater-wood: lappi (alpha, gamma), turku (alpha, beta), kuopio (all), helsinki (alpha, beta)
+    // heater-wood: kelo (alpha, gamma), fjord (alpha, beta), aurora (all), saimaa (alpha, beta)
     expect([after[ALPHA]! - mid[ALPHA]!, after[BETA]! - mid[BETA]!, after[GAMMA]! - mid[GAMMA]!]).toEqual([1, 1, 1]);
   });
 
@@ -235,16 +235,16 @@ describe('rule 10: TENANT_SYNC outbox', () => {
 
 describe('rule 11: audit trail', () => {
   it('records price changes with the acting staff user and old/new values', async () => {
-    await platform(env, c => c.query(`UPDATE sauna_model_prices SET max_discount_bps = 1300 WHERE sauna_model_id = $1 AND currency_code = 'EUR'`, [M('lappi-barrel')]));
+    await platform(env, c => c.query(`UPDATE sauna_model_prices SET max_discount_bps = 1300 WHERE sauna_model_id = $1 AND currency_code = 'EUR'`, [M('kelo-barrel')]));
     const ev = await one<{ actor_staff_id: string; details: { old: { max_discount_bps: number }; new: { max_discount_bps: number } } }>(env.owner,
       `SELECT actor_staff_id, details FROM audit_events WHERE action = 'sauna_model_prices.update' AND entity_id = $1 ORDER BY id DESC LIMIT 1`,
-      [`${M('lappi-barrel')}:EUR`]);
+      [`${M('kelo-barrel')}:EUR`]);
     expect(ev.actor_staff_id).toBe(SEED.staff.admin);
     expect([ev.details.old.max_discount_bps, ev.details.new.max_discount_bps]).toEqual([1200, 1300]);
   });
 
   it('records tenant discount changes under the tenant, readable by that tenant only', async () => {
-    await tenant(env, ALPHA, c => c.query(`DELETE FROM reseller_sauna_discounts WHERE sauna_model_id = $1`, [M('turku-panorama')]), { actorStaffId: SEED.staff.alphaOwner });
+    await tenant(env, ALPHA, c => c.query(`DELETE FROM reseller_sauna_discounts WHERE sauna_model_id = $1`, [M('fjord-panorama')]), { actorStaffId: SEED.staff.alphaOwner });
     const seen = await tenant(env, ALPHA, c => count(c, `SELECT 1 FROM audit_events WHERE action = 'reseller_sauna_discounts.delete'`));
     expect(seen).toBe(1);
     expect(await tenant(env, BETA, c => count(c, `SELECT 1 FROM audit_events WHERE action = 'reseller_sauna_discounts.delete'`))).toBe(0);

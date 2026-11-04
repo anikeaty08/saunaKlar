@@ -24,6 +24,8 @@ export function specsOf(item: Pick<CatalogItem, 'attributes'>) {
     heightMm: num(a, 'height_mm', 2100),
     heaterKw: num(a, 'heater_kw'),
     form: (FORMS as string[]).includes(form ?? '') ? (form as SaunaForm) : 'box',
+    source: text(a, 'model_source') === 'asset' ? ('asset' as const) : ('kit' as const),
+    benchLevels: num(a, 'bench_levels', 2) >= 2 ? (2 as const) : (1 as const),
     indoor: /indoor/i.test(placement),
     outdoor: /outdoor/i.test(placement),
     footprintM2: (num(a, 'width_mm', 1800) * num(a, 'depth_mm', 1800)) / 1e6,

@@ -4,10 +4,10 @@ test('customer configures a sauna, sees the price change, saves and sends a requ
   await loginWithForm(page, '/account/login', 'anna@example.test');
   await expect(page.getByText(fill(en.auth.welcome, { name: 'Anna' }))).toBeVisible();
 
-  await page.goto('/saunas/lappi-barrel');
+  await page.goto('/saunas/kelo-barrel');
   await page.getByRole('link', { name: en.detail.configure }).click();
-  await expect(page).toHaveTitle(new RegExp(escape(fill(en.configure.title, { name: 'Lappi Barrel' }))));
-  await expect(page.getByRole('heading', { level: 1, name: 'Lappi Barrel' })).toBeVisible();
+  await expect(page).toHaveTitle(new RegExp(escape(fill(en.configure.title, { name: 'Kelo Barrel' }))));
+  await expect(page.getByRole('heading', { level: 1, name: 'Kelo Barrel' })).toBeVisible();
 
   // The running total (Price with the "Total" label); the wood option is shown as a swatch and as a list item.
   const total = page.locator('.cfg__total');
@@ -28,7 +28,7 @@ test('customer configures a sauna, sees the price change, saves and sends a requ
   await expect(page.getByText(en.configure.requestSent)).toBeVisible();
 
   await page.goto('/account/requests');
-  const row = page.getByRole('row').filter({ hasText: 'Lappi Barrel' }).filter({ hasText: en.status.SUBMITTED });
+  const row = page.getByRole('row').filter({ hasText: 'Kelo Barrel' }).filter({ hasText: en.status.SUBMITTED });
   await expect(row.first()).toBeVisible();
   expect(SEED.customers.annaAlpha).toBeTruthy();
 });

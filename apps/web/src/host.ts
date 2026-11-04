@@ -54,12 +54,43 @@ export function hostConfig(): HostConfig {
 }
 
 /** The current window's host, parsed once per page load. */
+let cached: HostKind | undefined;
+
 export function currentHost(): HostKind {
+  return (cached ??= readHost());
+}
+
+function readHost(): HostKind {
+  if (import.meta.env.VITE_PREVIEW === '1') return previewHost();
+  // Local testing: browsers that do not resolve *.localhost can still open a
+  // shop with http://localhost:5173/?shop=nordic (or ?app=admin, ?app=platform).
+  // The choice is kept for the tab, so links and reloads stay in that shop.
+  if (import.meta.env.DEV && window.location.hostname === 'localhost') {
+    let search = window.location.search;
+    try {
+      if (/[?&](shop|app)=/.test(search)) sessionStorage.setItem('dev-host', search);
+      else search = sessionStorage.getItem('dev-host') ?? '';
+    } catch { /* storage blocked: query only */ }
+    if (/[?&](shop|app)=/.test(search)) return previewHost(search);
+  }
   return parseHost(window.location.host, hostConfig());
+}
+
+/**
+ * The static preview build has no subdomains: `?app=admin` opens the
+ * manufacturer admin, `?app=platform` the platform page, and `?shop=<slug>`
+ * a storefront (the first example shop by default).
+ */
+function previewHost(search = window.location.search): HostKind {
+  const q = new URLSearchParams(search);
+  if (q.get('app') === 'admin') return { kind: 'manufacturer' };
+  if (q.get('app') === 'platform') return { kind: 'platform', reason: 'root' };
+  return { kind: 'storefront', slug: q.get('shop') || 'nordic' };
 }
 
 /** Absolute URL of a storefront, e.g. for the platform page's examples. */
 export function storefrontUrl(slug: string, config: HostConfig = hostConfig()): string {
+  if (import.meta.env.VITE_PREVIEW === '1') return `${window.location.pathname}?shop=${slug}#/`;
   const { protocol, port } = window.location;
   return `${protocol}//${slug}.${config.platformDomain}${port ? `:${port}` : ''}/`;
 }

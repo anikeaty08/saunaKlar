@@ -78,8 +78,8 @@ describe('dev seed', () => {
   });
 
   it('seeds translations (de, fr, it) for models, groups, options, rooms and attributes', async () => {
-    for (const [table, total] of [['sauna_model_translations', 6], ['option_group_translations', 6], ['option_translations', 19],
-      ['room_scene_translations', 3], ['attribute_definition_translations', 6]] as const) {
+    for (const [table, total] of [['sauna_model_translations', 6], ['option_group_translations', 13], ['option_translations', 43],
+      ['room_scene_translations', 3], ['attribute_definition_translations', 8]] as const) {
       expect(await count(env.owner, `SELECT 1 FROM ${table} WHERE locale IN ('de','fr','it')`), table).toBe(total * 3);
     }
   });
@@ -105,7 +105,7 @@ describe('dev seed', () => {
     await expectCode(env.owner.query(
       `WITH a AS (INSERT INTO assets (storage_key, content_type) VALUES ('media/x/leak.glb', 'model/gltf-binary') RETURNING id)
        INSERT INTO sauna_model_assets (sauna_model_id, asset_role, asset_id) SELECT $1, 'MODEL_GLB_LOW', id FROM a`,
-      [SEED.models('lappi-barrel')]), 'ASSET_TIER_MISMATCH');
+      [SEED.models('kelo-barrel')]), 'ASSET_TIER_MISMATCH');
   });
 });
 

@@ -39,7 +39,10 @@ const proxied = ['/api', '/assets', '/media', '/branding', '/favicon.ico', '/dev
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const mock = env.VITE_MOCK_API === '1';
+  const preview = env.VITE_PREVIEW === '1';
   return {
+    // The preview build is opened from any path, so its files are linked relatively.
+    base: preview ? './' : '/',
     // plugin-react is typed against the hoisted (newer) vite used by vitest.
     plugins: [react() as unknown as Plugin, dracoDecoder()],
     server: {
@@ -56,7 +59,7 @@ export default defineConfig(({ mode }) => {
       // /assets/* is the signed-cookie path for protected 3D files in CloudFront;
       // the app's own bundles must live elsewhere.
       assetsDir: 'static',
-      sourcemap: true,
+      sourcemap: !preview,
       chunkSizeWarningLimit: 1200,
       rollupOptions: {
         output: {

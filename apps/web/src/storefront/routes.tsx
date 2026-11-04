@@ -1,4 +1,5 @@
-import { createBrowserRouter, type RouteObject } from 'react-router';
+import { createAppRouter } from '../app/router.ts';
+import { type RouteObject } from 'react-router';
 import { pages } from '../app/pages.ts';
 import { RouteErrorPage } from '../design/components/ErrorBoundary.tsx';
 import { StorefrontRoot, ShellSkeleton } from './StorefrontRoot.tsx';
@@ -57,5 +58,5 @@ const routes: RouteObject[] = [
 ];
 
 export function createStorefrontRouter() {
-  return createBrowserRouter(routes);
+  return createAppRouter(routes);
 }
