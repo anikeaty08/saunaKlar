@@ -3,19 +3,17 @@ import { errorText } from '../../i18n/errorText.ts';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Check, RotateCcw, RotateCw, Save, Send } from 'lucide-react';
+import { Armchair, ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight, Flame, House, Lightbulb, RotateCcw, RotateCw, Ruler, Save, ScanLine, Send, Shapes, type LucideIcon } from 'lucide-react';
 import { calculatePrice } from '@saunaklar/pricing';
 import { availability, validate } from '@saunaklar/rules';
 import { api, isApiError } from '../../api/client.ts';
 import { useRooms, useSauna, useTenantData } from '../../api/queries.ts';
 import type { OptionGroupDto, SaunaDetail } from '../../api/types.ts';
-import { useT, type TKey } from '../../i18n/i18n.ts';
+import { useT } from '../../i18n/i18n.ts';
 import { useFormat } from '../../i18n/format.ts';
 import { ScrambleText } from '../../motion/ScrambleText.tsx';
 import { Button, ButtonLink, IconButton } from '../../design/components/Button.tsx';
 import { Price } from '../../design/components/Price.tsx';
-import { Swatch } from '../../design/components/Swatch.tsx';
-import { Tabs } from '../../design/components/Tabs.tsx';
 import { Dialog } from '../../design/components/Dialog.tsx';
 import { Textarea } from '../../design/components/Field.tsx';
 import { Skeleton } from '../../design/components/Skeleton.tsx';
@@ -36,7 +34,7 @@ const RoomScene = lazy(() => import('../../three/RoomScene.tsx'));
 
 function ConfigureSkeleton() {
   return (
-    <div className="page container cfg" aria-hidden="true">
+    <div className="page cfg" aria-hidden="true">
       <div className="cfg__stage">
         <Skeleton height="auto" style={{ aspectRatio: '4 / 3.2' }} />
       </div>
@@ -48,7 +46,17 @@ function ConfigureSkeleton() {
   );
 }
 
-function GroupEditor({ group, sauna, currency }: { group: OptionGroupDto; sauna: SaunaDetail; currency: string }) {
+/** The option groups gathered under the studio's section rail; unknown codes land in "More". */
+type SectionId = 'cabin' | 'benches' | 'heat' | 'extras' | 'more' | 'room' | 'ar';
+const SECTION_OF: Record<string, SectionId> = {
+  wood: 'cabin', exterior: 'cabin', door: 'cabin', roof: 'cabin', window: 'cabin', windows: 'cabin',
+  'bench-layout': 'benches', 'bench-wood': 'benches', 'bench-front': 'benches', 'bench-end': 'benches', 'bench-edge': 'benches', backrest: 'benches',
+  heater: 'heat', control: 'heat',
+  lighting: 'extras', extras: 'extras',
+};
+const SECTION_ICON: Record<SectionId, LucideIcon> = { cabin: House, benches: Armchair, heat: Flame, extras: Lightbulb, more: Shapes, room: Ruler, ar: ScanLine };
+
+function GroupEditor({ group, sauna, currency, open, onToggle }: { group: OptionGroupDto; sauna: SaunaDetail; currency: string; open: boolean; onToggle: () => void }) {
   const { t } = useT();
   const fmt = useFormat();
   const rules = useMemo(() => rulesOf(sauna), [sauna]);
@@ -57,6 +65,9 @@ function GroupEditor({ group, sauna, currency }: { group: OptionGroupDto; sauna:
   const avail = useMemo(() => new Map(availability(rules, selection).map(a => [a.optionId, a])), [rules, selection]);
   const names = useMemo(() => new Map(sauna.groups.flatMap(g => g.options.map(o => [o.id, o.name] as const))), [sauna]);
   const isWood = group.options.every(o => o.swatchColor);
+  const single = group.selectionType === 'SINGLE';
+  const chosen = group.options.filter(o => selection.includes(o.id));
+  const bodyId = `cfg-group-${group.id}`;
 
   const click = (id: string) => {
     const on = !selection.includes(id);
@@ -71,57 +82,90 @@ function GroupEditor({ group, sauna, currency }: { group: OptionGroupDto; sauna:
     if (removed.length) toast(t('configure.removed', { list: fmt.list(removed) }));
   };
 
+  const state = (id: string) => {
+    const a = avail.get(id);
+    const selected = selection.includes(id);
+    return { a, selected, blocked: Boolean(a?.blockedReason) && !selected };
+  };
+
   return (
-    <fieldset className="cfg-group">
-      <legend className="cfg-group__legend">
-        <span>{group.name}</span>
-        <span className="cfg-group__rule mono">
-          {group.selectionType === 'SINGLE' ? t('detail.chooseOne') : t('detail.chooseAny')}
-          {group.required ? ` · ${t('detail.required')}` : ''}
+    <section className={['cfg-group', open && 'is-open'].filter(Boolean).join(' ')}>
+      <button type="button" className="cfg-group__head" aria-expanded={open} aria-controls={bodyId} onClick={onToggle}>
+        <span className="cfg-group__title">
+          <span>{group.name}</span>
+          <span className="cfg-group__value">{chosen.length ? chosen.map(o => o.name).join(', ') : group.required ? t('detail.required') : (single ? t('detail.chooseOne') : t('detail.chooseAny'))}</span>
         </span>
-      </legend>
-      {isWood && (
-        <div className="cfg-swatches" role="radiogroup" aria-label={group.name}>
-          {group.options.map(o => (
-            <Swatch key={o.id} color={o.swatchColor!} label={o.name} selected={selection.includes(o.id)} onSelect={() => click(o.id)} size="lg" />
-          ))}
+        <Icon icon={ChevronDown} size="sm" className="cfg-group__caret" />
+      </button>
+      {open && (
+        <div id={bodyId} className="cfg-group__body">
+          {isWood ? (
+            <>
+              <div className="cfg-dots" role={single ? 'radiogroup' : 'group'} aria-label={group.name}>
+                {group.options.map(o => {
+                  const { a, selected, blocked } = state(o.id);
+                  return (
+                    <button
+                      key={o.id}
+                      type="button"
+                      role={single ? 'radio' : 'checkbox'}
+                      aria-checked={selected}
+                      aria-disabled={blocked || undefined}
+                      title={a?.blockedReason ?? o.description ?? undefined}
+                      className={['cfg-dot', selected && 'is-selected', blocked && 'is-blocked'].filter(Boolean).join(' ')}
+                      onClick={() => click(o.id)}
+                    >
+                      <span className="cfg-dot__disc" style={{ background: o.swatchColor! }} aria-hidden="true">
+                        {selected && (
+                          <span className="cfg-dot__tick">
+                            <Icon icon={Check} size="xs" strokeWidth={2.5} />
+                          </span>
+                        )}
+                      </span>
+                      <span className="cfg-dot__label">{o.name}</span>
+                      <span className="cfg-dot__sub mono">{o.priceDeltaMinor ? `+ ${fmt.money(o.priceDeltaMinor, currency)}` : t('common.included')}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {chosen[0]?.description && <p className="cfg-group__note">{chosen[0].description}</p>}
+            </>
+          ) : (
+            <div className="cfg-opts" role={single ? 'radiogroup' : 'group'} aria-label={group.name}>
+              {group.options.map(o => {
+                const { a, selected, blocked } = state(o.id);
+                const consequence = [
+                  ...(a?.wouldAdd ?? []).map(x => `+ ${names.get(x)}`),
+                  ...(a?.wouldRemove ?? []).filter(x => !group.options.some(g => g.id === x)).map(x => `− ${names.get(x)}`),
+                ];
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    role={single ? 'radio' : 'checkbox'}
+                    aria-checked={selected}
+                    aria-disabled={blocked || undefined}
+                    title={a?.blockedReason}
+                    className={['cfg-opt', selected && 'is-selected', blocked && 'is-blocked'].filter(Boolean).join(' ')}
+                    onClick={() => click(o.id)}
+                  >
+                    <span className={`cfg-opt__mark cfg-opt__mark--${single ? 'radio' : 'check'}`} aria-hidden="true">
+                      {selected && <Icon icon={Check} size="xs" strokeWidth={2.5} />}
+                    </span>
+                    <span className="cfg-opt__text">
+                      <span className="cfg-opt__name">{o.name}</span>
+                      {o.description && <span className="cfg-opt__desc">{o.description}</span>}
+                      {!selected && consequence.length > 0 && <span className="cfg-opt__cons mono">{consequence.join('  ')}</span>}
+                    </span>
+                    <span className="cfg-opt__price mono">{o.priceDeltaMinor ? `+ ${fmt.money(o.priceDeltaMinor, currency)}` : t('common.included')}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
-      <ul className="cfg-opts">
-        {group.options.map(o => {
-          const a = avail.get(o.id);
-          const selected = selection.includes(o.id);
-          const blocked = Boolean(a?.blockedReason) && !selected;
-          const consequence = [
-            ...(a?.wouldAdd ?? []).map(x => `+ ${names.get(x)}`),
-            ...(a?.wouldRemove ?? []).filter(x => !group.options.some(g => g.id === x)).map(x => `− ${names.get(x)}`),
-          ];
-          return (
-            <li key={o.id}>
-              <button
-                type="button"
-                role={group.selectionType === 'SINGLE' ? 'radio' : 'checkbox'}
-                aria-checked={selected}
-                aria-disabled={blocked || undefined}
-                title={a?.blockedReason}
-                className={['cfg-opt', selected && 'is-selected', blocked && 'is-blocked'].filter(Boolean).join(' ')}
-                onClick={() => click(o.id)}
-              >
-                <span className={`cfg-opt__mark cfg-opt__mark--${group.selectionType === 'SINGLE' ? 'radio' : 'check'}`} aria-hidden="true">
-                  {selected && <Icon icon={Check} size="xs" strokeWidth={2.5} />}
-                </span>
-                <span className="cfg-opt__text">
-                  <span className="cfg-opt__name">{o.name}</span>
-                  {o.description && <span className="cfg-opt__desc">{o.description}</span>}
-                  {!selected && consequence.length > 0 && <span className="cfg-opt__cons mono">{consequence.join('  ')}</span>}
-                </span>
-                <span className="cfg-opt__price mono">{o.priceDeltaMinor ? `+ ${fmt.money(o.priceDeltaMinor, currency)}` : t('common.included')}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </fieldset>
+    </section>
   );
 }
 
@@ -182,7 +226,9 @@ function Configurator({ sauna }: { sauna: SaunaDetail }) {
   const [params, setParams] = useSearchParams();
   const idParam = params.get('id');
   const st = useConfigurator();
-  const [tab, setTab] = useState('options');
+  const [section, setSection] = useState<SectionId>('cabin');
+  const [closed, setClosed] = useState<Set<string>>(() => new Set());
+  const [details, setDetails] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const [message, setMessage] = useState('');
   const currency = tenant.currency;
@@ -251,42 +297,67 @@ function Configurator({ sauna }: { sauna: SaunaDetail }) {
   const options = viewerOptionsOf(sauna, st.selection);
   const specs = specsOf(sauna);
 
+  const sections: SectionId[] = [
+    ...(['cabin', 'benches', 'heat', 'extras', 'more'] as const).filter(id => sauna.groups.some(g => (SECTION_OF[g.code] ?? 'more') === id)),
+    'room',
+    ...(sauna.assets.hasAr ? (['ar'] as const) : []),
+  ];
+  const current = sections.includes(section) ? section : sections[0]!;
+  const at = sections.indexOf(current);
+  const step = (d: number) => setSection(sections[(at + d + sections.length) % sections.length]!);
+  const groupsHere = sauna.groups.filter(g => (SECTION_OF[g.code] ?? 'more') === current);
+  const label = (id: SectionId) => (id === 'room' ? t('configure.tabs.room') : id === 'ar' ? t('configure.tabs.ar') : t(`configure.sections.${id}`));
+
   return (
-    <div className="page container cfg">
+    <div className="page cfg">
       <div className="cfg__stage">
         <ButtonLink to={`/saunas/${sauna.slug}`} variant="link" icon={ArrowLeft} className="cfg__back">
           {sauna.name}
         </ButtonLink>
-        <ViewerSlot name={sauna.name} specs={specs} options={options} lowUrl={sauna.assets.lowGlbUrl} highUrl={sauna.assets.highGlbUrl} allowHigh thumbnailUrl={sauna.assets.thumbnailUrl} eager />
-        <div className="cfg__summary">
-          <dl className="cfg__lines mono">
-            <div>
-              <dt>{t('configure.basePrice')}</dt>
-              <dd>{fmt.money(price.listPriceMinor, currency)}</dd>
-            </div>
-            <div>
-              <dt>{t('configure.optionsTotal')}</dt>
-              <dd>+ {fmt.money(price.optionsTotalMinor, currency)}</dd>
-            </div>
-            {price.discountMinor > 0 && (
-              <div>
-                <dt>{t('configure.discount')}</dt>
-                <dd>− {fmt.money(price.discountMinor, currency)}</dd>
-              </div>
-            )}
-          </dl>
-          <div className="cfg__total">
-            <Price minor={price.finalPriceMinor} currency={currency} size="xl" label={t('configure.total')} />
-            <p className="muted cfg__vat">{t(`vat.${tenant.branding.vatDisplay}`)}</p>
-          </div>
-        </div>
+        <ViewerSlot name={sauna.name} specs={specs} options={options} lowUrl={sauna.assets.lowGlbUrl} highUrl={sauna.assets.highGlbUrl} allowHigh thumbnailUrl={sauna.assets.thumbnailUrl} eager views />
       </div>
 
       <aside className="cfg__panel">
-        <p className="eyebrow">{t('configure.eyebrow')}</p>
-        <ScrambleText as="h1" className="cfg__title" text={sauna.name} />
+        <div className="cfg-card cfg-product">
+          <p className="cfg-product__eyebrow">{t('configure.eyebrow')}</p>
+          <ScrambleText as="h1" className="cfg__title" text={sauna.name} />
+          <div className="cfg__total">
+            <Price minor={price.finalPriceMinor} currency={currency} size="md" label={t('configure.total')} />
+          </div>
+          <div className="cfg-product__links">
+            <button type="button" className="cfg-product__toggle" aria-expanded={details} onClick={() => setDetails(v => !v)}>
+              {t('configure.priceDetails')}
+              <Icon icon={ChevronDown} size="xs" className={details ? 'is-up' : undefined} />
+            </button>
+            {!locked && (
+              <button type="button" className="cfg-product__toggle" onClick={() => st.init(sauna.slug, defaultSelectionOf(sauna), st.configurationId, st.roomId ? { id: st.roomId, placement: st.placement } : null)}>
+                <Icon icon={RotateCcw} size="xs" />
+                {t('configure.resetOptions')}
+              </button>
+            )}
+          </div>
+          {details && (
+            <dl className="cfg__lines mono">
+              <div>
+                <dt>{t('configure.basePrice')}</dt>
+                <dd>{fmt.money(price.listPriceMinor, currency)}</dd>
+              </div>
+              <div>
+                <dt>{t('configure.optionsTotal')}</dt>
+                <dd>+ {fmt.money(price.optionsTotalMinor, currency)}</dd>
+              </div>
+              {price.discountMinor > 0 && (
+                <div>
+                  <dt>{t('configure.discount')}</dt>
+                  <dd>− {fmt.money(price.discountMinor, currency)}</dd>
+                </div>
+              )}
+              <p className="muted cfg__vat">{t(`vat.${tenant.branding.vatDisplay}`)}</p>
+            </dl>
+          )}
+        </div>
         {locked ? (
-          <div className="cfg__locked">
+          <div className="cfg-card cfg__locked">
             <p>{t('configure.locked')}</p>
             <Button onClick={() => clone.mutate()} loading={clone.isPending}>
               {t('configure.clone')}
@@ -294,32 +365,57 @@ function Configurator({ sauna }: { sauna: SaunaDetail }) {
           </div>
         ) : (
           <>
-            <Tabs
-              label={t('configure.eyebrow')}
-              value={tab}
-              onChange={setTab}
-              items={[
-                {
-                  id: 'options',
-                  label: t('configure.tabs.options'),
-                  panel: (
-                    <div className="cfg__groups">
-                      {sauna.groups.map(g => (
-                        <GroupEditor key={g.id} group={g} sauna={sauna} currency={currency} />
-                      ))}
-                    </div>
-                  ),
-                },
-                { id: 'room', label: t('configure.tabs.room'), panel: <RoomPanel sauna={sauna} /> },
-                {
-                  id: 'ar',
-                  label: t('configure.tabs.ar'),
-                  disabled: !sauna.assets.hasAr,
-                  panel: <ArButton saunaModelId={sauna.id} name={sauna.name} enabled />,
-                },
-              ]}
-            />
-            <div className="cfg__actions">
+            <div className="cfg-stepper">
+              <button type="button" aria-label={t('configure.prevSection')} onClick={() => step(-1)}>
+                <Icon icon={ChevronLeft} size="sm" />
+              </button>
+              <span>
+                {label(current)}
+                <small>
+                  {at + 1}/{sections.length}
+                </small>
+              </span>
+              <button type="button" aria-label={t('configure.nextSection')} onClick={() => step(1)}>
+                <Icon icon={ChevronRight} size="sm" />
+              </button>
+            </div>
+            <div className="cfg-body">
+              <nav className="cfg-rail" aria-label={t('configure.tabs.options')}>
+                {sections.map(id => (
+                  <button key={id} type="button" className={id === current ? 'is-active' : undefined} aria-current={id === current ? 'true' : undefined} onClick={() => setSection(id)}>
+                    <Icon icon={SECTION_ICON[id]} size="md" />
+                    <span>{label(id)}</span>
+                  </button>
+                ))}
+              </nav>
+              <div className="cfg-card cfg-list">
+                {current === 'room' ? (
+                  <div className="cfg-list__pad">
+                    <RoomPanel sauna={sauna} />
+                  </div>
+                ) : current === 'ar' ? (
+                  <div className="cfg-list__pad">
+                    <ArButton saunaModelId={sauna.id} name={sauna.name} enabled />
+                  </div>
+                ) : (
+                  groupsHere.map(g => (
+                    <GroupEditor
+                      key={g.id}
+                      group={g}
+                      sauna={sauna}
+                      currency={currency}
+                      open={!closed.has(g.id)}
+                      onToggle={() => setClosed(c => {
+                        const n = new Set(c);
+                        if (!n.delete(g.id)) n.add(g.id);
+                        return n;
+                      })}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+            <div className="cfg-card cfg__actions">
               {!valid && <p className="muted cfg__hint">{t('configure.incomplete')}</p>}
               <Button variant="ghost" icon={Save} onClick={() => save.mutate(undefined, { onSuccess: () => toast(t('configure.draftSaved')), onError: e => toast.error(t('errors.title'), errorText(t, e)) })} loading={save.isPending && !send.isPending}>
                 {st.dirty || !st.configurationId ? t('configure.saveDraft') : t('common.saved')}

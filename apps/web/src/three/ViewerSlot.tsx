@@ -9,6 +9,7 @@ import { ErrorBoundary } from '../design/components/ErrorBoundary.tsx';
 import { invalidateAssetSession, useAssetSession } from '../api/assetSession.ts';
 import { SaunaGlyph } from '../storefront/components/SaunaGlyph.tsx';
 import type { ViewerOptions, ViewerSpecs } from './types.ts';
+import type { CameraView } from './kit/KitCamera.tsx';
 import './ViewerSlot.css';
 
 /** three.js, R3F and drei live in this chunk and load only when a viewer is needed. */
@@ -35,6 +36,8 @@ interface Props {
   thumbnailUrl: string | null;
   /** Start loading without waiting for the slot to scroll into view. */
   eager?: boolean;
+  /** Offer Exterior / Interior tabs on kit-built models. */
+  views?: boolean;
 }
 
 /**
@@ -43,7 +46,7 @@ interface Props {
  * progress, and the 3D chunk is requested only when the slot is near the
  * viewport (or on demand with data saver).
  */
-export function ViewerSlot({ name, specs, options, lowUrl: assetLow, highUrl: assetHigh, allowHigh, thumbnailUrl, eager, shareToken }: Props) {
+export function ViewerSlot({ name, specs, options, lowUrl: assetLow, highUrl: assetHigh, allowHigh, thumbnailUrl, eager, shareToken, views }: Props) {
   // Kit-built saunas follow the selected options; an uploaded GLB is used only when the model asks for it.
   const lowUrl = specs.source === 'asset' ? assetLow : null;
   const highUrl = specs.source === 'asset' ? assetHigh : null;
@@ -55,6 +58,7 @@ export function ViewerSlot({ name, specs, options, lowUrl: assetLow, highUrl: as
   const [ready, setReady] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const [full, setFull] = useState(false);
+  const [view, setView] = useState<CameraView>('exterior');
   const stage = useRef<HTMLDivElement>(null);
   const saveData = prefersSaveData();
   const wanted = webgl && (requested || (Boolean(inView || eager) && !saveData));
@@ -114,7 +118,7 @@ export function ViewerSlot({ name, specs, options, lowUrl: assetLow, highUrl: as
           >
             <Suspense fallback={null}>
               <div className="vslot__canvas">
-                <SaunaViewer specs={specs} options={options} lowUrl={lowUrl} highUrl={highUrl} allowHigh={allowHigh} label={t('three.canvasLabel', { name })} onProgress={onProgress} resetKey={resetKey} />
+                <SaunaViewer specs={specs} options={options} lowUrl={lowUrl} highUrl={highUrl} allowHigh={allowHigh} label={t('three.canvasLabel', { name })} onProgress={onProgress} resetKey={resetKey} view={view} />
               </div>
             </Suspense>
           </ErrorBoundary>
@@ -132,6 +136,15 @@ export function ViewerSlot({ name, specs, options, lowUrl: assetLow, highUrl: as
               {t('detail.load3d')}
             </Button>
             {saveData && <p className="vslot__note">{t('detail.saveDataHint')}</p>}
+          </div>
+        )}
+        {load && views && !hasGlb && (
+          <div className="vslot__views" role="group" aria-label={t('three.viewLabel')}>
+            {(['exterior', 'interior'] as const).map(v => (
+              <button key={v} type="button" className={view === v ? 'is-active' : undefined} aria-pressed={view === v} onClick={() => setView(v)}>
+                {t(`three.${v}`)}
+              </button>
+            ))}
           </div>
         )}
         {load && (
