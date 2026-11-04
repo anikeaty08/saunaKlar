@@ -5,7 +5,7 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import * as THREE from 'three';
 import { KitSauna } from './kit/KitSauna.tsx';
 import { KitCamera, type CameraView } from './kit/KitCamera.tsx';
-import { KitLights, setupKitRenderer } from './kit/KitStage.tsx';
+import { KitEffects, KitLights, setupKitRenderer } from './kit/KitStage.tsx';
 import { DRACO_PATH, useProgressiveModel } from './useProgressiveModel.ts';
 import type { ViewerOptions, ViewerSpecs } from './types.ts';
 
@@ -109,13 +109,16 @@ export default function SaunaViewer({ specs, options, lowUrl = null, highUrl = n
     >
       {background && <color attach="background" args={[background]} />}
       <ProgressReporter onProgress={onProgress} />
-      <KitLights />
+      <KitLights interior={kit && view === 'interior'} />
       <Suspense fallback={null}>
         <group>{!kit && model.lowUrl ? <ProgressiveGlb lowUrl={model.lowUrl} highUrl={model.highUrl} /> : <KitSauna specs={specs} options={options} />}</group>
       </Suspense>
       {view === 'exterior' && <ContactShadows position={[0, 0.001, 0]} opacity={0.42} scale={radius * 3.5} blur={2.4} far={h * 1.2} resolution={512} />}
       {kit ? (
-        <KitCamera spec={kitSpec} view={view} resetKey={resetKey} />
+        <>
+          <KitCamera spec={kitSpec} view={view} resetKey={resetKey} />
+          <KitEffects interior={view === 'interior'} />
+        </>
       ) : (
         <>
           <OrbitControls makeDefault enableDamping dampingFactor={0.08} target={[0, h * 0.45, 0]} minPolarAngle={0.25} maxPolarAngle={Math.PI / 2 - 0.06} enablePan={false} />

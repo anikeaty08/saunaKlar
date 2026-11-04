@@ -23,7 +23,15 @@ function stones(P: Parts, M: KitMaterials, m: THREE.Matrix4, w: number, d: numbe
 export function heater(P: Parts, M: KitMaterials, L: KitLayout, spec: KitSpec) {
   const m = facingMatrix(L.heater.position, L.heater.facing, L.floorY);
   const kind = spec.heater;
-  if (kind === 'stove') {
+  const modelled = P.part(`heater-${kind}`, m);
+  if (kind === 'stove' && modelled) {
+    const flue = new THREE.CylinderGeometry(0.065, 0.065, L.wallHeight + 0.6, 24);
+    flue.translate(0.14, 0.75 + (L.wallHeight + 0.6) / 2, 0.1);
+    P.add(M.black, flue, m);
+    P.lights.push({ position: [L.heater.position[0] + L.heater.facing[0] * 0.4, L.floorY + 0.35, L.heater.position[1] + L.heater.facing[1] * 0.4], color: '#ff7a2e', intensity: 0.6, distance: 1.8 });
+  } else if (modelled) {
+    // The Blender model carries the body, the stone basket and the stones.
+  } else if (kind === 'stove') {
     // Wood stove: black body, glowing glass door, flue through the roof.
     P.box(M.black, -0.24, 0.24, 0.06, 0.72, -0.22, 0.22, m);
     P.box(M.black, -0.2, 0.2, 0, 0.06, -0.18, 0.18, m);
@@ -84,8 +92,11 @@ export function heater(P: Parts, M: KitMaterials, L: KitLayout, spec: KitSpec) {
 function irPanel(P: Parts, M: KitMaterials, L: KitLayout, s: Segment, u: number) {
   const m = segMatrix(s, u, L.wall, L.floorY);
   const y0 = L.upperTop + 0.16, y1 = Math.min(L.wallHeight - 0.12, y0 + 0.95);
-  P.box(M.benchPanel, -0.16, 0.16, y0, y1, 0, 0.03, m, 'y');
-  P.box(M.grille, -0.115, 0.115, y0 + 0.05, y1 - 0.05, 0.03, 0.034, m, 'y');
+  // The modelled panel is 0.95 m tall; a low room gets a shorter one.
+  if (!P.part('ir-panel', m.clone().multiply(new THREE.Matrix4().makeTranslation(0, y0, 0)).multiply(new THREE.Matrix4().makeScale(1, (y1 - y0) / 0.95, 1)))) {
+    P.box(M.benchPanel, -0.16, 0.16, y0, y1, 0, 0.03, m, 'y');
+    P.box(M.grille, -0.115, 0.115, y0 + 0.05, y1 - 0.05, 0.03, 0.034, m, 'y');
+  }
   P.box(M.white, 0.2, 0.28, y0 - 0.02, y0 + 0.06, 0, 0.012, m);
   const dial = new THREE.CylinderGeometry(0.018, 0.018, 0.016, 18);
   dial.rotateX(Math.PI / 2);
@@ -96,6 +107,7 @@ function irPanel(P: Parts, M: KitMaterials, L: KitLayout, s: Segment, u: number)
 /** Slatted wedge headrest lying on the bench, rising towards `facing`. */
 function headrest(P: Parts, M: KitMaterials, at: Vec2, facing: Vec2, y: number) {
   const m = facingMatrix(at, facing, y);
+  if (P.part('headrest', m)) return;
   const slope = 0.32;
   for (let i = 0; i < 8; i++) {
     const x = -0.17 + i * 0.048;
@@ -115,6 +127,7 @@ function headrest(P: Parts, M: KitMaterials, at: Vec2, facing: Vec2, y: number) 
 /** Wooden bucket with steel bands and a ladle. */
 function bucket(P: Parts, M: KitMaterials, at: Vec2, y: number) {
   const m = facingMatrix(at, [0, 1], y);
+  if (P.part('bucket', m)) return;
   const body = new THREE.CylinderGeometry(0.13, 0.11, 0.2, 18, 1, true);
   body.translate(0, 0.1, 0);
   P.add(M.benchPanel, body, m);
@@ -162,11 +175,13 @@ export function buildFixtures(P: Parts, M: KitMaterials, L: KitLayout, spec: Kit
   if (spec.extras.thermometer && free) {
     const m = segMatrix(free, free.length * 0.5, L.wall, L.floorY);
     const y = L.wallHeight - 0.5;
-    P.box(M.benchPanel, -0.15, 0.15, y, y + 0.18, 0, 0.022, m);
-    for (const x of [-0.07, 0.07]) {
-      const face = new THREE.CircleGeometry(0.052, 24);
-      face.translate(x, y + 0.09, 0.024);
-      P.add(M.white, face, m);
+    if (!P.part('thermometer', m.clone().multiply(new THREE.Matrix4().makeTranslation(0, y, 0)))) {
+      P.box(M.benchPanel, -0.15, 0.15, y, y + 0.18, 0, 0.022, m);
+      for (const x of [-0.07, 0.07]) {
+        const face = new THREE.CircleGeometry(0.052, 24);
+        face.translate(x, y + 0.09, 0.024);
+        P.add(M.white, face, m);
+      }
     }
   }
   if (spec.extras.saltWall && free) {
@@ -216,7 +231,7 @@ export function buildFixtures(P: Parts, M: KitMaterials, L: KitLayout, spec: Kit
   }
   if (spec.control) controlPanel(P, M, L);
   // Soft fill so the interior reads through the glass even without LED options.
-  P.lights.push({ position: [cx, L.floorY + L.wallHeight * 0.8, cz], color: '#fff1de', intensity: 0.9, distance: 4.5 });
+  P.lights.push({ position: [cx, L.floorY + L.wallHeight * 0.8, cz], color: '#fff6ec', intensity: 1.0, distance: 4.5 });
 }
 
 /** Digital control on the outside, beside the door. */
@@ -231,6 +246,8 @@ function controlPanel(P: Parts, M: KitMaterials, L: KitLayout) {
     u = solid === next ? 0.25 : solid.length - 0.25;
   }
   const m = segMatrix(target, u, 0, L.floorY);
+  // Outside the wall: the modelled unit faces -z here, so turn it round.
+  if (P.part('control', m.clone().multiply(new THREE.Matrix4().makeTranslation(0, 1.3, 0)).multiply(new THREE.Matrix4().makeRotationY(Math.PI)))) return;
   P.box(M.black, -0.05, 0.05, 1.3, 1.46, -0.016, 0, m);
   P.box(M.led, -0.03, 0.03, 1.4, 1.43, -0.0175, -0.016, m);
 }

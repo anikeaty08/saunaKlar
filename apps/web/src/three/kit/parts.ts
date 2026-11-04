@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import type { PartPiece } from './assets.ts';
 import type { Segment, Vec2 } from './layout.ts';
 
 /** A real light the scene should add (kept few: most glow is emissive geometry). */
@@ -20,14 +21,40 @@ const UP = new THREE.Vector3(0, 1, 0);
 export class Parts {
   private buckets = new Map<THREE.Material, THREE.BufferGeometry[]>();
   readonly lights: LightSpec[] = [];
-  /** Materials whose meshes cast shadows. */
-  constructor(private readonly casters: Set<THREE.Material>) {}
+  /**
+   * @param casters materials whose meshes cast shadows
+   * @param library Blender-made parts by name, with `kit:` slots resolved by `slot`
+   */
+  constructor(
+    private readonly casters: Set<THREE.Material>,
+    private readonly library?: Map<string, PartPiece[]>,
+    private readonly slot?: (name: string) => THREE.Material | undefined,
+  ) {}
+
+  /**
+   * Places a Blender-made part (see assets.ts) with matrix `m`. Returns false when
+   * the part is not loaded, so the caller can fall back to its procedural version.
+   */
+  part(name: string, m: THREE.Matrix4): boolean {
+    const pieces = this.library?.get(name);
+    if (!pieces?.length) return false;
+    for (const p of pieces) {
+      const mat = typeof p.material === 'string' ? this.slot?.(p.material) : p.material;
+      if (!mat) continue;
+      const g = p.geometry.clone();
+      // Kit wood takes metre UVs so its grain repeats at true size.
+      if (typeof p.material === 'string') metreUVs(g, 'y');
+      this.add(mat, g, m);
+    }
+    return true;
+  }
 
   add(mat: THREE.Material, geo: THREE.BufferGeometry, m?: THREE.Matrix4) {
     let g = geo.index ? geo.toNonIndexed() : geo;
     if (g !== geo) geo.dispose();
     if (!g.getAttribute('uv')) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.getAttribute('position').count * 2), 2));
-    for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(name)) g.deleteAttribute(name);
+    const keep = (mat as THREE.MeshStandardMaterial).vertexColors ? ['position', 'normal', 'uv', 'color'] : ['position', 'normal', 'uv'];
+    for (const name of Object.keys(g.attributes)) if (!keep.includes(name)) g.deleteAttribute(name);
     g.clearGroups();
     if (m) g.applyMatrix4(m);
     let list = this.buckets.get(mat);

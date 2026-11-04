@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { KitAssets, WoodSet } from './assets.ts';
 import type { KitSpec, WoodFinish } from './spec.ts';
 import { WOOD_BASE, boardTextures, glowTexture, grilleTexture, pebbleTexture, slateTextures, slatTexture, washTexture } from './textures.ts';
 
@@ -38,7 +39,19 @@ export function tint(finish: WoodFinish | string, factor = 1): THREE.Color {
   return new THREE.Color(hex).multiplyScalar(factor / WOOD_BASE);
 }
 
+/** Tint that turns a coloured Blender map into the finish's colour (per channel, linear). */
+function tintFor(set: WoodSet, finish: WoodFinish | string, factor = 1): THREE.Color {
+  const c = new THREE.Color(typeof finish === 'string' ? finish : finish.color);
+  return new THREE.Color(c.r / set.mean[0], c.g / set.mean[1], c.b / set.mean[2]).multiplyScalar(factor * 0.97);
+}
+
+let baked: KitAssets['wood'] | undefined;
+
 function wood(finish: WoodFinish, roughness = 0.78, factor = 1): THREE.MeshStandardMaterial {
+  if (baked) {
+    const set = finish.grain === 'knotty' ? baked.knotty : baked.clear;
+    return new THREE.MeshStandardMaterial({ map: set.map, normalMap: set.normal, normalScale: new THREE.Vector2(0.6, 0.6), color: tintFor(set, finish, factor), roughness, envMapIntensity: 0.55 });
+  }
   const t = boardTextures(finish.grain);
   return new THREE.MeshStandardMaterial({ map: t.map, normalMap: t.normal, normalScale: new THREE.Vector2(0.5, 0.5), color: tint(finish, factor), roughness, envMapIntensity: 0.6 });
 }
@@ -54,10 +67,12 @@ export function materialKey(spec: KitSpec): string {
   return JSON.stringify([spec.wallWood, spec.benchWood, spec.door, spec.exterior, spec.extras.stoneFloor, spec.form]);
 }
 
-export function makeMaterials(spec: KitSpec): KitMaterials {
+export function makeMaterials(spec: KitSpec, assets?: KitAssets): KitMaterials {
+  baked = assets?.wood;
   const outdoor = spec.form === 'barrel' || spec.form === 'hex' || spec.form === 'cabin';
-  const slat = slatTexture();
-  const bench = new THREE.MeshStandardMaterial({ map: slat, color: tint(spec.benchWood), roughness: 0.72, envMapIntensity: 0.6 });
+  const slat = baked ? baked.slat.map : slatTexture();
+  const benchTint = (f: number) => (baked ? tintFor(baked.slat, spec.benchWood, f) : tint(spec.benchWood, f));
+  const bench = new THREE.MeshStandardMaterial({ map: slat, color: benchTint(1), roughness: 0.72, envMapIntensity: 0.6 });
   const exterior = (() => {
     if (spec.exterior === 'slate') {
       const s = slateTextures();
@@ -82,7 +97,7 @@ export function makeMaterials(spec: KitSpec): KitMaterials {
     wallOut: exterior,
     ceiling: wood(spec.wallWood, 0.8, 1.03),
     bench,
-    benchPanel: new THREE.MeshStandardMaterial({ map: slat, color: tint(spec.benchWood, 0.97), roughness: 0.74, envMapIntensity: 0.6 }),
+    benchPanel: new THREE.MeshStandardMaterial({ map: slat, color: benchTint(0.97), roughness: 0.74, envMapIntensity: 0.6 }),
     floor,
     plinth: new THREE.MeshStandardMaterial({ color: '#2b2928', roughness: 0.9 }),
     roof,

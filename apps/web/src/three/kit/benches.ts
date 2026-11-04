@@ -7,7 +7,7 @@ import type { KitSpec } from './spec.ts';
 const SLAT_W = 0.09;
 const SLAT_GAP = 0.012;
 const T = SLAT_THICKNESS;
-const LED_COLOR = '#ffcf94';
+const LED_COLOR = '#ffe0bc';
 
 /** Where a line parallel to the wall, `offset` into the room, meets a clip line (distance along the wall). */
 function uAt(s: Segment, wall: number, offset: number, clip: Band['startClip']): number {

@@ -4,6 +4,7 @@ import { buildFixtures } from './fixtures.ts';
 import { barrel, cabinRoof, hexRoof } from './forms.ts';
 import { computeLayout } from './layout.ts';
 import type { KitMaterials } from './materials.ts';
+import type { PartPiece } from './assets.ts';
 import { Parts, type LightSpec } from './parts.ts';
 import type { KitSpec } from './spec.ts';
 import { buildStructure, flatRoof } from './structure.ts';
@@ -12,8 +13,8 @@ import { buildStructure, flatRoof } from './structure.ts';
 const MAX_LIGHTS = 6;
 
 /** Builds the whole sauna for a spec: one merged mesh per material, plus a few lights. */
-export function buildSauna(spec: KitSpec, M: KitMaterials): { group: THREE.Group; lights: LightSpec[] } {
-  const P = new Parts(new Set<THREE.Material>([M.wallIn, M.wallOut, M.bench, M.benchPanel, M.black, M.roof, M.plinth]));
+export function buildSauna(spec: KitSpec, M: KitMaterials, library?: Map<string, PartPiece[]>): { group: THREE.Group; lights: LightSpec[] } {
+  const P = new Parts(new Set<THREE.Material>([M.wallIn, M.wallOut, M.bench, M.benchPanel, M.black, M.roof, M.plinth]), library, slot => M[slot as keyof KitMaterials]);
   // A barrel always runs along its longer side; built along z and turned when wider than deep.
   const turn = spec.form === 'barrel' && spec.width > spec.depth;
   if (spec.form === 'barrel') {

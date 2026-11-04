@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import type * as THREE from 'three';
 import type { ViewerOptions, ViewerSpecs } from '../types.ts';
+import { useKitAssets } from './assets.ts';
 import { buildSauna } from './build.ts';
 import { disposeMaterials, makeMaterials, materialKey } from './materials.ts';
 import type { KitSpec } from './spec.ts';
@@ -15,13 +16,14 @@ export function KitSauna({ specs, options }: { specs: ViewerSpecs; options: View
     () => ({ ...options, form: specs.form, width: specs.widthMm / 1000, depth: specs.depthMm / 1000, height: specs.heightMm / 1000 }),
     [options, specs.form, specs.widthMm, specs.depthMm, specs.heightMm],
   );
+  const assets = useKitAssets();
   const key = JSON.stringify(spec);
   const matKey = materialKey(spec);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the finishes only
-  const materials = useMemo(() => makeMaterials(spec), [matKey]);
+  const materials = useMemo(() => makeMaterials(spec, assets), [matKey, assets]);
   useEffect(() => () => disposeMaterials(materials), [materials]);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the full spec
-  const built = useMemo(() => buildSauna(spec, materials), [key, materials]);
+  const built = useMemo(() => buildSauna(spec, materials, assets.parts), [key, materials, assets]);
   useEffect(
     () => () => {
       built.group.traverse(o => {

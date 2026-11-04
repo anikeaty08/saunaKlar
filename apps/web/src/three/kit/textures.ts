@@ -13,7 +13,7 @@ import * as THREE from 'three';
  */
 
 export const TEXTURE_SIZE = {
-  boards: [2.4, 1.2] as [number, number], // 10 boards of 120 mm, 2.4 m long
+  boards: [2.4, 1.2] as [number, number], // 2.4 m long boards (8 x 150 mm in the Blender maps)
   slat: [1.2, 0.12] as [number, number],
   slate: [0.8, 1.14] as [number, number], // 2 × 2 tiles of 400 × 570 mm
   pebbles: [0.5, 0.5] as [number, number],
