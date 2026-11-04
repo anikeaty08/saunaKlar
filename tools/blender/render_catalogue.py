@@ -81,8 +81,35 @@ def glass(m, tint, rough):
     nt.links.new(mix.outputs[0], out.inputs[0])
 
 
+def fix_mirrored_normals():
+    """The barrel's inner skin is a mirrored cylinder: its stored normals disagree
+    with its winding, which Cycles shades black. Let Blender recompute them."""
+    for ob in bpy.context.scene.objects:
+        if ob.type != 'MESH' or not any(m and m.name.split('.')[0] == 'wallIn' for m in ob.data.materials):
+            continue
+        me = ob.data
+        bpy.context.view_layer.objects.active = ob
+        ob.select_set(True)
+        if me.has_custom_normals:
+            bpy.ops.mesh.customdata_custom_splitnormals_clear()
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action='SELECT')
+        bpy.ops.mesh.normals_make_consistent(inside=False)
+        bpy.ops.object.mode_set(mode='OBJECT')
+        ob.select_set(False)
+        print('fixed normals on', ob.name, me.has_custom_normals)
+        # Its mirrored UVs also turn the board normal map inside out.
+        for m in me.materials:
+            pb = principled(m)
+            if pb and pb.inputs['Normal'].is_linked:
+                for link in list(pb.inputs['Normal'].links):
+                    m.node_tree.links.remove(link)
+
+
 def setup_materials():
     for m in bpy.data.materials:
+        # Cycles honours glTF single-sidedness; real boards have two faces.
+        m.use_backface_culling = False
         name = m.name.split('.')[0]
         p = principled(m)
         if name in ('glass', 'doorGlass'):
@@ -215,6 +242,8 @@ def main():
     for which in (['exterior', 'interior'] if WHICH == 'both' else [WHICH]):
         bpy.ops.wm.read_factory_settings(use_empty=True)
         bpy.ops.import_scene.gltf(filepath=GLB)
+        if META['form'] == 'barrel':
+            fix_mirrored_normals()
         setup_materials()
         if which == 'exterior':
             world(EXT_SKY)
