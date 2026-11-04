@@ -54,8 +54,17 @@ export function hostConfig(): HostConfig {
 }
 
 /** The current window's host, parsed once per page load. */
+let cached: HostKind | undefined;
+
 export function currentHost(): HostKind {
+  return (cached ??= readHost());
+}
+
+function readHost(): HostKind {
   if (import.meta.env.VITE_PREVIEW === '1') return previewHost();
+  // Local testing: browsers that do not resolve *.localhost can still open a
+  // shop with http://localhost:5173/?shop=nordic (or ?app=admin).
+  if (import.meta.env.DEV && /[?&](shop|app)=/.test(window.location.search)) return previewHost();
   return parseHost(window.location.host, hostConfig());
 }
 
