@@ -63,8 +63,16 @@ export function currentHost(): HostKind {
 function readHost(): HostKind {
   if (import.meta.env.VITE_PREVIEW === '1') return previewHost();
   // Local testing: browsers that do not resolve *.localhost can still open a
-  // shop with http://localhost:5173/?shop=nordic (or ?app=admin).
-  if (import.meta.env.DEV && /[?&](shop|app)=/.test(window.location.search)) return previewHost();
+  // shop with http://localhost:5173/?shop=nordic (or ?app=admin, ?app=platform).
+  // The choice is kept for the tab, so links and reloads stay in that shop.
+  if (import.meta.env.DEV && window.location.hostname === 'localhost') {
+    let search = window.location.search;
+    try {
+      if (/[?&](shop|app)=/.test(search)) sessionStorage.setItem('dev-host', search);
+      else search = sessionStorage.getItem('dev-host') ?? '';
+    } catch { /* storage blocked: query only */ }
+    if (/[?&](shop|app)=/.test(search)) return previewHost(search);
+  }
   return parseHost(window.location.host, hostConfig());
 }
 
@@ -73,8 +81,8 @@ function readHost(): HostKind {
  * manufacturer admin, `?app=platform` the platform page, and `?shop=<slug>`
  * a storefront (the first example shop by default).
  */
-function previewHost(): HostKind {
-  const q = new URLSearchParams(window.location.search);
+function previewHost(search = window.location.search): HostKind {
+  const q = new URLSearchParams(search);
   if (q.get('app') === 'admin') return { kind: 'manufacturer' };
   if (q.get('app') === 'platform') return { kind: 'platform', reason: 'root' };
   return { kind: 'storefront', slug: q.get('shop') || 'nordic' };

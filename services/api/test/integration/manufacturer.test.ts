@@ -81,9 +81,9 @@ describe('manufacturer: assignments', () => {
   it('assigns a priced sauna and bumps the reseller catalog version', async () => {
     const created = await m.post('/api/manufacturer/resellers', newReseller('eta', 'CHF'));
     const v = created.body.catalogVersion as number;
-    const r = await m.put(`/api/manufacturer/resellers/${created.body.id}/saunas/${SEED.models('lappi-barrel')}`);
+    const r = await m.put(`/api/manufacturer/resellers/${created.body.id}/saunas/${SEED.models('kelo-barrel')}`);
     expect(r.status, JSON.stringify(r.body)).toBe(200);
-    expect(r.body.items.find((i: { slug: string }) => i.slug === 'lappi-barrel').assigned).toBe(true);
+    expect(r.body.items.find((i: { slug: string }) => i.slug === 'kelo-barrel').assigned).toBe(true);
     expect((await m.get(`/api/manufacturer/resellers/${created.body.id}`)).body.catalogVersion).toBeGreaterThan(v);
   });
 

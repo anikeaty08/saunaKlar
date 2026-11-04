@@ -17,7 +17,7 @@ test.describe('local server smoke', () => {
 
   test('lists only the visible saunas of the tenant', async ({ page }) => {
     const { body } = await getJson<Catalog>(page, `${ALPHA}/api/catalog`);
-    expect(body.items.map(i => i.slug).sort()).toEqual(['espoo-compact', 'kuopio-cube', 'lappi-barrel', 'turku-panorama']);
+    expect(body.items.map(i => i.slug).sort()).toEqual(['espoo-compact', 'aurora-hex', 'kelo-barrel', 'fjord-panorama']);
   });
 
   test('serves the seeded images and, with an asset session, the 3D models', async ({ page }) => {

@@ -105,7 +105,7 @@ describe('dev seed', () => {
     await expectCode(env.owner.query(
       `WITH a AS (INSERT INTO assets (storage_key, content_type) VALUES ('media/x/leak.glb', 'model/gltf-binary') RETURNING id)
        INSERT INTO sauna_model_assets (sauna_model_id, asset_role, asset_id) SELECT $1, 'MODEL_GLB_LOW', id FROM a`,
-      [SEED.models('lappi-barrel')]), 'ASSET_TIER_MISMATCH');
+      [SEED.models('kelo-barrel')]), 'ASSET_TIER_MISMATCH');
   });
 });
 

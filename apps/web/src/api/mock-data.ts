@@ -337,6 +337,9 @@ const RULES = {
   ],
 };
 
+/** Catalogue photos rendered in Blender (tools/blender/render_catalogue.py), served from public/catalogue. */
+const photo = (slug: string, view: 'exterior' | 'interior') => `${import.meta.env.BASE_URL}catalogue/${slug}-${view}.jpg`;
+
 export function saunaDetails(): SaunaDetail[] {
   return MODELS.map((m, i) => ({
     id: fid(`model:${m.slug}`),
@@ -345,7 +348,11 @@ export function saunaDetails(): SaunaDetail[] {
     name: m.name,
     description: m.description,
     attributes: attributes(m),
-    assets: { thumbnailUrl: null, gallery: [], lowGlbUrl: null, highGlbUrl: null, hasAr: false },
+    assets: {
+      thumbnailUrl: photo(m.slug, 'exterior'),
+      gallery: [photo(m.slug, 'exterior'), photo(m.slug, 'interior')],
+      lowGlbUrl: null, highGlbUrl: null, hasAr: false,
+    },
     listPriceMinor: m.listPrice,
     priceFromMinor: m.listPrice,
     discount: null,

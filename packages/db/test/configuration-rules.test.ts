@@ -17,7 +17,7 @@ describe('rule 4: configurations', () => {
   });
 
   it('rejects a sauna the reseller does not offer', async () => {
-    await expectCode(alphaTx(c => draft(c, { reseller: ALPHA, model: 'helsinki-studio', customer: anna, options: [] })), 'FOREIGN_KEY_VIOLATION');
+    await expectCode(alphaTx(c => draft(c, { reseller: ALPHA, model: 'saimaa-garden-house', customer: anna, options: [] })), 'FOREIGN_KEY_VIOLATION');
   });
 
   it('rejects a customer of another reseller', async () => {
@@ -51,7 +51,7 @@ describe('rule 5: selections', () => {
     await expectCode(alphaTx(async c => {
       const id = await draft(c, { reseller: ALPHA, model: 'espoo-compact', customer: anna, options: [] });
       await c.query(`INSERT INTO configuration_selections (configuration_id, sauna_model_id, option_id) VALUES ($1, $2, $3)`,
-        [id, M('lappi-barrel'), O('heater-9kw')]);
+        [id, M('kelo-barrel'), O('heater-9kw')]);
     }), 'FOREIGN_KEY_VIOLATION');
   });
 
@@ -61,7 +61,7 @@ describe('rule 5: selections', () => {
   });
 
   it('allows several options in a MULTI group', async () => {
-    await alphaTx(c => draft(c, { reseller: ALPHA, model: 'lappi-barrel', customer: anna, options: ['led-backrest', 'led-underbench', 'star-ceiling'] }));
+    await alphaTx(c => draft(c, { reseller: ALPHA, model: 'kelo-barrel', customer: anna, options: ['led-backrest', 'led-underbench', 'star-ceiling'] }));
   });
 
   it('lets a draft switch its SINGLE option by delete + insert', async () => {
@@ -89,12 +89,12 @@ describe('rule 6: locking', () => {
   });
 
   it('requires "requires" rules to be satisfied', async () => {
-    await expectCode(alphaTx(async c => lock(c, await draft(c, { reseller: ALPHA, model: 'lappi-barrel', customer: anna,
+    await expectCode(alphaTx(async c => lock(c, await draft(c, { reseller: ALPHA, model: 'kelo-barrel', customer: anna,
       options: ['spruce', 'heater-9kw', 'door-clear', 'audio'] }))), 'OPTION_RULES_VIOLATED', 'REQUIRES_MISSING');
   });
 
   it('rejects excluded pairs', async () => {
-    await expectCode(alphaTx(async c => lock(c, await draft(c, { reseller: ALPHA, model: 'lappi-barrel', customer: anna,
+    await expectCode(alphaTx(async c => lock(c, await draft(c, { reseller: ALPHA, model: 'kelo-barrel', customer: anna,
       options: ['aspen', 'heater-wood', 'control-basic', 'door-clear'] }))), 'OPTION_RULES_VIOLATED', 'EXCLUDED_PAIR');
   });
 
@@ -121,7 +121,7 @@ describe('rule 6: locking', () => {
   let lockLater = '';
   it('locks a complete, rule-valid configuration with a matching snapshot', async () => {
     locked = await alphaTx(async c => {
-      const id = await draft(c, { reseller: ALPHA, model: 'lappi-barrel', customer: anna, options: ['aspen', 'heater-9kw', 'door-clear', 'led-backrest', 'audio'] });
+      const id = await draft(c, { reseller: ALPHA, model: 'kelo-barrel', customer: anna, options: ['aspen', 'heater-9kw', 'door-clear', 'led-backrest', 'audio'] });
       await c.query(`INSERT INTO configuration_room_placements (configuration_id, reseller_id, room_scene_id, position_x_mm) VALUES ($1, $2, $3, 500)`,
         [id, ALPHA, SEED.rooms('garden-deck')]);
       await lock(c, id);
@@ -135,7 +135,7 @@ describe('rule 6: locking', () => {
       [`UPDATE configurations SET name = 'renamed' WHERE id = $1`, [locked]],
       [`UPDATE configurations SET locked_at = NULL WHERE id = $1`, [locked]],
       [`DELETE FROM configurations WHERE id = $1`, [locked]],
-      [`INSERT INTO configuration_selections VALUES ($1, $2, $3)`, [locked, M('lappi-barrel'), O('aroma')]],
+      [`INSERT INTO configuration_selections VALUES ($1, $2, $3)`, [locked, M('kelo-barrel'), O('aroma')]],
       [`DELETE FROM configuration_selections WHERE configuration_id = $1`, [locked]],
       [`UPDATE configuration_price_snapshots SET price_valid_until = now() + interval '90 days' WHERE configuration_id = $1`, [locked]],
       [`DELETE FROM configuration_price_snapshot_lines WHERE configuration_id = $1`, [locked]],
@@ -155,7 +155,7 @@ describe('rule 6: locking', () => {
 
   it('keeps clones inside the tenant', async () => {
     await alphaTx(c => c.query(`INSERT INTO configurations (reseller_id, sauna_model_id, customer_id, source_configuration_id)
-      VALUES ($1, $2, $3, $4)`, [ALPHA, M('lappi-barrel'), anna, locked]));
+      VALUES ($1, $2, $3, $4)`, [ALPHA, M('kelo-barrel'), anna, locked]));
     await expectCode(tenant(env, BETA, c => c.query(`INSERT INTO configurations (reseller_id, sauna_model_id, customer_id, source_configuration_id)
       VALUES ($1, $2, $3, $4)`, [BETA, M('espoo-compact'), SEED.customers.annaBeta, locked])), 'FOREIGN_KEY_VIOLATION');
   });
