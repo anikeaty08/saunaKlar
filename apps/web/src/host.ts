@@ -55,11 +55,25 @@ export function hostConfig(): HostConfig {
 
 /** The current window's host, parsed once per page load. */
 export function currentHost(): HostKind {
+  if (import.meta.env.VITE_PREVIEW === '1') return previewHost();
   return parseHost(window.location.host, hostConfig());
+}
+
+/**
+ * The static preview build has no subdomains: `?app=admin` opens the
+ * manufacturer admin, `?app=platform` the platform page, and `?shop=<slug>`
+ * a storefront (the first example shop by default).
+ */
+function previewHost(): HostKind {
+  const q = new URLSearchParams(window.location.search);
+  if (q.get('app') === 'admin') return { kind: 'manufacturer' };
+  if (q.get('app') === 'platform') return { kind: 'platform', reason: 'root' };
+  return { kind: 'storefront', slug: q.get('shop') || 'nordic' };
 }
 
 /** Absolute URL of a storefront, e.g. for the platform page's examples. */
 export function storefrontUrl(slug: string, config: HostConfig = hostConfig()): string {
+  if (import.meta.env.VITE_PREVIEW === '1') return `${window.location.pathname}?shop=${slug}#/`;
   const { protocol, port } = window.location;
   return `${protocol}//${slug}.${config.platformDomain}${port ? `:${port}` : ''}/`;
 }
