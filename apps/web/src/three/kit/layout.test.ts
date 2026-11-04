@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { CABIN_BODY, HEATER_HALF, bandPolygon, computeLayout, convexOverlap, cross, doorZone, footprint, squareAt, sub, type Vec2 } from './layout.ts';
 import { segMatrix } from './parts.ts';
+import { interiorView } from './interior.ts';
+import { interiorPolygon } from './structure.ts';
 import { DEFAULT_KIT_OPTIONS, type BenchLayout, type KitSpec, type SaunaForm } from './spec.ts';
 
 const SIZES: Record<Exclude<SaunaForm, 'barrel'>, [number, number, number]> = {
@@ -120,5 +122,31 @@ describe('catalogue sizes', () => {
     // A low garden house (2.2 m overall) gives the roof only 25 cm.
     expect(L.wallHeight).toBeGreaterThanOrEqual(1.8);
     for (const band of L.bands) expect(convexOverlap(squareAt(L.heater.position, L.heater.facing, HEATER_HALF), bandPolygon(band, L.segments, L.wall))).toBe(false);
+  });
+});
+
+describe('inside view', () => {
+  it.each(forms)('%s: the viewer stands inside the room, clear of the walls', form => {
+    const s = spec(form);
+    const v = interiorView(s);
+    const L = computeLayout(s);
+    const room = interiorPolygon(L);
+    const eye: Vec2 = [v.eye[0], v.eye[2]];
+    expect(inside(eye, room)).toBe(true);
+    for (let i = 0; i < room.length; i++) {
+      const a = room[i]!, b = room[(i + 1) % room.length]!;
+      const e = sub(b, a);
+      expect(Math.abs(cross(e, sub(eye, a))) / Math.hypot(e[0], e[1])).toBeGreaterThan(0.2);
+    }
+    expect(v.eye[1]).toBeLessThan(L.floorY + L.wallHeight - 0.2);
+  });
+
+  it('stands inside a barrel, whichever way it is turned', () => {
+    for (const [width, depth] of [[2.0, 2.4], [2.2, 1.9]] as const) {
+      const v = interiorView({ ...structuredClone(DEFAULT_KIT_OPTIONS), form: 'barrel', width, depth, height: 2.0 });
+      expect(Math.abs(v.eye[0])).toBeLessThan(Math.max(width, depth) / 2);
+      expect(Math.abs(v.eye[2])).toBeLessThan(Math.max(width, depth) / 2);
+      expect(v.eye[1]).toBeGreaterThan(1);
+    }
   });
 });

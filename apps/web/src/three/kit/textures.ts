@@ -87,123 +87,151 @@ function normalFrom(height: HTMLCanvasElement, strength: number): HTMLCanvasElem
   return c;
 }
 
-interface Grain {
-  knotty: boolean;
-  seed: number;
+/** Smooth 2D value noise on an integer lattice (hash-based, no tables). */
+function hash2(x: number, y: number, s: number): number {
+  let h = (x * 374761393 + y * 668265263 + s * 2147483647) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
+function noise2(x: number, y: number, s: number): number {
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const fx = x - xi, fy = y - yi;
+  const ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
+  const a = hash2(xi, yi, s), b = hash2(xi + 1, yi, s), c = hash2(xi, yi + 1, s), d = hash2(xi + 1, yi + 1, s);
+  return a + (b - a) * ux + (c - a) * uy + (a - b - c + d) * ux * uy;
+}
+function fbm(x: number, y: number, s: number, oct = 4): number {
+  let v = 0, amp = 0.5, f = 1;
+  for (let i = 0; i < oct; i++) {
+    v += noise2(x * f, y * f, s + i * 17) * amp;
+    f *= 2;
+    amp *= 0.5;
+  }
+  return v / (1 - Math.pow(0.5, oct));
+}
+
+interface Knot { x: number; y: number; r: number }
 
 /**
- * Draws wood grain into a rectangle (grain along x). Lines follow a slow wave,
- * bunch into growth rings and bend around knots; knots get a dark core and rings.
+ * Wood grain, drawn per pixel into a grey (luminance) image so any catalogue
+ * wood colour tints it. Modelled on the owner's photos: pale boards with fine,
+ * low-contrast, nearly straight grain; knotty woods (spruce, Zirbe) carry small
+ * dark knots with the grain bending round them; clear woods (aspen, alder) are
+ * almost plain. `pxPerM` keeps grain and knots true to size on any canvas.
  */
-function drawGrain(g: CanvasRenderingContext2D, hg: CanvasRenderingContext2D | null, x0: number, y0: number, w: number, h: number, o: Grain, r: () => number) {
-  const tone = 220 + r() * 14;
-  g.fillStyle = `rgb(${tone + 8},${tone - 4},${tone - 22})`;
-  g.fillRect(x0, y0, w, h);
-  const knots: { x: number; y: number; rx: number; ry: number }[] = [];
-  if (o.knotty) {
-    const count = Math.floor(r() * 3) + (r() < 0.6 ? 1 : 0);
-    for (let k = 0; k < count; k++) knots.push({ x: x0 + r() * w, y: y0 + h * (0.2 + r() * 0.6), rx: 4 + r() * 9, ry: 3 + r() * 6 });
+function paintBoard(img: ImageData, hmap: ImageData | null, x0: number, y0: number, w: number, h: number, knotty: boolean, pxPerM: number, r: () => number) {
+  const W = img.width;
+  const seed = Math.floor(r() * 1e6);
+  const tone = 0.83 + (r() - 0.5) * 0.06; // board-to-board tone
+  const contrast = knotty ? 1 : 0.45;
+  const ring = (0.011 + r() * 0.007) * pxPerM; // growth ring spacing, 11–18 mm
+  const phase = r() * 100;
+  const knots: Knot[] = [];
+  if (knotty) {
+    const n = Math.round((w / pxPerM) * (0.8 + r() * 1.6));
+    for (let k = 0; k < n; k++) knots.push({ x: x0 + 0.04 * pxPerM + r() * (w - 0.08 * pxPerM), y: y0 + h * (0.2 + r() * 0.6), r: (0.003 + r() * 0.006) * pxPerM });
   }
-  const wave = noise1(r);
-  const lines = Math.floor(h / 2.2);
-  for (let i = 0; i < lines; i++) {
-    const base = y0 + (i + r() * 0.6) * (h / lines);
-    const ring = Math.sin(i * 0.55 + r() * 0.4);
-    const dark = ring > 0.55 ? 0.18 + r() * 0.12 : 0.05 + r() * 0.07;
-    g.strokeStyle = `rgba(120,78,40,${dark})`;
-    g.lineWidth = ring > 0.55 ? 1.4 + r() * 1.6 : 0.6 + r() * 0.8;
-    g.beginPath();
-    for (let x = x0; x <= x0 + w; x += 6) {
-      let y = base + (wave((x - x0) / w * 0.6 + i * 0.013) - 0.5) * h * 0.18;
+  const along = 1 / (0.35 * pxPerM); // slow waviness along the board
+  for (let y = y0; y < y0 + h; y++) {
+    const v = (y - y0) / h;
+    for (let x = x0; x < x0 + w; x++) {
+      let warp = (fbm(x * along, v * 1.5, seed, 3) - 0.5) * ring * 2.2;
+      let knotDark = 0;
       for (const k of knots) {
-        const dx = (x - k.x) / (k.rx * 5), dy = (y - k.y) / (k.ry * 4);
-        const d = dx * dx + dy * dy;
-        if (d < 1) y += Math.sign(y - k.y || 1) * (1 - d) * k.ry * 2.2;
+        const dx = (x - k.x) / (k.r * 5), dy = (y - k.y) / (k.r * 3);
+        const d2 = dx * dx + dy * dy;
+        if (d2 < 1) warp += (y < k.y ? -1 : 1) * (1 - d2) * (1 - d2) * k.r * 2.2;
+        const e = Math.hypot((x - k.x) / k.r, (y - k.y) / (k.r * 0.8));
+        if (e < 1.7) knotDark = Math.max(knotDark, e < 1 ? 0.55 - e * 0.12 : (1.7 - e) / 0.7 * 0.3);
       }
-      if (x === x0) g.moveTo(x, y);
-      else g.lineTo(x, y);
-    }
-    g.stroke();
-  }
-  for (const k of knots) {
-    const grd = g.createRadialGradient(k.x, k.y, 0, k.x, k.y, k.rx * 1.6);
-    grd.addColorStop(0, 'rgba(70,38,18,0.95)');
-    grd.addColorStop(0.45, 'rgba(105,62,30,0.85)');
-    grd.addColorStop(0.75, 'rgba(150,100,55,0.35)');
-    grd.addColorStop(1, 'rgba(150,100,55,0)');
-    g.fillStyle = grd;
-    g.beginPath();
-    g.ellipse(k.x, k.y, k.rx * 1.6, k.ry * 1.6, 0, 0, Math.PI * 2);
-    g.fill();
-    g.strokeStyle = 'rgba(60,32,14,0.7)';
-    g.lineWidth = 1;
-    g.beginPath();
-    g.ellipse(k.x, k.y, k.rx, k.ry, 0, 0, Math.PI * 2);
-    g.stroke();
-    if (hg) {
-      hg.fillStyle = 'rgba(90,90,90,0.6)';
-      hg.beginPath();
-      hg.ellipse(k.x, k.y, k.rx, k.ry, 0, 0, Math.PI * 2);
-      hg.fill();
+      const t = ((y + warp + phase) / ring) % 1;
+      // Latewood: a thin darker band once per ring.
+      const late = Math.exp(-Math.pow((t - 0.5) / 0.09, 2));
+      const fibre = fbm(x / (0.08 * pxPerM), y / (0.0012 * pxPerM), seed + 5, 2) - 0.5;
+      const cloud = noise2(x / (0.4 * pxPerM), y / (0.2 * pxPerM), seed + 9) - 0.5;
+      let l = tone * (1 - 0.075 * late * contrast + 0.035 * fibre * contrast + 0.05 * cloud);
+      l *= 1 - knotDark;
+      const i = (y * W + x) * 4;
+      const c = Math.max(0, Math.min(255, l * 255));
+      img.data[i] = c;
+      img.data[i + 1] = c;
+      img.data[i + 2] = c;
+      img.data[i + 3] = 255;
+      if (hmap) {
+        const hv = 200 - late * 10 * contrast - knotDark * 30;
+        hmap.data[i] = hmap.data[i + 1] = hmap.data[i + 2] = hv;
+        hmap.data[i + 3] = 255;
+      }
     }
   }
 }
 
-/** Horizontal tongue-and-groove wall boards (5 per texture), with a matching normal map. */
+/** Horizontal tongue-and-groove wall boards (10 per texture, 2.4 m long), with a matching normal map. */
 export function boardTextures(grain: 'knotty' | 'clear'): { map: THREE.Texture; normal: THREE.Texture } {
   const key = `boards:${grain}`;
   const hit = cache.get(key);
   if (hit) return { map: hit, normal: cache.get(`${key}:n`)! };
-  const W = 2048;
-  const S = 1024;
+  const W = 2048, S = 1024;
+  const pxPerM = W / TEXTURE_SIZE.boards[0];
   const [c, g] = canvas(W, S);
   const [hc, hg] = canvas(W, S);
-  hg.fillStyle = '#c8c8c8';
-  hg.fillRect(0, 0, W, S);
+  const img = g.createImageData(W, S);
+  const himg = hg.createImageData(W, S);
   const r = rng(grain === 'knotty' ? 11 : 23);
   const boards = 10;
   const bh = S / boards;
+  const joints: [number, number][] = [];
   for (let i = 0; i < boards; i++) {
-    // Each board is two or three lengths with butt joints at random places, as on a real wall.
+    // Each board is two or three lengths with butt joints; one joint sits on the
+    // texture edge so the repeat lands on a joint, as on a real wall.
     const cuts = [0];
-    let x = W * (0.2 + r() * 0.35);
-    while (x < W * 0.9) {
-      cuts.push(x);
-      x += W * (0.3 + r() * 0.4);
+    let x = W * (0.25 + r() * 0.35);
+    while (x < W * 0.85) {
+      cuts.push(Math.round(x));
+      x += W * (0.35 + r() * 0.4);
     }
     cuts.push(W);
     for (let k = 0; k + 1 < cuts.length; k++) {
-      drawGrain(g, hg, cuts[k]!, i * bh, cuts[k + 1]! - cuts[k]!, bh, { knotty: grain === 'knotty', seed: i * 3 + k }, r);
-      if (k > 0) {
-        g.fillStyle = 'rgba(60,40,22,0.35)';
-        g.fillRect(cuts[k]! - 1, i * bh, 2, bh);
-      }
+      paintBoard(img, himg, cuts[k]!, Math.round(i * bh), cuts[k + 1]! - cuts[k]!, Math.round((i + 1) * bh) - Math.round(i * bh), grain === 'knotty', pxPerM, r);
+      joints.push([cuts[k]!, i]);
     }
-    // V-groove: shadow on top, highlight below.
-    const y = i * bh;
-    g.fillStyle = 'rgba(55,35,18,0.7)';
+  }
+  g.putImageData(img, 0, 0);
+  hg.putImageData(himg, 0, 0);
+  for (let i = 0; i < boards; i++) {
+    const y = Math.round(i * bh);
+    // Groove between boards: a soft shadow line, a little lighter lip below.
+    g.fillStyle = 'rgba(40,40,40,0.55)';
     g.fillRect(0, y, W, 2);
-    g.fillStyle = 'rgba(255,245,225,0.22)';
+    g.fillStyle = 'rgba(0,0,0,0.12)';
     g.fillRect(0, y + 2, W, 2);
     const grd = hg.createLinearGradient(0, y - 3, 0, y + 4);
-    grd.addColorStop(0, '#c8c8c8');
-    grd.addColorStop(0.45, '#202020');
-    grd.addColorStop(1, '#c8c8c8');
+    grd.addColorStop(0, 'rgb(200,200,200)');
+    grd.addColorStop(0.45, 'rgb(40,40,40)');
+    grd.addColorStop(1, 'rgb(200,200,200)');
     hg.fillStyle = grd;
     hg.fillRect(0, y - 3, W, 7);
   }
+  g.fillStyle = 'rgba(40,40,40,0.4)';
+  hg.fillStyle = 'rgb(90,90,90)';
+  for (const [x, i] of joints) if (x > 0) {
+    g.fillRect(x - 1, Math.round(i * bh), 1.5, bh);
+    hg.fillRect(x - 1, Math.round(i * bh), 2, bh);
+  }
   const map = toTexture(c, key, TEXTURE_SIZE.boards, true);
-  const normal = toTexture(normalFrom(hc, 3), `${key}:n`, TEXTURE_SIZE.boards, false);
+  const normal = toTexture(normalFrom(hc, 2.2), `${key}:n`, TEXTURE_SIZE.boards, false);
   return { map, normal };
 }
 
-/** One clear-grain bench slat, grain along u. */
+/** One clear-grain bench slat (aspen), grain along u. */
 export function slatTexture(): THREE.Texture {
   const hit = cache.get('slat');
   if (hit) return hit;
-  const [c, g] = canvas(1024, 128);
-  drawGrain(g, null, 0, 0, 1024, 128, { knotty: false, seed: 3 }, rng(5));
+  const W = 1024, H = 128;
+  const [c, g] = canvas(W, H);
+  const img = g.createImageData(W, H);
+  paintBoard(img, null, 0, 0, W, H, false, W / TEXTURE_SIZE.slat[0], rng(5));
+  g.putImageData(img, 0, 0);
   return toTexture(c, 'slat', TEXTURE_SIZE.slat, true);
 }
 
@@ -269,20 +297,25 @@ export function pebbleTexture(): THREE.Texture {
   return toTexture(c, 'pebbles', TEXTURE_SIZE.pebbles, true);
 }
 
-/** Lattice grille of an infrared emitter: dark red bars over glowing ceramic. */
+/** Front of an infrared emitter: close vertical red-brown ceramic bars with a darker gap between, as in the photos. */
 export function grilleTexture(): THREE.Texture {
   const hit = cache.get('grille');
   if (hit) return hit;
   const S = 256;
   const [c, g] = canvas(S, S);
-  g.fillStyle = '#d9c3a6';
+  g.fillStyle = '#2a0f0b';
   g.fillRect(0, 0, S, S);
-  g.fillStyle = '#5b1f17';
-  for (let i = 0; i < 4; i++) {
-    g.fillRect(i * 64, 0, 14, S);
-    g.fillRect(0, i * 64, S, 12);
-    g.fillRect(i * 64 + 32, i % 2 ? 0 : 32, 10, 32);
+  for (let i = 0; i < 8; i++) {
+    const x = i * 32 + 5;
+    const grd = g.createLinearGradient(x, 0, x + 22, 0);
+    grd.addColorStop(0, '#5e1e14');
+    grd.addColorStop(0.5, '#9b3a24');
+    grd.addColorStop(1, '#5e1e14');
+    g.fillStyle = grd;
+    g.fillRect(x, 0, 22, S);
   }
+  g.fillStyle = 'rgba(20,6,4,0.55)';
+  for (let y = 0; y < S; y += 64) g.fillRect(0, y, S, 3);
   return toTexture(c, 'grille', TEXTURE_SIZE.grille, true);
 }
 

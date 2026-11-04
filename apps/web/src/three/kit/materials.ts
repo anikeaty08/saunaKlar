@@ -31,7 +31,7 @@ export interface KitMaterials {
   white: THREE.MeshStandardMaterial;
 }
 
-const LED = '#ffc27a';
+const LED = '#ffd29a';
 
 export function tint(finish: WoodFinish | string, factor = 1): THREE.Color {
   const hex = typeof finish === 'string' ? finish : finish.color;
@@ -40,7 +40,7 @@ export function tint(finish: WoodFinish | string, factor = 1): THREE.Color {
 
 function wood(finish: WoodFinish, roughness = 0.78, factor = 1): THREE.MeshStandardMaterial {
   const t = boardTextures(finish.grain);
-  return new THREE.MeshStandardMaterial({ map: t.map, normalMap: t.normal, normalScale: new THREE.Vector2(0.6, 0.6), color: tint(finish, factor), roughness });
+  return new THREE.MeshStandardMaterial({ map: t.map, normalMap: t.normal, normalScale: new THREE.Vector2(0.5, 0.5), color: tint(finish, factor), roughness, envMapIntensity: 0.6 });
 }
 
 function glass(door: KitSpec['door'], isDoor: boolean): THREE.MeshStandardMaterial {
@@ -57,7 +57,7 @@ export function materialKey(spec: KitSpec): string {
 export function makeMaterials(spec: KitSpec): KitMaterials {
   const outdoor = spec.form === 'barrel' || spec.form === 'hex' || spec.form === 'cabin';
   const slat = slatTexture();
-  const bench = new THREE.MeshStandardMaterial({ map: slat, color: tint(spec.benchWood), roughness: 0.7 });
+  const bench = new THREE.MeshStandardMaterial({ map: slat, color: tint(spec.benchWood), roughness: 0.72, envMapIntensity: 0.6 });
   const exterior = (() => {
     if (spec.exterior === 'slate') {
       const s = slateTextures();
@@ -75,13 +75,14 @@ export function makeMaterials(spec: KitSpec): KitMaterials {
         const s = slateTextures();
         return new THREE.MeshStandardMaterial({ map: s.map, normalMap: s.normal, color: '#8c8f93', roughness: 0.9 });
       })()
-    : new THREE.MeshStandardMaterial({ color: '#2d2f31', roughness: 0.85 });
+    : // Indoor cabins are closed by a wooden top, as in the owner's photos.
+      exterior.clone();
   return {
     wallIn: wood(spec.wallWood),
     wallOut: exterior,
     ceiling: wood(spec.wallWood, 0.8, 1.03),
     bench,
-    benchPanel: new THREE.MeshStandardMaterial({ map: slat, color: tint(spec.benchWood, 0.97), roughness: 0.72 }),
+    benchPanel: new THREE.MeshStandardMaterial({ map: slat, color: tint(spec.benchWood, 0.97), roughness: 0.74, envMapIntensity: 0.6 }),
     floor,
     plinth: new THREE.MeshStandardMaterial({ color: '#2b2928', roughness: 0.9 }),
     roof,
@@ -95,7 +96,7 @@ export function makeMaterials(spec: KitSpec): KitMaterials {
     wash: new THREE.MeshBasicMaterial({ color: LED, map: washTexture(), transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false }),
     glow: new THREE.MeshBasicMaterial({ color: LED, map: glowTexture(), transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false }),
     fire: new THREE.MeshBasicMaterial({ color: '#ff8a3c', toneMapped: false }),
-    grille: new THREE.MeshStandardMaterial({ map: grilleTexture(), emissive: '#5a1408', emissiveIntensity: 0.6, roughness: 0.6 }),
+    grille: new THREE.MeshStandardMaterial({ map: grilleTexture(), emissive: '#3a0c06', emissiveIntensity: 0.4, roughness: 0.55 }),
     salt: new THREE.MeshStandardMaterial({ color: '#f2a477', emissive: '#c4581f', emissiveIntensity: 0.35, roughness: 0.7 }),
     white: new THREE.MeshStandardMaterial({ color: '#efefec', roughness: 0.5 }),
   };

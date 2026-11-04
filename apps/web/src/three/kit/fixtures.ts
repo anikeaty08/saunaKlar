@@ -216,7 +216,7 @@ export function buildFixtures(P: Parts, M: KitMaterials, L: KitLayout, spec: Kit
   }
   if (spec.control) controlPanel(P, M, L);
   // Soft fill so the interior reads through the glass even without LED options.
-  P.lights.push({ position: [cx, L.floorY + L.wallHeight * 0.75, cz], color: '#ffe0b8', intensity: 0.35, distance: 3.2 });
+  P.lights.push({ position: [cx, L.floorY + L.wallHeight * 0.8, cz], color: '#fff1de', intensity: 0.9, distance: 4.5 });
 }
 
 /** Digital control on the outside, beside the door. */
