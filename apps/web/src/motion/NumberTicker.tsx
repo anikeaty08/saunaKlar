@@ -33,7 +33,7 @@ export function NumberTicker({ value, format = n => Math.round(n).toLocaleString
   );
   return (
     <span className={['mono', className].filter(Boolean).join(' ')}>
-      <span className="sr-only">{format(value)}</span>
+      <span className="sr-only no-copy">{format(value)}</span>
       <span ref={ref} aria-hidden="true">{format(value)}</span>
     </span>
   );

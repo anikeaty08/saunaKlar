@@ -12,8 +12,9 @@ export interface ViewerSpecs {
   /**
    * `kit` (default): built by the construction kit from form, size and options.
    * `asset`: show the model's uploaded GLB instead (a fixed model that ignores options).
+   * `reference`: rebuild the measured six-sided construction for selected sizes.
    */
-  source?: 'kit' | 'asset';
+  source?: 'kit' | 'asset' | 'reference';
 }
 
 /** Room placement as stored with a configuration (millimetres, degrees). */

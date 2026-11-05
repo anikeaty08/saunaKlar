@@ -3,6 +3,7 @@ import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
 import { ContactShadows, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { KitSauna } from './kit/KitSauna.tsx';
+import { ReferenceSauna } from './reference/ReferenceSauna.tsx';
 import { floorTexture, type FloorKind } from './textures.ts';
 import type { PlacementValue, ViewerOptions, ViewerSpecs } from './types.ts';
 
@@ -135,7 +136,7 @@ function Draggable({ preset, specs, options, value, onChange, readOnly }: Omit<R
         onPointerOver={() => !readOnly && (document.body.style.cursor = 'grab')}
         onPointerOut={() => !dragging && (document.body.style.cursor = '')}
       >
-        <KitSauna specs={specs} options={options} />
+        {specs.source === 'reference' ? <ReferenceSauna specs={specs} options={options} /> : <KitSauna specs={specs} options={options} />}
         {dragging && (
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, 0]}>
             <planeGeometry args={[specs.widthMm / 1000 + 0.1, specs.depthMm / 1000 + 0.1]} />
@@ -148,8 +149,9 @@ function Draggable({ preset, specs, options, value, onChange, readOnly }: Omit<R
 }
 
 /**
- * Room planner: a parametric room (floor material, wall colour, size) with
- * the sauna placed on the floor. Drag the sauna to move it; arrow keys move
+ * Room planner: a room drawn from its preset (floor material, wall colour,
+ * size) with the kit-built sauna, following the selected options, placed on
+ * the floor. Drag the sauna to move it; arrow keys move
  * it by 5 cm (Shift: 25 cm); Q/E rotate by 15°. Emits millimetres and degrees.
  */
 export default function RoomScene({ preset, specs, options, value, onChange, readOnly, label }: RoomSceneProps) {

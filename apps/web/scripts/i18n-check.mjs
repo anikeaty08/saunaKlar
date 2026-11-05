@@ -5,11 +5,11 @@
  * Exit code 1 when anything is missing, extra or mismatched.
  *
  *   npm run i18n:check -w @saunaklar/web            all locales
- *   npm run i18n:check -w @saunaklar/web -- fr rm   only these
+ *   npm run i18n:check -w @saunaklar/web -- fr it   only these
  *
  * Needs Node ≥ 22.18 (imports the .ts locale files with built-in type stripping).
  */
-const LOCALES = ['de', 'fr', 'it', 'rm'];
+const LOCALES = ['de', 'fr', 'it'];
 const dir = new URL('../src/i18n/locales/', import.meta.url);
 
 /** Leaf paths → string. Arrays are indexed (`home.steps.0.title`); plural objects are leaves' parents. */

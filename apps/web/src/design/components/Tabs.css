@@ -28,7 +28,7 @@
   left: 0;
   width: calc(100% / var(--tab-count));
   height: 2px;
-  background: var(--ink);
+  background: var(--primary);
   transform: translateX(calc(100% * var(--tab-index)));
   transition: transform var(--dur-3) var(--ease-out);
 }

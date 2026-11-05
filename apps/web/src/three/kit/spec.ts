@@ -6,7 +6,7 @@
  * (`backrest-led`, `bronze`, …) and a manufacturer's own codes that follow the
  * same words all reach the 3D view. Unknown codes are ignored.
  */
-export type SaunaForm = 'box' | 'panorama' | 'corner' | 'barrel' | 'hex' | 'cabin';
+export type SaunaForm = 'box' | 'panorama' | 'corner' | 'glass-corner' | 'barrel' | 'hex' | 'cabin';
 export type BenchLayout = 'auto' | 'straight' | 'l' | 'u';
 export type BenchFront = 'boards' | 'framed' | 'open';
 export type BenchEnd = 'waterfall' | 'framed' | 'plain';

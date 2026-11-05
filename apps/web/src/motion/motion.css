@@ -20,15 +20,17 @@
 }
 
 .flip-roll {
-  display: flex;
-  flex-direction: column;
+  display: inline-block;
+  vertical-align: top;
+  line-height: 1.2;
+  white-space: pre;
   will-change: transform;
 }
 
-.flip-roll > span {
+.flip-roll::after {
+  content: attr(data-c);
   display: block;
   height: 1.2em;
-  white-space: pre;
 }
 
 /* ---- marquee ----------------------------------------------------------------- */
@@ -78,7 +80,7 @@
   inset: 0 0 auto;
   height: 2px;
   z-index: 950;
-  background: var(--ink);
+  background: var(--primary);
   transform: scaleX(0);
   transform-origin: 0 50%;
   pointer-events: none;

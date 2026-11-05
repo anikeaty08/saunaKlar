@@ -1,5 +1,5 @@
-import { Link, Route, Routes } from 'react-router';
-import { BarChart3, Boxes, Inbox, Palette, Settings2, SlidersHorizontal, Users, ExternalLink as ExternalIcon } from 'lucide-react';
+import { Link, Navigate, Route, Routes } from 'react-router';
+import { Boxes, Inbox, LayoutDashboard, Store, Users, ExternalLink as ExternalIcon } from 'lucide-react';
 import { useTenantData } from '../../api/queries.ts';
 import { useT } from '../../i18n/i18n.ts';
 import { Icon } from '../../design/components/Icon.tsx';
@@ -13,8 +13,8 @@ import { RequestDetail, RequestsList } from './Requests.tsx';
 import { CustomerDetail, CustomersList } from './Customers.tsx';
 import { ConfigurationDetail, ConfigurationsList, NewConfiguration } from './Configurations.tsx';
 import { SaunasAdmin } from './Saunas.tsx';
+import { SaunaOptionsAdmin } from './SaunaOptions.tsx';
 import { BrandingAdmin } from './Branding.tsx';
-import { SettingsAdmin } from './Settings.tsx';
 import './admin.css';
 
 function Brand() {
@@ -44,13 +44,11 @@ export default function AdminApp() {
           area={t('admin.title')}
           session={session}
           nav={[
-            { to: '/admin', label: t('admin.nav.dashboard'), icon: BarChart3, end: true },
+            { to: '/admin', label: t('admin.nav.dashboard'), icon: LayoutDashboard, end: true },
             { to: '/admin/requests', label: t('admin.nav.requests'), icon: Inbox },
             { to: '/admin/customers', label: t('admin.nav.customers'), icon: Users },
-            { to: '/admin/configurations', label: t('admin.nav.configurations'), icon: SlidersHorizontal },
             { to: '/admin/saunas', label: t('admin.nav.saunas'), icon: Boxes },
-            { to: '/admin/branding', label: t('admin.nav.branding'), icon: Palette },
-            { to: '/admin/settings', label: t('admin.nav.settings'), icon: Settings2 },
+            { to: '/admin/branding', label: t('admin.nav.branding'), icon: Store },
           ]}
           extra={
             <a href="/" className="staff-shell__extra staff-shell__link" target="_blank" rel="noreferrer">
@@ -69,8 +67,10 @@ export default function AdminApp() {
             <Route path="configurations/new" element={<NewConfiguration />} />
             <Route path="configurations/:id" element={<ConfigurationDetail />} />
             <Route path="saunas" element={<SaunasAdmin />} />
+            <Route path="saunas/:id/options" element={<SaunaOptionsAdmin />} />
             <Route path="branding" element={<BrandingAdmin />} />
-            <Route path="settings" element={<SettingsAdmin />} />
+            {/* Settings now live on the Shop (branding) page. */}
+            <Route path="settings" element={<Navigate to="/admin/branding" replace />} />
             <Route path="*" element={<AdminNotFound />} />
           </Routes>
         </AdminShell>

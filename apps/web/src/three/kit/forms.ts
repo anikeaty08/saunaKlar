@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { CABIN_BODY, type KitLayout, type Vec2 } from './layout.ts';
 import type { KitMaterials } from './materials.ts';
-import { Parts, QuadBuilder, planCap, planSides, roundedSlat } from './parts.ts';
+import { Parts, QuadBuilder, facingMatrix, planCap, planSides, rng, roundedSlat } from './parts.ts';
 import type { KitSpec } from './spec.ts';
-import { heater } from './fixtures.ts';
+import { aromaUnit, bucket, controlUnit, heater, saltPanels, thermometer } from './fixtures.ts';
 
 type V3 = THREE.Vector3Tuple;
 
@@ -55,6 +55,25 @@ export function hexRoof(P: Parts, M: KitMaterials, L: KitLayout, spec: KitSpec) 
   P.add(M.roof, cap.geometry());
   P.add(M.roof, planCap(capEave, yr + lanternH - 0.001, 'down'));
   P.add(M.ceiling, planCap(ring, yr + 0.001, 'down'));
+}
+
+/**
+ * Timber frame of the glass-corner box: posts at the front-left and back corners
+ * and at the end of the right wall's glass panel (the front-right corner itself
+ * stays frameless glass), plus a lintel over the glass front and a flat-roof edge.
+ */
+export function glassCornerFrame(P: Parts, M: KitMaterials, L: KitLayout, spec: KitSpec) {
+  const W = spec.width, D = spec.depth;
+  const y0 = L.floorY, y1 = L.floorY + L.wallHeight;
+  const post = 0.09;
+  const r = L.segments.find(s => s.id === 'right');
+  const win = r?.windows[0];
+  const zWin = -D / 2 + (win?.u0 ?? D * 0.55);
+  P.box(M.wallOut, -W / 2, -W / 2 + post, y0, y1, D / 2 - post, D / 2, undefined, 'y');
+  P.box(M.wallOut, W / 2 - post, W / 2, y0, y1, zWin - post / 2, zWin + post / 2, undefined, 'y');
+  P.box(M.wallOut, -W / 2, W / 2, y1 - 0.14, y1, D / 2 - 0.07, D / 2 + 0.006);
+  // Flat roof edge: a slim overhanging trim above the frame.
+  P.box(M.wallOut, -W / 2 - 0.025, W / 2 + 0.025, y1, y1 + 0.03, -D / 2 - 0.025, D / 2 + 0.025);
 }
 
 /** Pitched roof (ridge front to back), gables and the covered porch of a garden house. */
@@ -230,5 +249,49 @@ export function barrel(P: Parts, M: KitMaterials, spec: KitSpec) {
   }
   // Heater against the back wall, between the benches.
   heater(P, M, { heater: { position: [0, zIn0 + 0.32], facing: [0, 1] }, floorY, wallHeight: yc + R - floorY - 0.1 } as unknown as KitLayout, spec);
+  barrelFixtures(P, M, spec, { R: R - t, yc, floorY, zIn0, zIn1, top, xBench: xOuter - 0.2, benchEnd: zB });
   P.lights.push({ position: [0, yc + R * 0.4, 0], color: '#ffe0b8', intensity: 0.35, distance: 3 });
+}
+
+/**
+ * Lights and extras inside a barrel: on the curved ceiling (stars, LED panel,
+ * speakers), the back wall (salt bricks above the heater guard, thermometer
+ * and aroma dispenser either side), a bucket on the bench and the control outside
+ * beside the door. `R` is the inner radius.
+ */
+function barrelFixtures(P: Parts, M: KitMaterials, spec: KitSpec, b: { R: number; yc: number; floorY: number; zIn0: number; zIn1: number; top: number; xBench: number; benchEnd: number }) {
+  const { R, yc, floorY, zIn0, zIn1 } = b;
+  const ceilY = yc + R - 0.006;
+  const back = (x: number) => facingMatrix([x, zIn0], [0, 1], floorY);
+  if (spec.lights.stars) {
+    const r = rng(19);
+    for (let i = 0; i < 70; i++) {
+      const a = Math.PI / 2 + (r() - 0.5) * 1.8;
+      const z = zIn0 + 0.15 + r() * (zIn1 - zIn0 - 0.3);
+      const g = new THREE.SphereGeometry(0.004 + r() * 0.004, 6, 4);
+      g.translate(Math.cos(a) * (R - 0.004), yc + Math.sin(a) * (R - 0.004), z);
+      P.add(M.led, g);
+    }
+  }
+  const cz = (zIn0 + zIn1) / 2;
+  if (spec.lights.ceilingPanel) {
+    // Runs along the ridge, narrow across it so it sits flush on the curve.
+    P.box(M.led, -0.07, 0.07, ceilY - 0.006, ceilY, cz - 0.32, cz + 0.32);
+    P.box(M.steel, -0.085, 0.085, ceilY - 0.004, ceilY + 0.004, cz - 0.335, cz + 0.335);
+    P.lights.push({ position: [0, ceilY - 0.3, cz], color: '#ffe2bd', intensity: 0.8, distance: 3 });
+  }
+  if (spec.extras.audio) {
+    for (const dz of [-0.45, 0.45]) {
+      const g = new THREE.CylinderGeometry(0.075, 0.075, 0.008, 24);
+      g.translate(0, ceilY - 0.004, cz + dz);
+      P.add(M.black, g);
+    }
+  }
+  // Outside the salt bricks, low enough to stay clear of the curve.
+  if (spec.extras.thermometer) thermometer(P, M, back(-0.62), floorY + 0.95);
+  if (spec.extras.aroma) aromaUnit(P, M, back(0.6), floorY + 0.95);
+  // Above the heater guard (0.82 m), as far up as the curve allows.
+  if (spec.extras.saltWall) saltPanels(P, M, back(0), floorY + 0.95, 4);
+  if (spec.extras.bucket) bucket(P, M, [b.xBench, b.benchEnd - 0.3], b.top);
+  if (spec.control) controlUnit(P, M, facingMatrix([-0.5, zIn1 + 0.042], [0, -1], floorY), 1.15);
 }

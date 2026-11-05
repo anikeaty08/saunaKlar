@@ -152,6 +152,11 @@ export function footprint(spec: Pick<KitSpec, 'form' | 'width' | 'depth'>): { se
     const ids: SegmentId[] = ['back', 'right', 'diagonal', 'front', 'left'];
     return { segments: buildSegments(pts, ids, ['solid', 'glass', 'glass', 'glass', 'solid']), outline: pts };
   }
+  if (spec.form === 'glass-corner') {
+    // Rectangular room: glass front, solid timber back/left/right (the right wall has a glass panel at the front corner).
+    const pts: Vec2[] = [[-x, -z], [x, -z], [x, z], [-x, z]];
+    return { segments: buildSegments(pts, ['back', 'right', 'front', 'left'], ['solid', 'solid', 'glass', 'solid']), outline: pts };
+  }
   // A garden house is a sauna room behind a covered porch.
   const zf = spec.form === 'cabin' ? -z + D * CABIN_BODY : z;
   const pts: Vec2[] = [[-x, -z], [x, -z], [x, zf], [-x, zf]];
@@ -205,7 +210,13 @@ export function computeLayout(spec: KitSpec): KitLayout {
   const doorH = Math.min(1.9, wallHeight - 0.12);
   // Compact cabins get a narrower door so the heater still fits beside it.
   const doorW = Math.min(DOOR_WIDTH, doorSeg.length - 0.2, Math.max(0.6, doorSeg.length * 0.45));
-  if (spec.form === 'corner' || spec.form === 'hex') {
+  if (spec.form === 'glass-corner') {
+    // Front runs right → left: the door sits left of centre, hinged on its left, clear of the bench end at the left wall.
+    const u1 = doorSeg.length - 0.75;
+    doorSeg.door = { u0: u1 - doorW, u1, y0: 0, y1: doorH, hingeAtStart: false };
+    const r = byId.get('right')!;
+    r.windows.push({ u0: r.length * 0.55, u1: r.length - 0.06, y0: 0.02, y1: wallHeight - 0.12 });
+  } else if (spec.form === 'corner' || spec.form === 'hex') {
     const u0 = (doorSeg.length - doorW) / 2;
     doorSeg.door = { u0, u1: u0 + doorW, y0: 0, y1: doorH, hingeAtStart: false };
   } else {

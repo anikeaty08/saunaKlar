@@ -2,7 +2,9 @@
   position: relative;
   display: block;
   overflow: hidden;
-  background: linear-gradient(90deg, var(--paper-3) 0%, var(--paper-2) 40%, var(--paper-3) 80%);
+  /* --frame: one neutral backdrop behind every photo, so beige-floor exteriors
+     and bright interiors sit on the same ground while loading and letterboxed. */
+  background: linear-gradient(90deg, var(--frame, var(--paper-3)) 0%, var(--paper-2) 40%, var(--frame, var(--paper-3)) 80%);
   background-size: 300% 100%;
   animation: skel 1.6s ease-in-out infinite;
 }
@@ -10,7 +12,7 @@
 .lazy-img.is-loaded,
 .lazy-img.is-failed {
   animation: none;
-  background: var(--paper-2);
+  background: var(--frame, var(--paper-2));
 }
 
 .lazy-img__img,
@@ -23,6 +25,8 @@
 
 .lazy-img__img {
   object-fit: cover;
+  /* The renders put the sauna slightly below centre; keep it, trim sky first. */
+  object-position: var(--photo-pos, 50% 62%);
   opacity: 0;
   filter: blur(12px);
   transform: scale(1.03);
@@ -37,4 +41,28 @@
 
 .is-failed .lazy-img__img {
   visibility: hidden;
+}
+
+.lazy-img__fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  color: var(--ink-3);
+  text-align: center;
+}
+
+.lazy-img__alt {
+  max-width: 24ch;
+  font-size: var(--step--1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lazy-img__img {
+    filter: none;
+    transform: none;
+  }
 }

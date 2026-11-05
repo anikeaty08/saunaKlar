@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { parseHost } from './host.ts';
+import { parseHost, resolveHostConfig } from './host.ts';
+
+describe('resolveHostConfig', () => {
+  it('prefers runtime config over build env, then falls back to localhost', () => {
+    expect(resolveHostConfig({ platformDomain: 'a.com', adminHost: 'm.a.com' }, { VITE_PLATFORM_DOMAIN: 'b.com' }))
+      .toEqual({ platformDomain: 'a.com', adminHost: 'm.a.com' });
+    expect(resolveHostConfig({}, { VITE_PLATFORM_DOMAIN: 'b.com', VITE_ADMIN_HOST: 'x.b.com' }))
+      .toEqual({ platformDomain: 'b.com', adminHost: 'x.b.com' });
+    expect(resolveHostConfig(undefined, {})).toEqual({ platformDomain: 'localhost', adminHost: 'admin.localhost' });
+  });
+});
 
 const local = { platformDomain: 'localhost', adminHost: 'admin.localhost' };
 const prod = { platformDomain: 'saunaklar.com', adminHost: 'manufacturer.example.org' };
@@ -45,5 +55,18 @@ describe('parseHost (production)', () => {
 
   it('treats `admin` as reserved when the admin panel lives on another domain', () => {
     expect(parseHost('admin.saunaklar.com', prod)).toMatchObject({ kind: 'platform', reason: 'reserved-slug' });
+  });
+});
+
+describe('exampleShops', () => {
+  it('lists the seeded shops in dev, honours runtime config, and lists nothing without config in production', async () => {
+    const { exampleShops } = await import('./host.ts');
+    expect(exampleShops()).toEqual(['alpha', 'beta', 'gamma']); // vitest runs with DEV=true
+    (globalThis as { window?: unknown }).window = { __SK_CONFIG__: { exampleShops: [' Shop-One ', '', 'shop-two'] } };
+    try {
+      expect(exampleShops()).toEqual(['shop-one', 'shop-two']);
+    } finally {
+      delete (globalThis as { window?: unknown }).window;
+    }
   });
 });

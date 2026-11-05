@@ -32,6 +32,44 @@ describe('deriveTheme', () => {
     }
   });
 
+  it('derives AA primary-action tokens from the brand colour, light and dark brands alike', () => {
+    const extremes = [...brands, '#fef9c3', '#e0f2fe', '#f97316', '#0b1f3a', '#3b0764', '#a3e635'];
+    for (const b of extremes)
+    for (const flavour of ['default', 'warm'] as const) {
+      const theme = deriveTheme(b, flavour);
+      for (const mode of ['light', 'dark'] as const) {
+        const t = theme[mode];
+        const where = `${b} ${flavour} ${mode}`;
+        // Label on the button: body-text AA.
+        expect(contrast(t['--primary']!, t['--on-primary']!), where).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(t['--primary-hover']!, t['--on-primary']!), where).toBeGreaterThanOrEqual(4.5);
+        // The fill against the page and cards: UI-component AA (3:1).
+        expect(contrast(t['--primary']!, t['--paper']!), where).toBeGreaterThanOrEqual(3);
+        expect(contrast(t['--primary']!, t['--card']!), where).toBeGreaterThanOrEqual(3);
+        // Primary as text/outline (ghost buttons, links) on the page.
+        expect(contrast(t['--primary']!, t['--paper']!), where).toBeGreaterThanOrEqual(4.5);
+        // Focus ring and selected-state outlines.
+        expect(contrast(t['--focus']!, t['--paper']!), where).toBeGreaterThanOrEqual(3);
+        // Ink stays readable on the highlight wash.
+        expect(contrast(t['--ink']!, t['--highlight']!), where).toBeGreaterThanOrEqual(7);
+        expect(contrast(t['--ink-3']!, t['--highlight']!), where).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
+  it('keeps the brand colour as the primary action when it already reads well', () => {
+    expect(deriveTheme('#1d4ed8').light['--primary']).toBe('#1d4ed8');
+    expect(deriveTheme('#be123c').light['--primary']).toBe('#be123c');
+  });
+
+  it('keeps light text readable on the night band (hero scrims, footer)', () => {
+    for (const b of brands) {
+      const t = deriveTheme(b).light;
+      expect(contrast(t['--on-night']!, t['--night']!), b).toBeGreaterThan(7);
+      expect(contrast(t['--night-muted']!, t['--night']!), b).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it('uses only the brand hue', () => {
     const t = deriveTheme('#1d4ed8');
     const brandHue = rgbToOklch(parseHex('#1d4ed8')!).h;

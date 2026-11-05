@@ -11,6 +11,7 @@ export type CameraView = 'exterior' | 'interior';
 interface Props {
   spec: Pick<KitSpec, 'form' | 'width' | 'depth' | 'height'> & Partial<KitSpec>;
   view: CameraView;
+  reference?: boolean;
   /** Increment to put the camera back to its starting place. */
   resetKey?: number;
 }
@@ -21,7 +22,7 @@ interface Props {
  * in place around a pivot a few millimetres ahead, so looking around never
  * moves the viewer through a wall; the wheel or a pinch zooms the lens instead.
  */
-export function KitCamera({ spec, view, resetKey = 0 }: Props) {
+export function KitCamera({ spec, view, reference = false, resetKey = 0 }: Props) {
   const controls = useRef<OrbitControlsImpl>(null);
   const camera = useThree(s => s.camera) as THREE.PerspectiveCamera;
   const gl = useThree(s => s.gl);
@@ -29,7 +30,9 @@ export function KitCamera({ spec, view, resetKey = 0 }: Props) {
   const aspect = useThree(s => s.size.width / Math.max(1, s.size.height));
   const { form, width: W, depth: D, height: H } = spec;
   const radius = Math.max(W, D, H);
-  const inside = useMemo(() => interiorView(spec as KitSpec), [form, W, D, H, spec.bench?.layout, spec.bench?.levels]); // eslint-disable-line react-hooks/exhaustive-deps
+  const inside = useMemo(() => reference
+    ? { eye: [Math.min(0.55, W * 0.25), 1.55, D * 0.3] as [number, number, number], look: [0, 1.0, -D * 0.28] as [number, number, number] }
+    : interiorView(spec as KitSpec), [reference, form, W, D, H, spec.bench?.layout, spec.bench?.levels]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const ctl = controls.current;
@@ -49,7 +52,7 @@ export function KitCamera({ spec, view, resetKey = 0 }: Props) {
       ctl.rotateSpeed = -0.45; // drag the view, not the room
     } else {
       const k = Math.pow(narrow, 0.8);
-      camera.position.set(radius * 1.45 * k, H * 0.95 + radius * 0.35, radius * 2.0 * k);
+      camera.position.set((reference ? -1.35 : 1.45) * radius * k, H * 0.95 + radius * 0.35, (reference ? 1.65 : 2.0) * radius * k);
       ctl.target.set(0, H * 0.45, 0);
       camera.fov = 32;
       ctl.minDistance = radius * 1.1;

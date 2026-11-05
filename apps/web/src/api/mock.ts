@@ -58,6 +58,8 @@ interface State {
   shareDays?: number;
   logos?: Record<string, string>;
   pendingStaff?: Staff;
+  /** Reseller option settings per sauna slug and option id (0015); the mock storefront ignores them. */
+  optionSettings?: Record<string, Record<string, { enabled: boolean; priceOverrideMinor: number | null; descriptionOverride: string | null }>>;
 }
 
 const KEY = 'saunaklar:mock-api';
@@ -85,6 +87,28 @@ const now = () => new Date().toISOString();
 const plusDays = (iso: string, d: number) => new Date(new Date(iso).getTime() + d * 86_400_000).toISOString();
 
 // ---- tenant and catalogue ----------------------------------------------------------
+
+function adminSaunaOptions(saunaId: string) {
+  const slug = slugOf(saunaId);
+  const s = saunaDetails().find(x => x.slug === slug)!;
+  const own = state.optionSettings?.[slug] ?? {};
+  return {
+    saunaModelId: saunaId,
+    currency: tenantDto(tenant(), catalogVersion).currency,
+    groups: s.groups.map(g => ({
+      id: g.id, code: g.code, name: g.name, selectionType: g.selectionType, required: g.required,
+      options: g.options.map(o => {
+        const x = own[o.id];
+        return {
+          id: o.id, code: o.code, name: o.name, description: o.description, isDefault: o.isDefault,
+          enabled: x?.enabled ?? true, basePriceMinor: o.priceDeltaMinor, priceOverrideMinor: x?.priceOverrideMinor ?? null,
+          effectivePriceMinor: x?.priceOverrideMinor ?? o.priceDeltaMinor, descriptionOverride: x?.descriptionOverride ?? null,
+        };
+      }),
+    })),
+    requires: s.rules.requires,
+  };
+}
 
 function tenant() {
   const host = currentHost();
@@ -621,6 +645,17 @@ Object.assign(handlers, {
     tenant().perSauna[slug] = { type: body.type as 'PERCENT' | 'FIXED', value: Number(body.value) };
     catalogVersion++;
     return adminSauna(slug);
+  },
+  adminSaunaOptions: ({ params }: Ctx) => (requireStaff(), adminSaunaOptions(params.id!)),
+  adminPutSaunaOptions: ({ params, body }: Ctx) => {
+    requireStaff();
+    const slug = slugOf(params.id!);
+    const own = ((state.optionSettings ??= {})[slug] ??= {});
+    for (const o of body.options as { optionId: string; enabled: boolean; priceOverrideMinor?: number | null; descriptionOverride?: string | null }[]) {
+      own[o.optionId] = { enabled: o.enabled, priceOverrideMinor: o.priceOverrideMinor ?? null, descriptionOverride: o.descriptionOverride || null };
+    }
+    catalogVersion++;
+    return adminSaunaOptions(params.id!);
   },
   adminDeleteSaunaDiscount: ({ params }: Ctx) => {
     requireStaff();

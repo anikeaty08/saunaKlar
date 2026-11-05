@@ -49,8 +49,8 @@ export function useStoreReseller() {
 }
 
 function pickSummary(r: ResellerDetail): ResellerSummary {
-  const { id, slug, name, currency, status, storefrontUrl, saunasAssigned, customers, openRequests, createdAt } = r;
-  return { id, slug, name, currency, status, storefrontUrl, saunasAssigned, customers, openRequests, createdAt };
+  const { id, slug, name, currency, status, storefrontUrl, saunasAssigned, saunasVisible, customers, openRequests, createdAt } = r;
+  return { id, slug, name, currency, status, storefrontUrl, saunasAssigned, saunasVisible, customers, openRequests, createdAt };
 }
 
 /** Toggles a sauna assignment with an optimistic flip; the server answer replaces it. */

@@ -5,7 +5,11 @@ import { contrast, oklchToHex, parseHex, rgbToOklch, type Oklch } from './color.
  * a near-black ink of the hue, and mid tones (umber, taupe, stone, sand) that
  * keep a little more of the hue. There is no second accent colour.
  *
- *   --ink        text, primary buttons, rules that need weight (near-black)
+ *   --ink        body text and rules that need weight (near-black); never a fill
+ *   --primary    primary actions and selection (brand hue, AA against its label
+ *                and the page); --primary-hover, --on-primary its label
+ *   --highlight  a quiet brand-tinted wash for selected/hovered rows (ink on it)
+ *   --surface    alias of --card for raised panels; --frame behind photographs
  *   --ink-2..6   lightness steps from ink towards paper (2 = strongest)
  *   --paper      page background; --paper-2/3 raised and pressed surfaces
  *   --card       the lightest surface (cards, dialogs)
@@ -149,6 +153,38 @@ export function deriveTheme(primaryHex: string, flavour: ThemeFlavour = 'default
   dark['--brand'] = brand;
   // The platform default uses the slate palette verbatim.
   if (flavour === 'default' && (!parseHex(primaryHex) || primaryHex.toLowerCase() === DEFAULT_PRIMARY)) Object.assign(light, SLATE_LIGHT);
+
+  // ---- semantic action tokens ----------------------------------------------
+  // The primary action is the brand colour itself where it can carry its label;
+  // otherwise it moves along lightness only (hue and chroma kept, gamut allowing)
+  // until the label clears 4.5:1. Its label is the page colour, so the fill also
+  // stands at least 4.5:1 off the page (3:1 is the UI minimum).
+  const pc = neutral ? 0.03 : base.c;
+  const pick = (startL: number, dir: 1 | -1, label: string) => {
+    let l = startL;
+    let hex = oklchToHex({ l, c: pc, h: hue });
+    while (contrast(hex, label) < 4.6 && l > 0.02 && l < 0.98) {
+      l += dir * 0.01;
+      hex = oklchToHex({ l, c: pc, h: hue });
+    }
+    return { l, hex };
+  };
+  const semantic = (t: ThemeTokens, mode: 'light' | 'dark') => {
+    const page = t['--paper']!;
+    const dir = mode === 'light' ? -1 : 1;
+    const p = pick(mode === 'light' ? Math.min(base.l, 0.9) : Math.max(base.l, 0.5), dir, page);
+    t['--primary'] = p.hex;
+    t['--primary-hover'] = oklchToHex({ l: Math.min(0.97, Math.max(0.03, p.l + dir * 0.06)), c: pc, h: hue });
+    t['--on-primary'] = page;
+    // Selected/hover wash behind ink text (rows, chips, chosen options).
+    t['--highlight'] = mode === 'light' ? surf(0.925, k(c0, 0.6, 0.04)) : surf(0.27, k(c0, 0.6, 0.035));
+    t['--surface'] = t['--card']!;
+    // Neutral backdrop behind photographs (beige-floor exteriors, bright wood interiors).
+    t['--frame'] = mode === 'light' ? oklchToHex({ l: 0.9, c: 0.008, h: hue }) : oklchToHex({ l: 0.24, c: 0.008, h: hue });
+    t['--focus'] = p.hex;
+  };
+  semantic(light, 'light');
+  semantic(dark, 'dark');
 
   if (flavour === 'dark') return { light: dark, dark, scheme: 'dark', metaLight: dark['--paper']!, metaDark: dark['--paper']! };
   return { light, dark, scheme: 'auto', metaLight: light['--paper']!, metaDark: dark['--paper']! };

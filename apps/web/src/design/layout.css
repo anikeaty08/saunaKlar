@@ -44,6 +44,11 @@
   padding-block: var(--space-9) 0;
 }
 
+/* The hero already ends with generous space; the first section does not add a second gap. */
+.page-hero + .section {
+  padding-top: var(--space-4);
+}
+
 .grid-12 {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));

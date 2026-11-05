@@ -1,5 +1,5 @@
 import { createAppRouter } from '../app/router.ts';
-import { type RouteObject } from 'react-router';
+import { Navigate, type RouteObject } from 'react-router';
 import { pages } from '../app/pages.ts';
 import { RouteErrorPage } from '../design/components/ErrorBoundary.tsx';
 import { StorefrontRoot, ShellSkeleton } from './StorefrontRoot.tsx';
@@ -25,7 +25,7 @@ const routes: RouteObject[] = [
           { path: 'saunas/:slug', lazy: lazy(pages.sauna) },
           { path: 'saunas/:slug/configure', lazy: lazy(pages.configure) },
           { path: 's/:token', lazy: lazy(pages.shared) },
-          { path: 'showroom', lazy: lazy(pages.showroom) },
+          { path: 'showroom', element: <Navigate to="/saunas" replace /> },
           { path: 'guide', lazy: lazy(pages.guide) },
           { path: 'how-it-works', lazy: lazy(pages.how) },
           { path: 'about', lazy: lazy(pages.about) },

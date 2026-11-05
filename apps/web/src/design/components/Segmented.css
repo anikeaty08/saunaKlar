@@ -27,7 +27,7 @@
   left: 3px;
   width: calc((100% - 6px) / var(--seg-count));
   border-radius: 999px;
-  background: var(--ink);
+  background: var(--primary);
   transform: translateX(calc(100% * var(--seg-index)));
   transition: transform var(--dur-3) var(--ease-out);
 }
@@ -53,5 +53,5 @@
 }
 
 .segmented__opt[aria-checked='true'] {
-  color: var(--on-ink);
+  color: var(--on-primary);
 }

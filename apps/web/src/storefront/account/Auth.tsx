@@ -15,6 +15,8 @@ import { Checkbox, Input } from '../../design/components/Field.tsx';
 import { TextLink } from '../../design/components/TextLink.tsx';
 import { toast } from '../../design/components/Toast.tsx';
 import { useDocumentTitle } from '../../app/useDocumentTitle.ts';
+import { PhotoPanel, type PanelShot } from '../../design/components/PhotoPanel.tsx';
+import type { CatalogItem } from '../../api/types.ts';
 import { SaunaGlyph } from '../components/SaunaGlyph.tsx';
 import './Auth.css';
 
@@ -84,9 +86,30 @@ function ModeSwitch({ mode, next }: { mode: 'login' | 'signup'; next: string }) 
 }
 
 /**
+ * The panel photos: the same sauna the home page leads with (the reseller's
+ * first visible model with a photo), outside and then inside, captioned with
+ * its name. Empty when the catalogue has no photo (the line drawing stays).
+ */
+function useAuthShots(items: CatalogItem[] | undefined): PanelShot[] {
+  const { t } = useT();
+  const hero = items?.find(i => i.assets.thumbnailUrl || i.assets.gallery.length > 0);
+  if (!hero) return [];
+  const outside = hero.assets.gallery[0] ?? hero.assets.thumbnailUrl;
+  const inside = hero.assets.gallery[1];
+  const shot = (src: string, view: string): PanelShot => ({
+    src,
+    alt: t('detail.photoAlt', { name: hero.name, view }),
+    caption: `${hero.name} · ${view}`,
+  });
+  return [outside && shot(outside, t('detail.photoOutside')), inside && shot(inside, t('detail.photoInside'))].filter((s): s is PanelShot => !!s);
+}
+
+/**
  * Split layout: the form on the left, a visual panel on the right that wipes in
- * (clip-path) once the form is on screen. The visual is the reseller's first
- * sauna photo, loaded lazily, over a line drawing of a cabin.
+ * (clip-path) once the form is on screen. The visual is the reseller's lead
+ * sauna, outside and inside crossfading (PhotoPanel), lazily loaded; a line
+ * drawing of a cabin only when there is no photo. Under 900px the panel turns
+ * into a short banner above the form.
  */
 function AuthFrame({ title, lede, children, foot, mode }: { title: string; lede?: ReactNode; children: ReactNode; foot?: ReactNode; mode?: 'login' | 'signup' }) {
   const tenant = useTenantData();
@@ -95,7 +118,7 @@ function AuthFrame({ title, lede, children, foot, mode }: { title: string; lede?
   const { pathname } = useLocation();
   const root = useRef<HTMLDivElement>(null);
   useDocumentTitle(title);
-  const photo = catalog.data?.items[0]?.assets.thumbnailUrl;
+  const shots = useAuthShots(catalog.data?.items);
 
   useGSAP(
     () => {
@@ -132,15 +155,18 @@ function AuthFrame({ title, lede, children, foot, mode }: { title: string; lede?
           </div>
         )}
       </section>
-      <aside className="auth__art" aria-hidden="true">
+      <aside className="auth__art">
         <div className="auth__art-in">
-          <SaunaGlyph form="cabin" widthMm={3000} depthMm={2400} heightMm={2600} className="auth__glyph" strokeWidth={0.8} />
-          {photo && <img className="auth__photo" src={photo} alt="" loading="lazy" decoding="async" onError={e => (e.currentTarget.hidden = true)} />}
+          {shots.length > 0 ? (
+            <PhotoPanel shots={shots} sizes="(min-width: 901px) min(150vh, 1200px), 100vw" />
+          ) : (
+            <SaunaGlyph form="cabin" widthMm={3000} depthMm={2400} heightMm={2600} className="auth__glyph" strokeWidth={0.8} />
+          )}
         </div>
-        <div className="auth__art-top">
+        <div className="auth__art-top" aria-hidden="true">
           {tenant.branding.logoUrl ? <img src={tenant.branding.logoUrl} alt="" className="auth__logo" /> : <LogoMark size={36} />}
         </div>
-        <div className="auth__art-foot">
+        <div className="auth__art-foot" aria-hidden="true">
           <p className="auth__brand">{tenant.branding.displayName}</p>
           {tenant.branding.tagline && <p className="auth__tag">{tenant.branding.tagline}</p>}
         </div>

@@ -24,7 +24,7 @@ export function ScrambleText<E extends ElementType = 'span'>({ as, text, trigger
   useScramble(ref, text, opts);
   return (
     <Tag {...rest}>
-      <span className="sr-only">{text}</span>
+      <span className="sr-only no-copy">{text}</span>
       <span ref={ref} aria-hidden="true" className="scramble">
         {text}
       </span>

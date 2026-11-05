@@ -6,28 +6,12 @@ import { gsap, useGSAP } from '../../../motion/gsap.ts';
 import { prefersReducedMotion } from '../../../motion/preferences.ts';
 import { Reveal } from '../../../motion/Reveal.tsx';
 import { Icon } from '../../../design/components/Icon.tsx';
-import { LazyImage } from '../../../design/components/LazyImage.tsx';
 import { Skeleton } from '../../../design/components/Skeleton.tsx';
 import { useFormat } from '../../../i18n/format.ts';
-import { SaunaGlyph } from '../../components/SaunaGlyph.tsx';
 import { specsOf } from '../../components/specs.ts';
-import { splashDelay, useHome } from '../shared/useHome.ts';
+import { Media } from '../shared/Media.tsx';
+import { ROOMY, splashDelay, useHome } from '../shared/useHome.ts';
 import './showroom.css';
-
-const ROOMY = '(min-width: 1024px) and (min-height: 640px) and (prefers-reduced-motion: no-preference)';
-
-function Media({ item, className }: { item: CatalogItem; className?: string }) {
-  const s = specsOf(item);
-  return (
-    <div className={className}>
-      {item.assets.thumbnailUrl ? (
-        <LazyImage src={item.assets.thumbnailUrl} alt="" width={1600} height={1200} />
-      ) : (
-        <SaunaGlyph form={s.form} widthMm={s.widthMm} depthMm={s.depthMm} heightMm={s.heightMm} className="sw-glyph" strokeWidth={0.6} />
-      )}
-    </div>
-  );
-}
 
 /** Horizontal rail of saunas: pinned and scrubbed sideways on roomy screens, a swipeable strip elsewhere. */
 function Rail({ items, currency }: { items: CatalogItem[]; currency: string }) {
@@ -77,7 +61,7 @@ function Rail({ items, currency }: { items: CatalogItem[]; currency: string }) {
               return (
                 <li key={it.id} className="sw-card">
                   <Link to={`/saunas/${it.slug}`} className="sw-card__link" aria-label={t('saunas.view', { name: it.name })}>
-                    <Media item={it} className="sw-card__media" />
+                    <Media item={it} className="sw-card__media" glyphClassName="sw-glyph" strokeWidth={0.6} alt="" sizes="(min-width: 1024px) 34vw, 78vw" />
                     <span className="sw-card__num mono">{String(i + 1).padStart(2, '0')}</span>
                     <span className="sw-card__body">
                       <span className="sw-card__name">{it.name}</span>
@@ -107,9 +91,10 @@ function Rail({ items, currency }: { items: CatalogItem[]; currency: string }) {
 }
 
 /**
- * Showroom: dark and cinematic. A full-bleed photograph under the header,
- * light type, a sideways rail through the collection, a statement that lights
- * up word by word, and the visit-and-install promise.
+ * Showroom: cinematic. A full-bleed photograph on a dark band under the header
+ * (the only dark part; the rest follows the brand theme), a sideways rail
+ * through the collection, a statement that lights up word by word, and the
+ * visit-and-install promise.
  */
 export function Home() {
   const { t, m, f, vars, items, currency, hero } = useHome();
@@ -131,10 +116,10 @@ export function Home() {
   );
 
   return (
-    <div ref={root} className="showroom">
+    <div ref={root} className="sw-home">
       <section className="sw-hero">
-        <div className="sw-hero__media" aria-hidden="true">
-          {hero && <Media item={hero} className="sw-hero__img" />}
+        <div className="sw-hero__media">
+          {hero && <Media item={hero} className="sw-hero__img" glyphClassName="sw-glyph" strokeWidth={0.6} priority />}
         </div>
         <div className="sw-hero__shade" aria-hidden="true" />
         <div className="sw-hero__content container">

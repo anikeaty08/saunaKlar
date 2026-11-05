@@ -397,10 +397,14 @@
   width: 2.25rem;
   height: 1.25rem;
   border-radius: 999px;
-  border: var(--hair) solid var(--ink);
+  border: var(--hair) solid var(--ink-3);
   background: var(--paper);
-  transition: background-color var(--dur-2);
+  transition: background-color var(--dur-2), border-color var(--dur-2);
   flex: none;
+}
+
+.switch:hover .switch__track {
+  border-color: var(--primary);
 }
 
 .switch__track::after {
@@ -411,17 +415,30 @@
   width: calc(1.25rem - 6px);
   height: calc(1.25rem - 6px);
   border-radius: 50%;
-  background: var(--ink);
+  background: var(--ink-3);
   transition: transform var(--dur-2) var(--ease-out), background-color var(--dur-2);
 }
 
 .switch input:checked + .switch__track {
-  background: var(--ink);
+  background: var(--primary);
+  border-color: var(--primary);
 }
 
 .switch input:checked + .switch__track::after {
   transform: translateX(1rem);
-  background: var(--on-ink);
+  background: var(--on-primary);
+}
+
+.switch:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch__track,
+  .switch__track::after {
+    transition: none;
+  }
 }
 
 .switch input:focus-visible + .switch__track {
@@ -508,8 +525,8 @@
   justify-self: start;
   padding: 0.7rem 1.2rem;
   border-radius: 999px;
-  background: var(--ink);
-  color: var(--on-ink);
+  background: var(--primary);
+  color: var(--on-primary);
   font-size: var(--step--1);
 }
 
@@ -568,8 +585,8 @@
 }
 
 .lpick__item.is-on {
-  border-color: var(--ink);
-  box-shadow: 0 0 0 1px var(--ink);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
 }
 
 .lpick__card {
@@ -617,4 +634,53 @@
 
 .lpick__preview:hover {
   background: var(--paper-2);
+}
+
+/* owner-only controls, read-only for ADMIN */
+
+.owner-note {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--step--1);
+  color: var(--ink-2);
+  background: var(--highlight);
+  border-radius: var(--radius-lg);
+}
+
+.admin-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.sauna-admin.is-readonly .switch,
+.admin-fieldset:disabled .switch {
+  cursor: default;
+}
+
+/* dashboard */
+
+.inbox-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--ink-3);
+  font-size: var(--step--1);
+}
+
+.inbox-more {
+  margin-top: var(--space-3);
+}
+
+.dash-numbers__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
 }

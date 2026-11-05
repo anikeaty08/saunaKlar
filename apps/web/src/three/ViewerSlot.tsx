@@ -70,11 +70,13 @@ export function ViewerSlot({ name, specs, options, lowUrl: assetLow, highUrl: as
   const onProgress = useCallback(
     (p: number, active: boolean) => {
       setProgress({ p, active });
-      // The parametric model has nothing to download; a GLB is ready at 100 %.
-      if (!active && (!hasGlb || p === 100)) setReady(true);
+      // A GLB is ready once its download finishes; a kit sauna says so itself (onReady),
+      // since its parts and textures load while the progress store still reads idle.
+      if (hasGlb && !active && p === 100) setReady(true);
     },
     [hasGlb],
   );
+  const onReady = useCallback(() => setReady(true), []);
 
   useEffect(() => {
     const onFs = () => setFull(document.fullscreenElement === stage.current);
@@ -118,7 +120,7 @@ export function ViewerSlot({ name, specs, options, lowUrl: assetLow, highUrl: as
           >
             <Suspense fallback={null}>
               <div className="vslot__canvas">
-                <SaunaViewer specs={specs} options={options} lowUrl={lowUrl} highUrl={highUrl} allowHigh={allowHigh} label={t('three.canvasLabel', { name })} onProgress={onProgress} resetKey={resetKey} view={view} />
+                <SaunaViewer specs={specs} options={options} lowUrl={lowUrl} highUrl={highUrl} allowHigh={allowHigh} label={t('three.canvasLabel', { name })} onProgress={onProgress} onReady={onReady} resetKey={resetKey} view={view} />
               </div>
             </Suspense>
           </ErrorBoundary>

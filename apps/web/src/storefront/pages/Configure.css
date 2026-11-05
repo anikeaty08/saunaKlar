@@ -1,12 +1,14 @@
-/* The configurator follows the old studio: warm off-white page, white cards,
-   a section rail with an accordion list, round wood swatches, black selection. */
+/* The configurator follows the old studio: a quiet page, raised cards, a
+   section rail with an accordion list, round wood swatches. Colours come from
+   the tenant theme (light and dark); selection uses the brand's --primary. */
 .cfg {
-  --st-bg: #f6f5f1;
-  --st-card: #ffffff;
-  --st-line: #e5e3de;
-  --st-soft: #efeeea;
-  --st-ink: #1c1c1c;
-  --st-muted: #6f6d68;
+  --st-bg: var(--paper);
+  --st-card: var(--surface);
+  --st-line: var(--line);
+  --st-soft: var(--paper-2);
+  --st-ink: var(--ink);
+  --st-muted: var(--ink-3);
+  --st-select: var(--primary);
   --st-radius: 12px;
 
   display: grid;
@@ -57,7 +59,7 @@
 
 .cfg-product__eyebrow {
   margin: 0 0 4px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -77,7 +79,7 @@
 }
 
 .cfg__total .price__label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--st-muted);
 }
@@ -95,7 +97,7 @@
   padding: 0;
   border: 0;
   background: none;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--st-muted);
 }
@@ -152,12 +154,12 @@
 
 .cfg-stepper span {
   font-size: 14px;
-  color: #4a4945;
+  color: var(--ink-2);
 }
 
 .cfg-stepper small {
   margin-left: 6px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--st-muted);
 }
 
@@ -173,7 +175,7 @@
 }
 
 .cfg-stepper button:hover {
-  background: #e2e0db;
+  background: var(--highlight);
 }
 
 .cfg-body {
@@ -204,10 +206,10 @@
   border: 0;
   border-radius: 8px;
   background: none;
-  font-size: 10.5px;
+  font-size: 11.5px;
   line-height: 1.25;
   text-align: center;
-  color: #4a4945;
+  color: var(--ink-2);
   transition: background-color 0.15s, color 0.15s;
 }
 
@@ -216,9 +218,10 @@
 }
 
 .cfg-rail button.is-active {
-  background: var(--st-soft);
+  background: var(--highlight);
   color: var(--st-ink);
   font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--st-select);
 }
 
 .cfg-list {
@@ -238,7 +241,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 8px;
   padding: 8px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 6px 24px color-mix(in oklab, var(--ink) 6%, transparent);
 }
 
 .cfg__actions .btn {
@@ -269,7 +272,7 @@
 }
 
 .cfg-group.is-open {
-  background: #f8f8f6;
+  background: var(--st-soft);
 }
 
 .cfg-group__head {
@@ -289,12 +292,12 @@
   display: grid;
   gap: 2px;
   min-width: 0;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
 }
 
 .cfg-group__value {
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 400;
   color: var(--st-muted);
   overflow: hidden;
@@ -304,7 +307,7 @@
 
 .cfg-group__caret {
   flex: none;
-  color: #8a8883;
+  color: var(--ink-3);
   transform: rotate(-90deg);
   transition: transform 0.2s;
 }
@@ -317,11 +320,30 @@
   padding: 0 10px 14px;
 }
 
+.cfg-size {
+  display: grid;
+  gap: 7px;
+  margin: 8px 10px 20px;
+  padding: 12px 0;
+  border-block: 1px solid var(--st-line);
+  font-size: 11px;
+}
+
+.cfg-size > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cfg-size dt { color: var(--ink-3); }
+.cfg-size dd { margin: 0; text-align: right; color: var(--st-ink); }
+
+.cfg-group__lede {
+  margin: 0 0 12px;
+}
+
 .cfg-group__note {
   margin: 12px 0 0;
-  font-size: 11.5px;
-  line-height: 1.45;
-  color: var(--st-muted);
 }
 
 /* Round wood swatches with labels beneath */
@@ -329,6 +351,19 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
   gap: 12px 6px;
+}
+
+.cfg-dot-wrap {
+  position: relative;
+  display: grid;
+  min-width: 0;
+}
+
+/* The info button sits beside the disc, outside the selectable button. */
+.cfg-dot__info {
+  position: absolute;
+  top: -4px;
+  right: 0;
 }
 
 .cfg-dot {
@@ -340,14 +375,14 @@
   padding: 2px 0;
   border: 0;
   background: none;
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.25;
-  color: #55534e;
+  color: var(--ink-2);
   text-align: center;
 }
 
 .cfg-dot.is-blocked {
-  opacity: 0.4;
+  opacity: 0.5;
 }
 
 .cfg-dot__disc {
@@ -356,16 +391,16 @@
   height: 36px;
   flex-shrink: 0;
   border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.09);
+  border: 1px solid color-mix(in oklab, var(--ink) 12%, transparent);
   transition: box-shadow 0.15s, transform 0.15s;
 }
 
-.cfg-dot:hover .cfg-dot__disc {
+.cfg-dot:hover:not([aria-disabled='true']) .cfg-dot__disc {
   transform: scale(1.06);
 }
 
 .cfg-dot.is-selected .cfg-dot__disc {
-  box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--st-ink);
+  box-shadow: 0 0 0 2px var(--st-card), 0 0 0 4px var(--st-select);
 }
 
 .cfg-dot__tick {
@@ -377,8 +412,8 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--st-ink);
-  color: #fff;
+  background: var(--st-select);
+  color: var(--on-primary);
 }
 
 .cfg-dot__label {
@@ -395,11 +430,13 @@
 }
 
 .cfg-dot__sub {
-  font-size: 9.5px;
-  color: #8a8883;
+  font-size: 11px;
+  color: var(--ink-3);
 }
 
-/* Option rows: white chips, black when chosen */
+/* Option rows: raised chips, outlined in the brand colour when chosen. The
+   chip is a container: the selectable button (mark, name, price) and the
+   description with its own "more" toggle are siblings, never nested. */
 .cfg-opts {
   display: grid;
   gap: 6px;
@@ -407,30 +444,48 @@
 
 .cfg-opt {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: start;
   width: 100%;
-  padding: 10px 11px;
   border: 1px solid var(--st-line);
   border-radius: 8px;
   background: var(--st-card);
-  text-align: left;
   color: var(--st-ink);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .cfg-opt:hover {
-  border-color: #b9b7b1;
+  border-color: var(--line-strong);
 }
 
 .cfg-opt.is-selected {
-  border-color: var(--st-ink);
-  box-shadow: inset 0 0 0 1px var(--st-ink);
+  border-color: var(--st-select);
+  box-shadow: inset 0 0 0 1px var(--st-select);
 }
 
-.cfg-opt.is-blocked {
-  opacity: 0.45;
+.cfg-opt:has(.cfg-opt__hit:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.cfg-opt__hit {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  width: 100%;
+  padding: 10px 11px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  text-align: left;
+  color: inherit;
+}
+
+.cfg .cfg-opt__hit:focus-visible {
+  outline: none;
+}
+
+.cfg-opt.is-blocked .cfg-opt__hit {
+  opacity: 0.55;
 }
 
 .cfg-opt__mark {
@@ -439,8 +494,8 @@
   width: 16px;
   height: 16px;
   margin-top: 1px;
-  border: 1.5px solid #b9b7b1;
-  color: #fff;
+  border: 1.5px solid var(--ink-4);
+  color: var(--on-primary);
 }
 
 .cfg-opt__mark--radio {
@@ -452,40 +507,45 @@
 }
 
 .is-selected .cfg-opt__mark {
-  background: var(--st-ink);
-  border-color: var(--st-ink);
+  background: var(--st-select);
+  border-color: var(--st-select);
 }
 
+/* Name 14px/500, description 13px muted, notes 12px: a clear three-step hierarchy. */
 .cfg-opt__text {
   display: grid;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
+  /* Aligned under the name: padding + mark column + gap. */
+  padding: 0 11px 10px calc(11px + 18px + 10px);
+  margin-top: -4px;
 }
 
 .cfg-opt__name {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
+  line-height: 1.35;
 }
 
-.cfg-opt__desc {
-  font-size: 11.5px;
-  line-height: 1.4;
-  color: var(--st-muted);
+.cfg-opt__desc .clamp__text {
+  font-size: 13px;
 }
 
-.cfg-opt__cons {
-  font-size: 10.5px;
-  color: #4a4945;
+.cfg-opt__cons,
+.cfg-opt__blocked {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-2);
 }
 
 .cfg-opt__price {
-  font-size: 11.5px;
+  font-size: 12.5px;
   white-space: nowrap;
-  color: #4a4945;
+  color: var(--ink-2);
 }
 
 .cfg button:focus-visible {
-  outline: 2px solid #2d6cdf;
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -557,7 +617,7 @@
     border-radius: 16px 16px 0 0;
     border-width: 1px 0 0;
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-    box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 -6px 24px color-mix(in oklab, var(--ink) 8%, transparent);
   }
 }
 

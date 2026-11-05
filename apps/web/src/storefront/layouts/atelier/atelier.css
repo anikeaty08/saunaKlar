@@ -104,9 +104,12 @@ html[data-layout='atelier'] .sh__title {
 .at-frame__media {
   position: relative;
   aspect-ratio: 21 / 9;
+  /* Wide but never taller than most of the viewport. */
+  max-height: min(68svh, 40rem);
+  width: 100%;
   display: grid;
   place-items: center;
-  background: var(--paper-2);
+  background: var(--frame);
   overflow: hidden;
 }
 
@@ -282,7 +285,7 @@ html[data-layout='atelier'] .sh__title {
   }
 
   .at-frame__media {
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 3 / 2;
   }
 }
 

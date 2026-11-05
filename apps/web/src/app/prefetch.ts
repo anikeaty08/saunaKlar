@@ -8,7 +8,6 @@ const table: { pattern: string; page: PageName; data?: (params: Record<string, s
   { pattern: '/saunas', page: 'saunas', data: () => prefetchCatalog(queryClient) },
   { pattern: '/saunas/:slug', page: 'sauna', data: p => prefetchSauna(queryClient, p.slug!) },
   { pattern: '/saunas/:slug/configure', page: 'configure', data: p => prefetchSauna(queryClient, p.slug!) },
-  { pattern: '/showroom', page: 'showroom', data: () => prefetchCatalog(queryClient) },
   { pattern: '/guide', page: 'guide' },
   { pattern: '/how-it-works', page: 'how' },
   { pattern: '/about', page: 'about' },

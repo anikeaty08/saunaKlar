@@ -157,7 +157,9 @@ function backrest(P: Parts, M: KitMaterials, L: KitLayout, b: Band, spec: KitSpe
   if (gapAt !== null) runs = [[ua, gapAt - 0.21], [gapAt + 0.21, ub]];
   if (spec.backrest === 'panels') {
     runs = runs.flatMap(([a, e]) => {
-      const n = Math.max(1, Math.round((e - a) / 0.95));
+      // At least two panels on a run that fits them; a lone short panel stands clear of the ends.
+      const n = Math.max(e - a >= 0.9 ? 2 : 1, Math.round((e - a) / 0.95));
+      if (n === 1) return [[a + 0.08, e - 0.08] as [number, number]];
       const w = (e - a - (n - 1) * 0.16) / n;
       return Array.from({ length: n }, (_, k) => [a + k * (w + 0.16), a + k * (w + 0.16) + w] as [number, number]);
     });

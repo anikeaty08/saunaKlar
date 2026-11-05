@@ -130,7 +130,11 @@ export function NewConfiguration() {
   };
   return (
     <>
-      <PageHead crumbs={[{ label: t('admin.nav.configurations'), to: '/admin/configurations' }, { label: t('admin.configurations.new') }]} title={t('admin.configurations.new')} lede={t('admin.configurations.newLede')} />
+      <PageHead
+        crumbs={[{ label: t('admin.nav.customers'), to: '/admin/customers' }, ...(presetCustomer.data ? [{ label: fullName(presetCustomer.data), to: `/admin/customers/${presetCustomer.data.id}` }] : []), { label: t('admin.configurations.new') }]}
+        title={t('admin.configurations.new')}
+        lede={t('admin.configurations.newLede')}
+      />
       {saunas.isPending ? (
         <Skeleton lines={5} />
       ) : (
@@ -142,7 +146,7 @@ export function NewConfiguration() {
             <Button type="submit" loading={create.isPending} disabled={!saunaId}>
               {t('staff.create')}
             </Button>
-            <ButtonLink to="/admin/configurations" variant="quiet">
+            <ButtonLink to={preset ? `/admin/customers/${preset}` : '/admin/customers'} variant="quiet">
               {t('staff.cancel')}
             </ButtonLink>
           </div>
@@ -170,7 +174,14 @@ export function ConfigurationDetail() {
   return (
     <>
       <PageHead
-        crumbs={[{ label: t('admin.nav.configurations'), to: '/admin/configurations' }, { label: c.name }]}
+        crumbs={[
+          ...(c.customerId
+            ? [{ label: t('admin.nav.customers'), to: '/admin/customers' }, { label: t('admin.requests.customer'), to: `/admin/customers/${c.customerId}` }]
+            : c.request
+              ? [{ label: t('admin.nav.requests'), to: `/admin/requests/${c.request.id}` }]
+              : [{ label: t('admin.nav.configurations'), to: '/admin/configurations' }]),
+          { label: c.name },
+        ]}
         title={c.name}
         meta={
           <>

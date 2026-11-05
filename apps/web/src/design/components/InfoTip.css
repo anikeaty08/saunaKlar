@@ -1,0 +1,49 @@
+.infotip {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.infotip__btn {
+  display: inline-grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-3);
+  transition: background-color var(--dur-2), color var(--dur-2);
+}
+
+.infotip__btn:hover,
+.infotip.is-open .infotip__btn {
+  background: var(--highlight);
+  color: var(--ink);
+}
+
+.infotip__pop {
+  position: absolute;
+  z-index: 30;
+  bottom: calc(100% + 0.4rem);
+  left: 50%;
+  width: max-content;
+  max-width: min(18rem, 80vw);
+  padding: 0.6rem 0.75rem;
+  border: var(--hair) solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  box-shadow: var(--shadow-1);
+  color: var(--ink-2);
+  font-size: var(--step--1);
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  transform: translateX(-50%);
+}
+
+.infotip__pop[hidden] {
+  display: none;
+}

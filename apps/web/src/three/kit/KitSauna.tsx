@@ -9,9 +9,10 @@ import type { KitSpec } from './spec.ts';
 /**
  * A sauna built by the construction kit from the model's form and size and the
  * selected options. Materials are rebuilt only when a finish changes; geometry
- * is rebuilt (a few milliseconds) when anything else changes.
+ * is rebuilt (a few milliseconds) when anything else changes. `onReady` fires
+ * once the parts and textures have loaded and the sauna is on screen.
  */
-export function KitSauna({ specs, options }: { specs: ViewerSpecs; options: ViewerOptions }) {
+export function KitSauna({ specs, options, onReady }: { specs: ViewerSpecs; options: ViewerOptions; onReady?: (() => void) | undefined }) {
   const spec: KitSpec = useMemo(
     () => ({ ...options, form: specs.form, width: specs.widthMm / 1000, depth: specs.depthMm / 1000, height: specs.heightMm / 1000 }),
     [options, specs.form, specs.widthMm, specs.depthMm, specs.heightMm],
@@ -20,7 +21,7 @@ export function KitSauna({ specs, options }: { specs: ViewerSpecs; options: View
   const key = JSON.stringify(spec);
   const matKey = materialKey(spec);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the finishes only
-  const materials = useMemo(() => makeMaterials(spec, assets), [matKey, assets]);
+  const materials = useMemo(() => makeMaterials(spec, assets.wood), [matKey, assets]);
   useEffect(() => () => disposeMaterials(materials), [materials]);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the full spec
   const built = useMemo(() => buildSauna(spec, materials, assets.parts), [key, materials, assets]);
@@ -33,6 +34,7 @@ export function KitSauna({ specs, options }: { specs: ViewerSpecs; options: View
     },
     [built],
   );
+  useEffect(() => onReady?.(), [onReady]);
   return (
     <group>
       <primitive object={built.group} />

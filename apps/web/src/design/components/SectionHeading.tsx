@@ -19,10 +19,12 @@ interface Props {
 export function SectionHeading({ eyebrow, title, lede, action, index, as = 'h2', size = 'lg', id }: Props) {
   return (
     <header className={`sh sh--${size}`}>
-      <div className="sh__meta">
-        {index && <span className="sh__index mono">{index}</span>}
-        {eyebrow && <ScrambleText as="p" className="eyebrow" text={eyebrow} trigger="inview" />}
-      </div>
+      {(index || eyebrow) && (
+        <div className="sh__meta">
+          {index && <span className="sh__index mono">{index}</span>}
+          {eyebrow && <ScrambleText as="p" className="eyebrow" text={eyebrow} trigger="inview" />}
+        </div>
+      )}
       <div className="sh__main">
         <ScrambleText as={as} className="sh__title" text={title} trigger="inview" id={id} />
         {lede && <div className="sh__lede">{lede}</div>}

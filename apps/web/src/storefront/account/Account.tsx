@@ -24,6 +24,7 @@ import { FlipText } from '../../motion/FlipText.tsx';
 import { toast } from '../../design/components/Toast.tsx';
 import { useDocumentTitle } from '../../app/useDocumentTitle.ts';
 import { RequireCustomer } from './RequireCustomer.tsx';
+import { awaitingDecision, latestDraft, quoteIsOpen, trackerFor } from './dashboard.ts';
 import './Account.css';
 
 function AccountSkeleton() {
@@ -131,30 +132,205 @@ function RequestsTable({ rows, loading }: { rows: RequestSummary[]; loading: boo
   );
 }
 
+/**
+ * Accepts the quote on screen. If staff re-quoted meanwhile the API answers 409 with the new
+ * quote's id; the request is refetched and `onChanged` gets that id ('' when unknown).
+ */
+function useAcceptQuote(id: string, onDone: (r: Awaited<ReturnType<typeof api<'myRequest'>>>) => void, onChanged: (next: string) => void) {
+  const { t } = useT();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (quoteId: string) => api('acceptRequest', { params: { id }, body: { quoteId } }),
+    onSuccess: onDone,
+    onError: e => {
+      if (isApiError(e, 'CONFLICT') || isApiError(e, 'QUOTE_MISSING')) {
+        const next = e.meta.activeQuoteId;
+        onChanged(typeof next === 'string' ? next : '');
+        void qc.invalidateQueries({ queryKey: ['request', id] });
+        toast.error(t('account.quoteChanged'));
+      } else toast.error(t('errors.title'), errorText(t, e));
+    },
+  });
+}
+
+/** Progress of one request along SUBMITTED → IN_REVIEW → QUOTED → ACCEPTED, or its end state. */
+function RequestTracker({ status }: { status: RequestSummary['status'] }) {
+  const { t } = useT();
+  const { steps, end } = trackerFor(status);
+  return (
+    <ol className={['tracker', end && 'tracker--ended'].filter(Boolean).join(' ')}>
+      {steps.map(s => (
+        <li key={s.status} className={`tracker__step is-${s.state}`} aria-current={s.state === 'current' ? 'step' : undefined}>
+          <span className="tracker__dot" aria-hidden="true" />
+          <span className="tracker__label">{t(`status.${s.status}` as TKey)}</span>
+        </li>
+      ))}
+      {end && (
+        <li className="tracker__step tracker__end is-current" aria-current="step">
+          <span className="tracker__dot" aria-hidden="true" />
+          <span className="tracker__label">{t(`status.${end}` as TKey)}</span>
+        </li>
+      )}
+    </ol>
+  );
+}
+
+function DraftCard({ draft }: { draft: ConfigurationSummary }) {
+  const { t } = useT();
+  const fmt = useFormat();
+  return (
+    <article className="next-card">
+      <p className="eyebrow">{t('account.draftTitle')}</p>
+      <div className="next-card__body">
+        <span className="next-card__thumb" aria-hidden="true">
+          {draft.sauna.thumbnailUrl && <img src={draft.sauna.thumbnailUrl} alt="" width={160} height={107} loading="lazy" decoding="async" onError={e => (e.currentTarget.style.visibility = 'hidden')} />}
+        </span>
+        <div className="next-card__text">
+          <h2 className="account__h3">{draft.name}</h2>
+          <p className="muted">
+            {draft.sauna.name} · <span className="mono">{fmt.relative(draft.updatedAt)}</span>
+          </p>
+          <Price minor={draft.finalPriceMinor} currency={draft.currency} size="md" />
+        </div>
+      </div>
+      <div className="cluster">
+        <ButtonLink to={`/saunas/${draft.sauna.slug}/configure?id=${draft.id}`} icon={Pencil}>
+          {t('account.continue')}
+        </ButtonLink>
+      </div>
+    </article>
+  );
+}
+
+function DecisionCard({ request }: { request: RequestSummary }) {
+  const { t } = useT();
+  const fmt = useFormat();
+  const qc = useQueryClient();
+  const tenant = useTenantData();
+  const [changed, setChanged] = useState<string | null>(null);
+  const q = useQuery({ queryKey: ['request', request.id], queryFn: () => api('myRequest', { params: { id: request.id } }) });
+  const accept = useAcceptQuote(
+    request.id,
+    r => {
+      qc.setQueryData(['request', request.id], r);
+      void qc.invalidateQueries({ queryKey: ['requests'] });
+      toast(t(`status.${r.status}` as TKey));
+    },
+    setChanged,
+  );
+  const quote = q.data?.activeQuote ?? null;
+  const open = quote ? quoteIsOpen(quote.validUntil, new Date()) : false;
+  return (
+    <article className="next-card account__quote">
+      <p className="eyebrow">{t('account.decisionTitle')}</p>
+      <div className="next-card__text">
+        <h2 className="account__h3">{request.configurationName}</h2>
+        <p className="muted">{request.saunaName}</p>
+      </div>
+      {q.isPending ? (
+        <Skeleton lines={2} />
+      ) : !quote ? null : (
+        <>
+          {changed !== null && (changed === '' || changed === quote.id) && (
+            <p className="account__quote-changed" role="status">
+              {t('account.quoteChanged')}
+            </p>
+          )}
+          <Price minor={quote.amountMinor} currency={quote.currency} size="lg" label={t('account.quote')} />
+          {open ? (
+            <p className="muted">{t('account.quoteValid', { date: fmt.date(quote.validUntil) })}</p>
+          ) : (
+            <p role="note">{t('account.quoteExpired', { date: fmt.date(quote.validUntil), name: tenant.branding.displayName })}</p>
+          )}
+        </>
+      )}
+      <div className="cluster">
+        {quote && open && (
+          <Button onClick={() => accept.mutate(quote.id)} loading={accept.isPending}>
+            {t('account.accept')}
+          </Button>
+        )}
+        <ButtonLink to={`/account/requests/${request.id}`} variant={quote && open ? 'quiet' : 'ghost'} iconAfter={ArrowRight}>
+          {t('account.viewRequest')}
+        </ButtonLink>
+      </div>
+    </article>
+  );
+}
+
 export function Overview() {
   const { t } = useT();
+  const fmt = useFormat();
+  const tenant = useTenantData();
   useDocumentTitle(t('nav.account'));
   const configs = useConfigurationsList();
   const requests = useRequestsList();
+  if (configs.isPending || requests.isPending) return <Skeleton lines={8} />;
+  if (configs.error || requests.error) return <ErrorPage error={(configs.error ?? requests.error)!} />;
+  const configRows = configs.data.pages.flatMap(p => p.items);
+  const requestRows = requests.data.pages.flatMap(p => p.items);
+
+  if (configRows.length === 0 && requestRows.length === 0) {
+    return (
+      <Reveal className="account__overview">
+        <section className="account__start">
+          <p className="eyebrow">{t('account.startEyebrow')}</p>
+          <h2 className="account__h2">{t('account.startTitle')}</h2>
+          <p className="muted">{t('account.startBody', { name: tenant.branding.displayName })}</p>
+          <div className="cluster">
+            <ButtonLink to="/saunas" iconAfter={ArrowRight}>
+              {t('account.startCta')}
+            </ButtonLink>
+          </div>
+        </section>
+      </Reveal>
+    );
+  }
+
+  const draft = latestDraft(configRows);
+  const decision = awaitingDecision(requestRows);
+  const tracked = requestRows.slice(0, 3);
   return (
     <Reveal className="account__overview" stagger={0.1}>
+      {(draft || decision) && (
+        <div className="account__next">
+          {decision && <DecisionCard request={decision} />}
+          {draft && <DraftCard draft={draft} />}
+        </div>
+      )}
+      {tracked.length > 0 && (
+        <section>
+          <header className="account__section-head">
+            <h2>{t('account.requests')}</h2>
+            <ButtonLink to="/account/requests" variant="link" iconAfter={ArrowRight}>
+              {t('nav.requests')}
+            </ButtonLink>
+          </header>
+          <ul className="track-list">
+            {tracked.map(r => (
+              <li key={r.id}>
+                <Link to={`/account/requests/${r.id}`} className="track-list__row">
+                  <span className="track-list__name">
+                    <span className="track-list__title">{r.configurationName}</span>
+                    <span className="muted">
+                      {r.saunaName} · <span className="mono">{fmt.date(r.createdAt)}</span>
+                    </span>
+                  </span>
+                  <RequestTracker status={r.status} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <section>
         <header className="account__section-head">
-          <h2>{t('account.requests')}</h2>
-          <ButtonLink to="/account/requests" variant="link" iconAfter={ArrowRight}>
-            {t('nav.requests')}
-          </ButtonLink>
-        </header>
-        <RequestsTable rows={(requests.data?.pages.flatMap(p => p.items) ?? []).slice(0, 3)} loading={requests.isPending} />
-      </section>
-      <section>
-        <header className="account__section-head">
-          <h2>{t('account.configurations')}</h2>
+          <h2>{t('account.savedTitle')}</h2>
           <ButtonLink to="/account/configurations" variant="link" iconAfter={ArrowRight}>
             {t('nav.configurations')}
           </ButtonLink>
         </header>
-        <ConfigurationsTable rows={(configs.data?.pages.flatMap(p => p.items) ?? []).slice(0, 5)} loading={configs.isPending} />
+        <ConfigurationsTable rows={configRows.slice(0, 5)} loading={false} />
       </section>
     </Reveal>
   );
@@ -267,18 +443,7 @@ export function RequestDetail() {
   });
   // The quote the customer is looking at is sent along; if staff re-quoted in
   // the meantime the API answers 409 and the new quote is shown for review.
-  const accept = useMutation({
-    mutationFn: (quoteId: string) => api('acceptRequest', { params: { id }, body: { quoteId } }),
-    onSuccess: onDone,
-    onError: e => {
-      if (isApiError(e, 'CONFLICT') || isApiError(e, 'QUOTE_MISSING')) {
-        const next = e.meta.activeQuoteId;
-        setChangedQuoteId(typeof next === 'string' ? next : '');
-        void q.refetch();
-        toast.error(t('account.quoteChanged'));
-      } else toast.error(t('errors.title'), errorText(t, e));
-    },
-  });
+  const accept = useAcceptQuote(id, onDone, setChangedQuoteId);
   if (q.isPending) return <Skeleton lines={8} />;
   if (q.error) return <ErrorPage error={q.error} />;
   const r = q.data;

@@ -9,15 +9,15 @@ import { create } from 'zustand';
 import { en, type Messages } from './locales/en.ts';
 import type { MessagePath, Params, PluralForms } from './types.ts';
 
-export const LOCALES = ['en', 'de', 'fr', 'it', 'rm'] as const;
+export const LOCALES = ['en', 'de', 'fr', 'it'] as const;
 export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = 'en';
 
 /** Endonyms: a language is always named in itself. */
-export const LOCALE_NAMES: Record<Locale, string> = { en: 'English', de: 'Deutsch', fr: 'Français', it: 'Italiano', rm: 'Rumantsch' };
+export const LOCALE_NAMES: Record<Locale, string> = { en: 'English', de: 'Deutsch', fr: 'Français', it: 'Italiano' };
 
 /** BCP 47 tag for Intl formatting (the platform is Swiss-centred; English uses en-GB conventions). */
-export const INTL_TAG: Record<Locale, string> = { en: 'en-GB', de: 'de-CH', fr: 'fr-CH', it: 'it-CH', rm: 'rm-CH' };
+export const INTL_TAG: Record<Locale, string> = { en: 'en-GB', de: 'de-CH', fr: 'fr-CH', it: 'it-CH' };
 
 const STORAGE_KEY = 'saunaklar:lang';
 
@@ -48,7 +48,6 @@ const loaders: Record<Locale, () => Promise<Messages>> = {
   de: () => import('./locales/de.ts').then(m => m.de),
   fr: () => import('./locales/fr.ts').then(m => m.fr),
   it: () => import('./locales/it.ts').then(m => m.it),
-  rm: () => import('./locales/rm.ts').then(m => m.rm),
 };
 const loaded = new Map<Locale, Messages>([['en', en]]);
 

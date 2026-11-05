@@ -18,3 +18,6 @@ export function useHome() {
 
 /** When the first-load splash is still up, entrances wait for its curtain. */
 export const splashDelay = () => (document.getElementById('splash') ? 0.9 : 0);
+
+/** Pinning, scrubbing and fanning need room and motion; below this, layouts fall back to plain stacks. */
+export const ROOMY = '(min-width: 1024px) and (min-height: 640px) and (prefers-reduced-motion: no-preference)';

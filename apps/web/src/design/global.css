@@ -17,7 +17,6 @@
   --line: #d8dfe5;
   --line-strong: #b4bdc6;
   --on-ink: #f3f5f7;
-  --focus: #74808b;
   --accent: #5a6b7b;
   --night: #0a1016;
   --night-2: #1b242c;
@@ -25,6 +24,13 @@
   --night-muted: #8d99a4;
   --night-line: #2a333c;
   --brand: #5a6b7b;
+  --primary: #5a6b7b;
+  --primary-hover: #495a6a;
+  --on-primary: #f3f5f7;
+  --highlight: #dce8f3;
+  --surface: #ffffff;
+  --frame: #dadfe3;
+  --focus: #5a6b7b;
   color-scheme: light dark;
 
   --font-display: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -95,7 +101,6 @@
     --line: #293139;
     --line-strong: #4a545d;
     --on-ink: #0b1117;
-    --focus: #95a0aa;
     --accent: #8a9aaa;
     --night: #03080d;
     --night-2: #0f171e;
@@ -103,6 +108,13 @@
     --night-muted: #8f9aa4;
     --night-line: #1f272f;
     --brand: #5a6b7b;
+    --primary: #6e7f90;
+    --primary-hover: #8091a2;
+    --on-primary: #0b1117;
+    --highlight: #1f2730;
+    --surface: #151d24;
+    --frame: #1c2023;
+    --focus: #6e7f90;
   }
 }
 
@@ -159,8 +171,31 @@ textarea {
   color: inherit;
 }
 
-button {
+/* Pointer affordance for everything that acts on click; not-allowed when it cannot. */
+button,
+summary,
+select,
+input[type='checkbox'],
+input[type='radio'],
+input[type='color'],
+input[type='range'],
+label:has(> input[type='checkbox'], > input[type='radio']),
+[role='radio'],
+[role='checkbox'],
+[role='switch'],
+[role='tab'],
+[role='option'],
+[role='menuitem'],
+[role='menuitemradio'] {
   cursor: pointer;
+}
+
+button:disabled,
+select:disabled,
+input:disabled,
+[aria-disabled='true'],
+label:has(> input:disabled) {
+  cursor: not-allowed;
 }
 
 a {
@@ -232,14 +267,23 @@ hr {
   border: 0;
 }
 
+/*
+ * Animated labels and prices keep a visually hidden copy of their text for screen readers next to the
+ * aria-hidden visual one. Only the visual copy is selectable, so copy-paste yields the text once
+ * (not "SpecificationsSpecifications").
+ */
+.no-copy {
+  user-select: none;
+}
+
 .skip-link {
   position: fixed;
   left: var(--gutter);
   top: 0.75rem;
   z-index: 1000;
   padding: 0.6rem 1rem;
-  background: var(--ink);
-  color: var(--on-ink);
+  background: var(--primary);
+  color: var(--on-primary);
   font-family: var(--font-mono);
   font-size: var(--step--1);
   text-decoration: none;

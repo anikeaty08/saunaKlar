@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import { useT } from '../i18n/i18n.ts';
-import { hostConfig, storefrontUrl, type HostKind } from '../host.ts';
+import { exampleShops, hostConfig, storefrontUrl, type HostKind } from '../host.ts';
 import { ScrambleText } from '../motion/ScrambleText.tsx';
 import { Reveal } from '../motion/Reveal.tsx';
 import { FlipText } from '../motion/FlipText.tsx';
@@ -16,7 +16,6 @@ import { BackToTop, FooterFrame, Languages } from '../storefront/layout/Footer.t
 import '../design/layout.css';
 import './Platform.css';
 
-const EXAMPLES = ['nordic', 'fjord', 'kelo'];
 export const MANUFACTURER = import.meta.env.VITE_MANUFACTURER_NAME || 'Saunaklar';
 const partnerEmail = () => import.meta.env.VITE_PARTNER_EMAIL || `partners@${hostConfig().platformDomain}`;
 
@@ -86,18 +85,20 @@ function PlatformFrame({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <nav className="sfoot__cols container" aria-label={t('footer.nav')}>
-          <section>
-            <h2 className="sfoot__cap">{t('platform.examples')}</h2>
-            <ul>
-              {EXAMPLES.map(s => (
-                <li key={s}>
-                  <a className="sfoot__link" href={storefrontUrl(s)}>
-                    <FlipText text={`${s}.${hostConfig().platformDomain}`} />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </section>
+          {exampleShops().length > 0 && (
+            <section>
+              <h2 className="sfoot__cap">{t('platform.examples')}</h2>
+              <ul>
+                {exampleShops().map(s => (
+                  <li key={s}>
+                    <a className="sfoot__link" href={storefrontUrl(s)}>
+                      <FlipText text={`${s}.${hostConfig().platformDomain}`} />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           <section>
             <h2 className="sfoot__cap">{t('platform.signIn')}</h2>
             <ul>
@@ -122,12 +123,14 @@ function PlatformFrame({ children }: { children: React.ReactNode }) {
 
 function Examples() {
   const { t } = useT();
+  const shops = exampleShops();
+  if (shops.length === 0) return null;
   return (
     <section className="pf__examples container">
       <p className="eyebrow">{t('platform.examples')}</p>
       <p className="pf__examples-lede">{t('platform.examplesLede')}</p>
       <ul>
-        {EXAMPLES.map((s, i) => (
+        {shops.map((s, i) => (
           <li key={s}>
             <a href={storefrontUrl(s)} className="pf__example">
               <span className="mono pf__num">{String(i + 1).padStart(2, '0')}</span>
@@ -160,9 +163,11 @@ export function PlatformPage() {
             {t('platform.joinCta')}
             <Icon icon={ArrowRight} size="sm" />
           </a>
-          <a href={storefrontUrl(EXAMPLES[0]!)} className="btn btn--ghost btn--lg">
-            {t('platform.seeExample')}
-          </a>
+          {exampleShops()[0] && (
+            <a href={storefrontUrl(exampleShops()[0]!)} className="btn btn--ghost btn--lg">
+              {t('platform.seeExample')}
+            </a>
+          )}
         </div>
       </section>
 

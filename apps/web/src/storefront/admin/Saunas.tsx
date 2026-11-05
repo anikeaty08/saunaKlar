@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type PointerEvent as RPointerEvent } from 'react';
+import { Link } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, GripVertical } from 'lucide-react';
 import type { ResponseOf } from '@saunaklar/shared';
@@ -19,6 +20,7 @@ import { prefersReducedMotion } from '../../motion/preferences.ts';
 import { useDocumentTitle } from '../../app/useDocumentTitle.ts';
 import { PageHead, Panel } from '../../staff/PageHead.tsx';
 import { minorToInput, parseMoney, parsePercentBps, useAdminMutation } from './helpers.ts';
+import { OwnerOnlyNote, useCanManageShop } from './permissions.tsx';
 
 type Saunas = ResponseOf<'adminSaunas'>;
 type AdminSauna = Saunas['items'][number];
@@ -36,6 +38,7 @@ export function SaunasAdmin() {
   const qc = useQueryClient();
   const tenant = useTenantData();
   const discountText = useDiscountText();
+  const canEdit = useCanManageShop();
   useDocumentTitle(t('admin.nav.saunas'));
   const q = useQuery({ queryKey: ['admin', 'saunas'], queryFn: () => api('adminSaunas') });
   const [order, setOrder] = useState<AdminSauna[]>([]);
@@ -112,20 +115,24 @@ export function SaunasAdmin() {
 
   return (
     <>
-      <PageHead title={t('admin.nav.saunas')} lede={t('admin.saunas.lede')} />
+      <PageHead title={t('admin.nav.saunas')} lede={t('admin.saunas.lede')} meta={canEdit ? undefined : <OwnerOnlyNote />} />
       <Panel
         title={t('admin.saunas.defaultDiscount')}
         lede={t('admin.saunas.defaultDiscountLede')}
         action={
-          <Button size="sm" variant="ghost" onClick={() => setEditing('default')}>
-            {def ? discountText(def) : t('admin.saunas.setDiscount')}
-          </Button>
+          canEdit ? (
+            <Button size="sm" variant="ghost" onClick={() => setEditing('default')}>
+              {def ? discountText(def) : t('admin.saunas.setDiscount')}
+            </Button>
+          ) : (
+            <span className="mono">{def ? discountText(def) : t('admin.saunas.noDiscount')}</span>
+          )
         }
       >
         {null}
       </Panel>
-      <Panel title={t('admin.saunas.order')} lede={t('admin.saunas.dragHint')}>
-        <ul className={['sauna-admin', dragging && 'is-dragging'].filter(Boolean).join(' ')} ref={list}>
+      <Panel title={t('admin.saunas.order')} lede={canEdit ? t('admin.saunas.dragHint') : undefined}>
+        <ul className={['sauna-admin', dragging && 'is-dragging', !canEdit && 'is-readonly'].filter(Boolean).join(' ')} ref={list}>
           {order.map((s, i) => {
             const own = s.discount;
             const requested = own ?? def;
@@ -133,6 +140,7 @@ export function SaunasAdmin() {
             const capped = requested ? (requested.type === 'PERCENT' ? requested.value > s.maxDiscountBps : requested.value * 10_000 > s.listPriceMinor * s.maxDiscountBps) : false;
             return (
               <li key={s.id} data-flip-id={s.id} className={['sauna-admin__row', dragging === s.id && 'is-dragged', !s.isVisible && 'is-hidden'].filter(Boolean).join(' ')}>
+                {canEdit ? (
                 <button
                   type="button"
                   className="sauna-admin__handle"
@@ -151,6 +159,9 @@ export function SaunasAdmin() {
                 >
                   <Icon icon={GripVertical} size="sm" />
                 </button>
+                ) : (
+                  <span className="sauna-admin__handle" aria-hidden="true" />
+                )}
                 <span className="sauna-admin__pos mono">{String(i + 1).padStart(2, '0')}</span>
                 <span className="sauna-admin__thumb" aria-hidden="true">
                   {s.thumbnailUrl ? <img src={s.thumbnailUrl} alt="" width={64} height={48} loading="lazy" decoding="async" onError={e => (e.currentTarget.style.visibility = 'hidden')} /> : null}
@@ -158,9 +169,12 @@ export function SaunasAdmin() {
                 <span className="sauna-admin__name">
                   <span className="staff-strong">{s.name}</span>
                   <span className="staff-sub mono">{s.slug}</span>
+                  <Link to={`/admin/saunas/${s.id}/options`} className="staff-sub" aria-label={t('admin.saunaOptions.manageFor', { name: s.name })}>
+                    {t('admin.saunaOptions.manage')}
+                  </Link>
                 </span>
                 <label className="switch">
-                  <input type="checkbox" role="switch" checked={s.isVisible} onChange={e => patch.mutate({ id: s.id, isVisible: e.target.checked })} />
+                  <input type="checkbox" role="switch" checked={s.isVisible} disabled={!canEdit} onChange={e => patch.mutate({ id: s.id, isVisible: e.target.checked })} />
                   <span className="switch__track" aria-hidden="true" />
                   <span className="switch__label">{s.isVisible ? t('admin.saunas.visible') : t('admin.saunas.hidden')}</span>
                 </label>
@@ -169,23 +183,25 @@ export function SaunasAdmin() {
                   {s.priceFromMinor !== s.listPriceMinor && <s className="staff-sub mono">{fmt.money(s.listPriceMinor, tenant.currency)}</s>}
                 </span>
                 <span className="sauna-admin__discount">
-                  <button type="button" className="sauna-admin__discount-btn" onClick={() => setEditing(s)}>
+                  <button type="button" className="sauna-admin__discount-btn" onClick={() => setEditing(s)} disabled={!canEdit}>
                     {s.effectiveDiscount ? <Badge tone="solid">{discountText(s.effectiveDiscount)}</Badge> : <Badge tone="dashed">{t('admin.saunas.noDiscount')}</Badge>}
                   </button>
                   <span className="staff-sub">
                     {capped ? t('admin.saunas.capped', { cap: fmt.percentBps(s.maxDiscountBps) }) : !own && def ? t('admin.saunas.inherited') : t('admin.saunas.cap', { cap: fmt.percentBps(s.maxDiscountBps) })}
                   </span>
                 </span>
-                <span className="sauna-admin__arrows">
-                  <IconButton icon={ArrowUp} label={t('admin.saunas.moveUp', { name: s.name })} size="sm" variant="quiet" disabled={i === 0} onClick={() => move(i, i - 1, true)} />
-                  <IconButton icon={ArrowDown} label={t('admin.saunas.moveDown', { name: s.name })} size="sm" variant="quiet" disabled={i === order.length - 1} onClick={() => move(i, i + 1, true)} />
-                </span>
+                {canEdit && (
+                  <span className="sauna-admin__arrows">
+                    <IconButton icon={ArrowUp} label={t('admin.saunas.moveUp', { name: s.name })} size="sm" variant="quiet" disabled={i === 0} onClick={() => move(i, i - 1, true)} />
+                    <IconButton icon={ArrowDown} label={t('admin.saunas.moveDown', { name: s.name })} size="sm" variant="quiet" disabled={i === order.length - 1} onClick={() => move(i, i + 1, true)} />
+                  </span>
+                )}
               </li>
             );
           })}
         </ul>
       </Panel>
-      <DiscountDialog target={editing} defaultDiscount={def} onClose={() => setEditing(null)} onSaved={settle} />
+      <DiscountDialog target={canEdit ? editing : null} defaultDiscount={def} onClose={() => setEditing(null)} onSaved={settle} />
     </>
   );
 }

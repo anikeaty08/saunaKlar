@@ -90,7 +90,7 @@ export function Home() {
           <section key={c.title} id={`jr-ch-${i}`} className={`jr-spread container${i % 2 ? ' jr-spread--flip' : ''}`} aria-labelledby={`jr-ch-t-${i}`}>
             <figure className="jr-spread__frame">
               <div className="jr-spread__media">
-                <Media item={pics[i % Math.max(pics.length, 1)]} strokeWidth={0.6} />
+                <Media item={pics[i % Math.max(pics.length, 1)]} strokeWidth={0.6} alt="" sizes="(min-width: 900px) 50vw, 100vw" />
               </div>
               <figcaption className="jr-spread__num" aria-hidden="true">
                 {String(i + 1).padStart(2, '0')}

@@ -27,7 +27,7 @@ function Card({ item, currency }: { item: CatalogItem; currency: string }) {
     <li className="ct-card" data-flip-id={item.id}>
       <Link to={`/saunas/${item.slug}`} className="ct-card__link" aria-label={t('saunas.view', { name: item.name })}>
         <span className="ct-card__media">
-          <Media item={item} strokeWidth={0.9} />
+          <Media item={item} strokeWidth={0.9} alt="" sizes="(min-width: 1100px) 25vw, (min-width: 640px) 50vw, 100vw" />
           {saving > 0 && <span className="ct-card__save mono">−{fmt.money(saving, currency)}</span>}
         </span>
         <span className="ct-card__name">{item.name}</span>

@@ -11,7 +11,6 @@ export const pages = {
   sauna: () => import('../storefront/pages/SaunaDetail.tsx'),
   configure: () => import('../storefront/pages/Configure.tsx'),
   shared: () => import('../storefront/pages/Shared.tsx'),
-  showroom: () => import('../storefront/pages/Showroom.tsx'),
   guide: () => import('../storefront/pages/Guide.tsx'),
   how: () => import('../storefront/pages/HowItWorks.tsx'),
   about: () => import('../storefront/pages/About.tsx'),

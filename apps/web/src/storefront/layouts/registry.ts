@@ -30,7 +30,9 @@ interface LayoutMeta {
 
 export const LAYOUT_META: Record<LayoutId, LayoutMeta> = {
   atelier: { flavour: 'default' },
-  showroom: { flavour: 'dark' },
+  // Every layout follows the brand colour in the visitor's scheme; showroom keeps
+  // its dark look only in the home hero band, so inner pages never switch theme.
+  showroom: { flavour: 'default' },
   nordic: { flavour: 'warm', font: 'Fraunces:opsz,wght@9..144,300..600' },
   catalogue: { flavour: 'default' },
   journal: { flavour: 'default', font: 'Instrument+Serif:ital@0;1' },

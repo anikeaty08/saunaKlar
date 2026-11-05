@@ -137,13 +137,10 @@ html[data-layout='journal'] .scard__media {
 
 .jr-spread__media {
   position: relative;
-  aspect-ratio: 4 / 5;
+  /* The photos' own 3:2, as on every card. */
+  aspect-ratio: 3 / 2;
   overflow: hidden;
-  background: var(--paper-3);
-}
-
-.jr-spread:not(.jr-spread--flip) .jr-spread__media {
-  aspect-ratio: 5 / 4;
+  background: var(--frame);
 }
 
 .jr-spread__media .lmedia {
@@ -152,7 +149,7 @@ html[data-layout='journal'] .scard__media {
 
 .jr-spread__media .lmedia__glyph {
   width: 70%;
-  color: var(--ink-4);
+  color: var(--ink-3);
 }
 
 .jr-spread__num {
@@ -241,11 +238,6 @@ html[data-layout='journal'] .scard__media {
 
   .jr-spread--flip .jr-spread__frame {
     order: 0;
-  }
-
-  .jr-spread__media,
-  .jr-spread:not(.jr-spread--flip) .jr-spread__media {
-    aspect-ratio: 4 / 3;
   }
 
   .jr-mast__foot {
