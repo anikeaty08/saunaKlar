@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { SEED, SEED_PASSWORD, SEED_SHARE_TOKEN } from '@saunaklar/db';
+import { SEED, SEED_PASSWORD, SEED_SHARE_TOKEN } from '@saunaklar/db/seed';
 import { createHarness, type Harness } from './harness.ts';
 
 let h: Harness;
@@ -92,6 +92,27 @@ describe('customer flow', () => {
 
     const mine = await c.get('/api/me/requests');
     expect(mine.body.items.some((r: { id: string }) => r.id === sub.body.id)).toBe(true);
+  });
+
+  it('serves the glass-corner sauna and prices an option on top of the list price', async () => {
+    const c = h.client('alpha.localhost');
+    await c.login('ben@example.test', SEED_PASSWORD);
+    const sauna = (await c.get('/api/catalog/saunas/kide-glass-corner')).body;
+    type Opt = { id: string; code: string; isDefault: boolean };
+    const groups = sauna.groups as { code: string; required: boolean; options: Opt[] }[];
+    expect(sauna.attributes.find((a: { code: string }) => a.code === 'form')?.value).toBe('glass-corner');
+    const codes = groups.flatMap(g => g.options.map(o => o.code));
+    expect(codes).toEqual(expect.arrayContaining(['led-backrest', 'ir-panel', 'pine']));
+    expect(codes).not.toContain('bench-u');
+    const opt = (code: string) => groups.flatMap(g => g.options).find(o => o.code === code)!.id;
+    const defaults = groups.flatMap(g => g.options.filter(o => o.isDefault).map(o => o.id));
+    const created = await c.post('/api/configurations', { saunaModelId: sauna.id });
+    const put = (optionIds: string[]) => c.put(`/api/configurations/${created.body.id}/selections`, { optionIds });
+    const base = await put(defaults);
+    expect(base.status).toBe(200);
+    const ir = await put([...defaults, opt('ir-panel')]);
+    expect(ir.status).toBe(200);
+    expect(ir.body.price.finalPriceMinor).toBeGreaterThan(base.body.price.finalPriceMinor);
   });
 
   it('rejects a contradictory selection', async () => {

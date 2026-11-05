@@ -14,6 +14,8 @@ export const resellerSummarySchema = z.object({
   status: resellerStatus,
   storefrontUrl: z.string(),
   saunasAssigned: z.number().int(),
+  /** Assigned saunas the reseller shows in its storefront; 0 means an empty shop. */
+  saunasVisible: z.number().int(),
   customers: z.number().int(),
   openRequests: z.number().int(),
   createdAt: isoDateTime,

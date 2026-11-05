@@ -1,5 +1,5 @@
 /** Mail locales. Rumantsch texts are in Rumantsch Grischun. */
-export const MAIL_LOCALES = ['en', 'de', 'fr', 'it', 'rm'] as const;
+export const MAIL_LOCALES = ['en', 'de', 'fr', 'it'] as const;
 export type MailLocale = (typeof MAIL_LOCALES)[number];
 
 /** Accepts `de`, `de-CH`, `DE_ch`, …; anything unknown falls back to English. */
@@ -14,7 +14,6 @@ export const INTL_LOCALE: Record<MailLocale, string> = {
   de: 'de-CH',
   fr: 'fr-CH',
   it: 'it-CH',
-  rm: 'rm-CH',
 };
 
 export const REQUEST_STATUSES = ['SUBMITTED', 'IN_REVIEW', 'QUOTED', 'ACCEPTED', 'CLOSED', 'REJECTED', 'CANCELLED'] as const;
@@ -444,99 +443,4 @@ const it: MailStrings = {
   },
 };
 
-const rm: MailStrings = {
-  greeting: (n) => (n ? `Bun di ${n},` : 'Bun di,'),
-  layout: {
-    questionsReplyOrWrite: 'Dumondas? Respundai a quest e-mail u scrivai a',
-    questionsReply: 'Dumondas? Respundai simplamain a quest e-mail.',
-    questionsWriteTo: (e) => `Dumondas? Scrivai a ${e}.`,
-  },
-  status: {
-    SUBMITTED: 'Inoltrada',
-    IN_REVIEW: 'En examinaziun',
-    QUOTED: 'Offerta tramessa',
-    ACCEPTED: 'Acceptada',
-    CLOSED: 'Terminada',
-    REJECTED: 'Refusada',
-    CANCELLED: 'Annullada',
-  },
-  labels: { reference: 'Referenza', sauna: 'Sauna', configuredPrice: 'Pretsch configurà', quotedPrice: 'Pretsch da l’offerta', validUntil: 'Valaivla fin ils', email: 'E-mail' },
-  signupCode: {
-    subject: (b) => `Voss code da verificaziun per ${b}`,
-    preheader: (c) => `Voss code è ${c}`,
-    heading: 'Confermai Vossa adressa dad e-mail',
-    body: (b) => `Endatai quest code per terminar l’avertura da Voss conto tar ${b}:`,
-    note: 'Il code è valaivel 24 uras. Sche Vus n’avais betg fatg ina registraziun, pudais Vus ignorar quest e-mail.',
-  },
-  resetCode: {
-    subject: (b) => `Redefinir Voss pled-clav per ${b}`,
-    preheader: (c) => `Voss code per redefinir è ${c}`,
-    heading: 'Redefinir Voss pled-clav',
-    body: 'Endatai quest code ensemen cun Voss nov pled-clav:',
-    note: 'Il code è valaivel 1 ura. Sche Vus n’avais betg dumandà da redefinir il pled-clav, ignorai quest e-mail; Voss pled-clav resta nunmidà.',
-  },
-  staffInvite: {
-    subject: (b) => `Vus essas envidads tar ${b}`,
-    preheader: 'Voss conto d’administratur è pront',
-    heading: (b) => `Bainvegni tar ${b}`,
-    body: 'Nus avain creà per Vus in conto d’administratur. S’annunziai cun Vossa adressa dad e-mail e cun quest pled-clav temporar:',
-    signIn: 'S’annunziar',
-    mfa: 'Tar l’emprima annunzia tschernis Vus Voss agen pled-clav ed endrizzais l’autentificaziun da dus facturs cun in’app d’autentificaziun (per exempel 1Password, Google Authenticator u Microsoft Authenticator). Per administraturs è l’autentificaziun da dus facturs obligatorica.',
-    note: 'Il pled-clav temporar scada suenter 7 dis. Na dai mai el vinavant; nus na vegnin mai a dumandar Vus per el.',
-  },
-  requestSubmittedCustomer: {
-    subject: (r) => `Nus avain retschavì Vossa dumonda ${r}`,
-    preheader: (s) => `${s}: dumonda retschavida`,
-    heading: 'Grazia fitg per Vossa dumonda',
-    body: (s) => `Nus avain retschavì Vossa dumonda per la sauna ${s} configurada. Noss team la examinescha e sa mettà en contact cun Vus.`,
-    view: 'Mussar la dumonda',
-  },
-  requestSubmittedStaff: {
-    subject: (r, s) => `Nova dumonda ${r}: ${s}`,
-    preheader: (c) => `Da ${c}`,
-    heading: 'Nova dumonda da configuraziun',
-    body: (c, s) => `${c} ha tramess ina dumonda per ina sauna ${s} configurada.`,
-    open: 'Avrir en l’administraziun',
-  },
-  requestStatusChanged: {
-    subject: (r, s) => `Dumonda ${r}: ${s}`,
-    preheader: (s) => `Nov status: ${s}`,
-    heading: (s) => `Vossa dumonda è ussa: ${s}`,
-    body: (r, s) => `Il status da Vossa dumonda ${r} è vegnì midà en «${s}».`,
-    view: 'Mussar la dumonda',
-  },
-  quoteAdded: {
-    subject: (r, a) => `Vossa offerta per ${r}: ${a}`,
-    preheader: (d) => `Valaivla fin ils ${d}`,
-    heading: 'Vossa offerta è pronta',
-    body: (r) => `Nus avain preparà ina offerta per Vossa dumonda ${r}.`,
-    cta: 'Examinar ed acceptar',
-  },
-  shareLinkCreated: {
-    subject: (s) => `Vossa configuraziun ${s}`,
-    preheader: (d) => `Da vesair fin ils ${d}`,
-    heading: 'Ina configuraziun per Vus',
-    body: (b, s) => `${b} ha preparà per Vus ina configuraziun da la sauna ${s}. Vus la pudais guardar en 3D ed en Vossa stanza, senza conto.`,
-    open: 'Avrir la configuraziun',
-    note: (d) => `La colliaziun è valaivla fin ils ${d}. Tgi che ha la colliaziun po guardar la configuraziun; dai ella vinavant mo a persunas da fiducia.`,
-  },
-  accountExists: {
-    subject: (b) => `Voss conto tar ${b}`,
-    preheader: 'Insatgi ha empruvà da sa registrar cun Vossa adressa dad e-mail',
-    heading: 'Vus avais gia in conto',
-    body: (b) => `Insatgi, probablamain Vus, ha empruvà d’avrir in conto tar ${b} cun questa adressa dad e-mail. Vus avais gia in, perquai n’è nagin nov conto vegnì creà.`,
-    signIn: 'S’annunziar',
-    forgot: 'Emblidà il pled-clav?',
-    reset: 'Al redefinir qua',
-    note: 'Sche quai n’eras betg Vus, pudais Vus ignorar quest e-mail. Voss conto resta nunmidà.',
-  },
-  accountDeleted: {
-    subject: (b) => `Voss conto tar ${b} è vegnì stizzà`,
-    preheader: 'Vossas datas persunalas èn vegnidas allontanadas',
-    heading: 'Voss conto è vegnì stizzà',
-    body: 'Sco giavischà avain nus stizzà Voss conto ed allontanà Vossas datas persunalas. Documents che nus stuain conservar per motivs giuridics (sco dumondas inoltradas) n’èn betg pli colliads cun Vus.',
-    note: 'Sche Vus n’avais betg dumandà quai, contactai nus immediatamain cun respunder a quest e-mail.',
-  },
-};
-
-export const MAIL_STRINGS: Record<MailLocale, MailStrings> = { en, de, fr, it, rm };
+export const MAIL_STRINGS: Record<MailLocale, MailStrings> = { en, de, fr, it };

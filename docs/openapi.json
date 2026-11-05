@@ -5767,6 +5767,191 @@
         }
       }
     },
+    "/api/admin/saunas/{id}/options": {
+      "get": {
+        "operationId": "adminSaunaOptions",
+        "summary": "GET /api/admin/saunas/:id/options",
+        "description": "Staff user who is an active admin of the tenant resolved from the host (staff session cookie, MFA as configured).\n\nReseller storefront host `{slug}.{platformDomain}`; the tenant is resolved from the subdomain.",
+        "tags": [
+          "reseller-admin"
+        ],
+        "x-host": "{slug}.{platformDomain}",
+        "x-access": "reseller-staff",
+        "x-lambda": "reseller-admin",
+        "servers": [
+          {
+            "url": "https://{slug}.{platformDomain}",
+            "description": "Reseller storefront",
+            "variables": {
+              "slug": {
+                "default": "alpha",
+                "description": "Reseller subdomain"
+              },
+              "platformDomain": {
+                "default": "saunaklar.example",
+                "description": "PLATFORM_DOMAIN"
+              }
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSaunaOptionsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "410": {
+            "$ref": "#/components/responses/Problem410"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Problem429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Problem500"
+          }
+        }
+      },
+      "put": {
+        "operationId": "adminPutSaunaOptions",
+        "summary": "PUT /api/admin/saunas/:id/options",
+        "description": "Staff user who is an active admin of the tenant resolved from the host (staff session cookie, MFA as configured).\n\nReseller storefront host `{slug}.{platformDomain}`; the tenant is resolved from the subdomain.\n\nRequires the `X-CSRF-Token` header (from GET /api/auth/session).",
+        "tags": [
+          "reseller-admin"
+        ],
+        "x-host": "{slug}.{platformDomain}",
+        "x-access": "reseller-staff",
+        "x-lambda": "reseller-admin",
+        "servers": [
+          {
+            "url": "https://{slug}.{platformDomain}",
+            "description": "Reseller storefront",
+            "variables": {
+              "slug": {
+                "default": "alpha",
+                "description": "Reseller subdomain"
+              },
+              "platformDomain": {
+                "default": "saunaklar.example",
+                "description": "PLATFORM_DOMAIN"
+              }
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/CsrfToken"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPutSaunaOptionsBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSaunaOptionsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Problem400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Problem401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Problem403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Problem404"
+          },
+          "409": {
+            "$ref": "#/components/responses/Problem409"
+          },
+          "410": {
+            "$ref": "#/components/responses/Problem410"
+          },
+          "413": {
+            "$ref": "#/components/responses/Problem413"
+          },
+          "415": {
+            "$ref": "#/components/responses/Problem415"
+          },
+          "422": {
+            "$ref": "#/components/responses/Problem422"
+          },
+          "429": {
+            "$ref": "#/components/responses/Problem429"
+          },
+          "500": {
+            "$ref": "#/components/responses/Problem500"
+          }
+        }
+      }
+    },
     "/api/admin/discount": {
       "put": {
         "operationId": "adminPutDefaultDiscount",
@@ -10007,6 +10192,60 @@
           "value"
         ]
       },
+      "AdminPutSaunaOptionsBody": {
+        "type": "object",
+        "properties": {
+          "options": {
+            "maxItems": 500,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "optionId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "priceOverrideMinor": {
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "descriptionOverride": {
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 2000
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "optionId",
+                "enabled"
+              ]
+            }
+          }
+        },
+        "required": [
+          "options"
+        ]
+      },
       "AdminQuoteBody": {
         "type": "object",
         "properties": {
@@ -10704,6 +10943,159 @@
           "views",
           "lastViewedAt",
           "state"
+        ],
+        "additionalProperties": false
+      },
+      "AdminSaunaOptionsResponse": {
+        "type": "object",
+        "properties": {
+          "saunaModelId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "selectionType": {
+                  "type": "string",
+                  "enum": [
+                    "SINGLE",
+                    "MULTI"
+                  ]
+                },
+                "required": {
+                  "type": "boolean"
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                      },
+                      "code": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "isDefault": {
+                        "type": "boolean"
+                      },
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "basePriceMinor": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "priceOverrideMinor": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "effectivePriceMinor": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "descriptionOverride": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "code",
+                      "name",
+                      "description",
+                      "isDefault",
+                      "enabled",
+                      "basePriceMinor",
+                      "priceOverrideMinor",
+                      "effectivePriceMinor",
+                      "descriptionOverride"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "code",
+                "name",
+                "selectionType",
+                "required",
+                "options"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "requires": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "optionId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                },
+                "requiredOptionId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$"
+                }
+              },
+              "required": [
+                "optionId",
+                "requiredOptionId"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "saunaModelId",
+          "currency",
+          "groups",
+          "requires"
         ],
         "additionalProperties": false
       },
@@ -13131,8 +13523,7 @@
               "en",
               "de",
               "fr",
-              "it",
-              "rm"
+              "it"
             ]
           }
         }
@@ -13700,6 +14091,12 @@
                 "name": {
                   "type": "string"
                 },
+                "description": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "selectionType": {
                   "type": "string",
                   "enum": [
@@ -13783,6 +14180,7 @@
                 "id",
                 "code",
                 "name",
+                "description",
                 "selectionType",
                 "required",
                 "options"
@@ -14064,6 +14462,12 @@
                     "name": {
                       "type": "string"
                     },
+                    "description": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "selectionType": {
                       "type": "string",
                       "enum": [
@@ -14147,6 +14551,7 @@
                     "id",
                     "code",
                     "name",
+                    "description",
                     "selectionType",
                     "required",
                     "options"
@@ -14433,8 +14838,7 @@
               "en",
               "de",
               "fr",
-              "it",
-              "rm"
+              "it"
             ]
           },
           "consents": {

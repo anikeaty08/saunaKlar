@@ -232,23 +232,24 @@
 }
 
 .contact-block--ink {
-  background: var(--ink);
-  color: var(--on-ink);
-  --focus: var(--on-ink);
+  background: var(--primary);
+  color: var(--on-primary);
+  --focus: var(--on-primary);
 }
 
+/* Body text on the brand fill keeps the full label colour (4.5:1 by construction). */
 .contact-block--ink p {
-  color: color-mix(in oklab, var(--on-ink) 75%, transparent);
+  color: var(--on-primary);
 }
 
 .contact-block--ink .btn--ghost {
-  color: var(--on-ink);
-  border-color: var(--on-ink);
+  color: var(--on-primary);
+  border-color: var(--on-primary);
 }
 
 .contact-block--ink .btn--ghost:hover {
-  background: var(--on-ink);
-  color: var(--ink);
+  background: var(--on-primary);
+  color: var(--primary);
 }
 
 .legal__body {
@@ -272,83 +273,6 @@
   margin-top: 0;
 }
 
-.showroom-bar {
-  padding-bottom: var(--space-6);
-  overflow-x: auto;
-}
-
-.showroom-bar .segmented__track {
-  display: inline-grid;
-}
-
-.showroom {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
-  grid-auto-rows: 22rem;
-  grid-auto-flow: dense;
-  gap: var(--gutter);
-}
-
-.showroom__tile {
-  position: relative;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.showroom__tile.is-wide {
-  grid-column: span 2;
-}
-
-.showroom__tile a {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: var(--ink);
-  text-decoration: none;
-  background: var(--paper-2);
-}
-
-.showroom__tile--bathroom a { background: linear-gradient(180deg, var(--paper) 0 62%, var(--paper-3) 62%); }
-.showroom__tile--basement a { background: linear-gradient(180deg, var(--paper-3) 0 66%, var(--ink-6) 66%); }
-.showroom__tile--garden a { background: linear-gradient(180deg, var(--paper) 0 58%, var(--paper-2) 58%); }
-.showroom__tile--lake a { background: linear-gradient(180deg, var(--paper-2) 0 55%, var(--ink-6) 55% 60%, var(--paper-3) 60%); }
-.showroom__tile--cabin a { background: linear-gradient(180deg, var(--paper-3) 0 60%, var(--paper-2) 60%); }
-
-.showroom__glyph {
-  width: 62%;
-  height: 62%;
-  transition: transform 1s var(--ease-out);
-}
-
-.showroom__tile a:hover .showroom__glyph {
-  transform: scale(1.06);
-}
-
-.showroom__cap {
-  position: absolute;
-  left: 1rem;
-  right: 1rem;
-  bottom: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 1rem;
-}
-
-.showroom__name {
-  font-family: var(--font-display);
-  font-size: var(--step-1);
-  font-weight: 500;
-  letter-spacing: -0.03em;
-}
-
-.showroom__setting {
-  font-size: var(--step--2);
-  color: var(--ink-3);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
 
 @media (max-width: 760px) {
   .numbers {
@@ -377,9 +301,5 @@
   .guide-sizes,
   .legal__body {
     grid-template-columns: 1fr;
-  }
-
-  .showroom__tile.is-wide {
-    grid-column: auto;
   }
 }

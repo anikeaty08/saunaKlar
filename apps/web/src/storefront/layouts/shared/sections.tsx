@@ -7,13 +7,11 @@ import { useFormat } from '../../../i18n/format.ts';
 import { gsap, useGSAP } from '../../../motion/gsap.ts';
 import { prefersReducedMotion } from '../../../motion/preferences.ts';
 import { Icon } from '../../../design/components/Icon.tsx';
-import { LazyImage } from '../../../design/components/LazyImage.tsx';
+import { LazyImage, PHOTO_H, PHOTO_W, photoSource } from '../../../design/components/LazyImage.tsx';
 import { SaunaGlyph } from '../../components/SaunaGlyph.tsx';
 import { specsOf } from '../../components/specs.ts';
+import { ROOMY } from './useHome.ts';
 import './sections.css';
-
-/** Pinning and fanning need room and motion; below this they are plain stacks. */
-const ROOMY = '(min-width: 1024px) and (min-height: 640px) and (prefers-reduced-motion: no-preference)';
 
 /** A large statement, then the principle cards fanning out of a stack as it scrolls in. */
 export function Statement({ name }: { name: string }) {
@@ -100,7 +98,7 @@ export function FeaturedPanels({ items, currency }: { items: CatalogItem[]; curr
             <div className="fpanel__in">
               <div className="fpanel__media" aria-hidden="true">
                 {it.assets.thumbnailUrl ? (
-                  <LazyImage src={it.assets.thumbnailUrl} alt="" width={1600} height={1000} />
+                  <LazyImage {...photoSource(it.assets.thumbnailUrl)} alt="" width={PHOTO_W} height={PHOTO_H} sizes="100vw" />
                 ) : (
                   <SaunaGlyph form={s.form} widthMm={s.widthMm} depthMm={s.depthMm} heightMm={s.heightMm} className="fpanel__glyph" strokeWidth={0.6} />
                 )}

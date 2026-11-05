@@ -50,6 +50,10 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     if (cfg.APP_SECRET.startsWith('dev-only')) throw new Error('APP_SECRET must be set in production');
     if (!cfg.ORIGIN_SECRET) throw new Error('ORIGIN_SECRET must be set in production');
     if (!cfg.COOKIE_SECURE) throw new Error('COOKIE_SECURE cannot be disabled in production');
+    if (cfg.APP_SECRET.length < 32) throw new Error('APP_SECRET must be at least 32 characters in production');
+    if (cfg.PUBLIC_SCHEME !== 'https') throw new Error('PUBLIC_SCHEME must be https in production');
+    if (cfg.PLATFORM_DOMAIN === 'localhost' || cfg.ADMIN_HOST === 'admin.localhost') throw new Error('PLATFORM_DOMAIN and ADMIN_HOST must be set in production');
+    if (cfg.ADAPTERS === 'local' && !env.API_DATABASE_URL) throw new Error('API_DATABASE_URL must be set in production');
   }
   return cfg;
 }

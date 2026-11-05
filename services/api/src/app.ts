@@ -50,6 +50,16 @@ export function createApp(deps: Deps, functions: readonly LambdaFunction[] = ALL
   if (has('asset-signer')) registerAssets(app);
 
   app.get('/api/health', c => c.json({ ok: true }));
+  // Readiness: the database answers. No detail in the body, errors go to the log only.
+  app.get('/api/ready', async c => {
+    try {
+      await deps.pool.query('SELECT 1');
+      return c.json({ ok: true });
+    } catch (e) {
+      deps.log.error('readiness check failed', { error: e instanceof Error ? e.message : String(e) });
+      return c.json({ ok: false }, 503);
+    }
+  });
   app.notFound(notFoundHandler);
   app.onError(onError);
   return app;

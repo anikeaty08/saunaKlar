@@ -45,7 +45,7 @@ export function Price({ minor, currency, size = 'md', listMinor, label, classNam
         </s>
       )}
       <span className="price__value" aria-live="polite" aria-atomic="true">
-        <span className="sr-only">{text}</span>
+        <span className="sr-only no-copy">{text}</span>
         <span ref={ref} aria-hidden="true">
           {text}
         </span>

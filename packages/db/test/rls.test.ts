@@ -95,7 +95,7 @@ describe('rule 12: tenant isolation', () => {
       optionCurrencies: (await c.query<{ c: string }>('SELECT DISTINCT currency_code AS c FROM sauna_model_option_prices')).rows.map(r => r.c),
       rooms: await count(c, 'SELECT 1 FROM room_scenes'),
     }));
-    expect(alpha.models).toEqual(['aurora-hex', 'espoo-compact', 'fjord-panorama', 'kelo-barrel', 'lappi-corner']);
+    expect(alpha.models).toEqual(['aurora-hex', 'espoo-compact', 'fjord-panorama', 'kelo-barrel', 'kide-glass-corner', 'lappi-corner']);
     expect(alpha.currencies).toEqual(['EUR']);
     expect(alpha.optionCurrencies).toEqual(['EUR']);
     expect(alpha.rooms).toBe(3);
@@ -107,8 +107,8 @@ describe('rule 12: tenant isolation', () => {
       assets: await count(c, 'SELECT 1 FROM assets'),
     }));
     // Gamma offers kelo-barrel, lappi-corner and aurora-hex (6 assets each), the basement-spa room
-    // (1 thumbnail) and the 43 options those models carry (1 thumbnail each); nothing of Espoo.
-    expect(gamma).toEqual({ currencies: ['SEK'], helsinki: 0, rooms: 1, espooAssets: 0, assets: 3 * 6 + 1 + 43 });
+    // (1 thumbnail) and the 46 options those models carry (1 thumbnail each); nothing of Espoo.
+    expect(gamma).toEqual({ currencies: ['SEK'], helsinki: 0, rooms: 1, espooAssets: 0, assets: 3 * 6 + 1 + 46 });
     // Beta offers espoo-compact: its 4 sample files plus 2 gallery images.
     expect(await tenant(env, BETA, c => count(c, `SELECT 1 FROM assets WHERE storage_key LIKE '%/espoo-compact/%'`))).toBe(6);
   });
@@ -125,7 +125,7 @@ describe('rule 12: tenant isolation', () => {
 
   it('exposes staff names but not e-mails to tenants', async () => {
     const names = await tenant(env, ALPHA, c => c.query<{ display_name: string }>('SELECT id, display_name FROM staff_users'));
-    expect(names.rows.map(r => r.display_name)).toEqual(['Anton Albrecht']);
+    expect(names.rows.map(r => r.display_name)).toEqual(['Anton Albrecht', 'Alma Arnold']);
     await expectCode(tenant(env, ALPHA, c => c.query('SELECT email FROM staff_users')), 'INSUFFICIENT_PRIVILEGE');
   });
 });

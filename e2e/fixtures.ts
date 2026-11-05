@@ -3,7 +3,7 @@
  * changes; seed ids, the share token and the password come from @saunaklar/db.
  */
 import { expect, test as base, type Page } from '@playwright/test';
-import { SEED, SEED_PASSWORD, SEED_SHARE_TOKEN } from '@saunaklar/db';
+import { SEED, SEED_PASSWORD, SEED_SHARE_TOKEN } from '@saunaklar/db/seed';
 import { en } from '../apps/web/src/i18n/locales/en.ts';
 import { fr } from '../apps/web/src/i18n/locales/fr.ts';
 

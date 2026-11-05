@@ -10,6 +10,7 @@ const SIZES: Record<Exclude<SaunaForm, 'barrel'>, [number, number, number]> = {
   box: [2.0, 1.8, 2.1],
   panorama: [2.4, 2.0, 2.1],
   corner: [2.0, 2.0, 2.1],
+  'glass-corner': [2.4, 2.0, 2.1],
   hex: [2.4, 2.4, 2.2],
   cabin: [2.4, 2.6, 2.3],
 };

@@ -26,17 +26,16 @@ export function FlipText({ text, as, className, trigger = 'parent', stagger = 0.
     () => {
       const el = ref.current;
       if (!el || prefersReducedMotion()) return;
-      const split = SplitText.create(el, { type: 'chars', charsClass: 'flip-char', aria: 'none' });
+      const split = SplitText.create(el, { type: 'chars', tag: 'span', charsClass: 'flip-char', aria: 'none' });
       for (const ch of split.chars as HTMLElement[]) {
         const c = ch.textContent ?? '';
         ch.textContent = '';
         const roll = document.createElement('span');
         roll.className = 'flip-roll';
-        const a = document.createElement('span');
-        const b = document.createElement('span');
-        a.textContent = c;
-        b.textContent = c;
-        roll.append(a, b);
+        // The character once as text; its twin below is drawn by CSS (::after from data-c), so
+        // selecting and copying the label yields each character once.
+        roll.textContent = c;
+        roll.dataset.c = c;
         ch.append(roll);
       }
       const rolls = el.querySelectorAll<HTMLElement>('.flip-roll');
@@ -60,7 +59,7 @@ export function FlipText({ text, as, className, trigger = 'parent', stagger = 0.
 
   return (
     <Tag className={['flip-text', className].filter(Boolean).join(' ')}>
-      <span className="sr-only">{text}</span>
+      <span className="sr-only no-copy">{text}</span>
       <span ref={ref} className="flip-text__visual" aria-hidden="true">
         {text}
       </span>

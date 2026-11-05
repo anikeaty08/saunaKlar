@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
 import { buildBenches } from './benches.ts';
 import { buildFixtures } from './fixtures.ts';
-import { barrel, cabinRoof, hexRoof } from './forms.ts';
+import { barrel, cabinRoof, glassCornerFrame, hexRoof } from './forms.ts';
 import { computeLayout } from './layout.ts';
 import type { KitMaterials } from './materials.ts';
 import type { PartPiece } from './assets.ts';
@@ -25,6 +25,7 @@ export function buildSauna(spec: KitSpec, M: KitMaterials, library?: Map<string,
     if (spec.form === 'hex') hexRoof(P, M, L, spec);
     else if (spec.form === 'cabin') cabinRoof(P, M, L, spec);
     else flatRoof(P, M, L);
+    if (spec.form === 'glass-corner') glassCornerFrame(P, M, L, spec);
     // The IR panel goes on the longest bench wall.
     const irBand = spec.extras.irPanel ? [...L.bands].filter(b => b.level === 'upper').sort((a, b) => segLength(L, b.segment) - segLength(L, a.segment))[0] : undefined;
     const { irAt } = buildBenches(P, M, L, spec, irBand?.segment ?? null);

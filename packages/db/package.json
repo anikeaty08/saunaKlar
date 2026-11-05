@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./seed": "./src/dev.ts"
   },
   "description": "PostgreSQL schema (migrations), migration runner, dev seed and typed pg client with transaction-scoped tenant context.",
   "scripts": {

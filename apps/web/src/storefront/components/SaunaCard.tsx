@@ -5,10 +5,11 @@ import { useT } from '../../i18n/i18n.ts';
 import { useFormat } from '../../i18n/format.ts';
 import { FlipText } from '../../motion/FlipText.tsx';
 import { Icon } from '../../design/components/Icon.tsx';
-import { LazyImage } from '../../design/components/LazyImage.tsx';
+import { LazyImage, PHOTO_H, PHOTO_W, photoSource } from '../../design/components/LazyImage.tsx';
 import { Skeleton } from '../../design/components/Skeleton.tsx';
 import { useInView } from '../../design/useInView.ts';
 import { prefetchPath } from '../../app/prefetch.ts';
+import { preloadViewer } from '../../three/preload.ts';
 import { SaunaGlyph } from './SaunaGlyph.tsx';
 import { specsOf } from './specs.ts';
 import './SaunaCard.css';
@@ -20,6 +21,9 @@ interface Props {
   size?: 'md' | 'lg';
 }
 
+/** Rendered width of a card in `.sgrid` (columns of at least 20rem, page max 1440px). */
+const SIZES = '(min-width: 1440px) 460px, (min-width: 720px) 50vw, 100vw';
+
 /** Catalogue card: drawing or thumbnail, name with flip, seats and size, list → discounted price. */
 export function SaunaCard({ item, currency, index, size = 'md' }: Props) {
   const { t } = useT();
@@ -28,14 +32,20 @@ export function SaunaCard({ item, currency, index, size = 'md' }: Props) {
   const [ref, inView] = useInView<HTMLDivElement>('300px');
   const to = `/saunas/${item.slug}`;
   const saving = item.listPriceMinor - item.priceFromMinor;
+  // Intent to open: fetch the detail route and warm the 3D viewer chunk.
+  const warm = () => {
+    prefetchPath(to);
+    preloadViewer();
+  };
   return (
     <article className={`scard scard--${size}`} data-flip-id={item.id}>
-      <Link to={to} className="scard__link" onPointerEnter={() => prefetchPath(to)} onFocus={() => prefetchPath(to)} aria-label={t('saunas.view', { name: item.name })}>
+      <Link to={to} className="scard__link" onPointerEnter={warm} onFocus={warm} aria-label={t('saunas.view', { name: item.name })}>
         <div ref={ref} className="scard__media">
           <span className="scard__index mono">{String(index + 1).padStart(2, '0')}</span>
           {saving > 0 && <span className="scard__save mono">−{fmt.money(saving, currency)}</span>}
           {item.assets.thumbnailUrl ? (
-            <LazyImage src={item.assets.thumbnailUrl} alt="" width={800} height={600} />
+            // The link's accessible name already says which sauna this is.
+            <LazyImage {...photoSource(item.assets.thumbnailUrl)} alt="" width={PHOTO_W} height={PHOTO_H} sizes={SIZES} />
           ) : inView ? (
             <SaunaGlyph form={s.form} widthMm={s.widthMm} depthMm={s.depthMm} heightMm={s.heightMm} className="scard__glyph" />
           ) : (

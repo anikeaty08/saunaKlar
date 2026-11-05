@@ -1,14 +1,26 @@
-/* Showroom: dark and cinematic. The theme is the dark set in both schemes
-   (flavour "dark"); type is tight Geist with light weights at large sizes. */
+/* Showroom: cinematic. Like every layout it follows the brand theme (light and
+   dark scheme); only the home hero is a dark band (--night), as is the shared
+   footer. Type is tight Geist with light weights at large sizes. */
 
-/* Shared header: transparent over the hero until the page scrolls. */
-html[data-layout='showroom'] .header:not(.is-compact) {
+/* Shared header: transparent with light type over the home hero until the page
+   scrolls; on inner pages it is the normal header. */
+html[data-layout='showroom']:has(.sw-home) .header:not(.is-compact) {
   background: transparent;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  color: var(--on-night);
+  --ink: var(--on-night);
+  --ink-2: var(--on-night);
+  --ink-3: color-mix(in oklab, var(--on-night) 85%, var(--night));
+  --line-strong: color-mix(in oklab, var(--on-night) 45%, transparent);
+  --primary: var(--on-night);
+  --primary-hover: color-mix(in oklab, var(--on-night) 86%, var(--night));
+  --on-primary: var(--night);
+  --on-ink: var(--night);
+  --focus: var(--on-night);
 }
 
-/* Shared cards: photo-first, square corners, light type on dark. */
+/* Shared cards: photo-first, square corners, light type weights. */
 html[data-layout='showroom'] .scard__media {
   border-radius: 4px;
   background: var(--card);
@@ -25,7 +37,7 @@ html[data-layout='showroom'] .sh__title {
   letter-spacing: -0.05em;
 }
 
-/* ---- hero ---- */
+/* ---- hero (the one dark band) ---- */
 
 .sw-hero {
   position: relative;
@@ -37,6 +49,7 @@ html[data-layout='showroom'] .sh__title {
   isolation: isolate;
   color: var(--on-night);
   background: var(--night);
+  --focus: var(--on-night);
 }
 
 .sw-hero__media {
@@ -74,9 +87,12 @@ html[data-layout='showroom'] .sh__title {
   position: absolute;
   inset: 0;
   z-index: -1;
+  /* The renders have a bright floor and sky, so the scrim covers the whole text
+     area: at least 64% night everywhere (light text ≥ 4.5:1 even over white),
+     deepening towards the lede and buttons at the bottom. */
   background:
-    linear-gradient(180deg, color-mix(in oklab, var(--night) 70%, transparent) 0%, transparent 28%, transparent 45%, var(--night) 100%),
-    radial-gradient(80% 60% at 50% 100%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 70%);
+    linear-gradient(180deg, color-mix(in oklab, var(--night) 64%, transparent) 0%, color-mix(in oklab, var(--night) 64%, transparent) 40%, color-mix(in oklab, var(--night) 82%, transparent) 72%, var(--night) 100%),
+    radial-gradient(80% 60% at 50% 100%, color-mix(in oklab, var(--accent) 18%, transparent), transparent 70%);
 }
 
 .sw-hero__content {
@@ -120,7 +136,7 @@ html[data-layout='showroom'] .sh__title {
 
 .sw-hero__lede {
   max-width: 46ch;
-  color: color-mix(in oklab, var(--on-night) 80%, transparent);
+  color: var(--on-night);
 }
 
 .sw-hero__ctas {
@@ -149,9 +165,14 @@ html[data-layout='showroom'] .sh__title {
   text-decoration: none;
 }
 
+.sw-hero__tag:hover span:nth-child(2) {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
 .sw-hero__tag .mono {
-  font-size: 0.6875rem;
-  color: var(--night-muted);
+  font-size: 0.75rem;
+  color: color-mix(in oklab, var(--on-night) 85%, var(--night));
 }
 
 /* ---- rail ---- */
@@ -198,7 +219,8 @@ html[data-layout='showroom'] .sh__title {
 .sw-card {
   flex: 0 0 auto;
   width: clamp(17rem, 34vw, 34rem);
-  aspect-ratio: 4 / 5;
+  /* Same 3:2 as the photos and every other card: nothing is cropped twice. */
+  aspect-ratio: 3 / 2;
 }
 
 .sw-card__link {
@@ -207,7 +229,7 @@ html[data-layout='showroom'] .sh__title {
   height: 100%;
   overflow: hidden;
   border-radius: 6px;
-  background: var(--card);
+  background: var(--frame);
   color: var(--on-night);
   text-decoration: none;
 }
@@ -240,7 +262,8 @@ html[data-layout='showroom'] .sh__title {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 50%, color-mix(in oklab, var(--night) 85%, transparent));
+  /* Text area scrim: the name and meta sit on ≥ 70% night even over a white floor. */
+  background: linear-gradient(180deg, transparent 30%, color-mix(in oklab, var(--night) 70%, transparent) 62%, color-mix(in oklab, var(--night) 92%, transparent) 100%);
 }
 
 .sw-card__num {
@@ -248,8 +271,11 @@ html[data-layout='showroom'] .sh__title {
   top: var(--space-4);
   left: var(--space-4);
   z-index: 1;
-  font-size: 0.6875rem;
-  color: var(--night-muted);
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--night) 72%, transparent);
+  font-size: 0.75rem;
+  color: var(--on-night);
 }
 
 .sw-card__body {
@@ -269,7 +295,7 @@ html[data-layout='showroom'] .sh__title {
 
 .sw-card__meta {
   font-size: 0.75rem;
-  color: color-mix(in oklab, var(--on-night) 75%, transparent);
+  color: var(--on-night);
 }
 
 .sw-card__go {
@@ -284,6 +310,7 @@ html[data-layout='showroom'] .sh__title {
   border-radius: 50%;
   background: var(--on-night);
   color: var(--night);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--night) 35%, transparent);
   transform: scale(0.8);
   opacity: 0;
   transition: transform var(--dur-3) var(--ease-snap), opacity var(--dur-2);
@@ -302,7 +329,11 @@ html[data-layout='showroom'] .sh__title {
   gap: var(--space-4);
   border: var(--hair) solid var(--line-strong);
   background: transparent;
-  color: var(--ink);
+  color: var(--primary);
+}
+
+.sw-card--all .sw-card__link:hover {
+  background: var(--highlight);
 }
 
 .sw-card--all .sw-card__link::after {
@@ -313,7 +344,7 @@ html[data-layout='showroom'] .sh__title {
   font-size: 0.6875rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--ink-4);
+  color: var(--ink-3);
 }
 
 /* Without the pinned scrub the rail is a swipeable strip. */
@@ -374,10 +405,10 @@ html[data-layout='showroom'] .sh__title {
 
 .sw-steps__num {
   font-size: var(--step-5);
-  font-weight: 200;
+  font-weight: 300;
   line-height: 1;
   letter-spacing: -0.06em;
-  color: var(--accent);
+  color: var(--primary);
 }
 
 .sw-steps h3 {
@@ -443,5 +474,11 @@ html[data-layout='showroom'] .sh__title {
 
   .sw-steps li {
     min-height: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sw-card__link:hover .sw-card__media img {
+    transform: none;
   }
 }

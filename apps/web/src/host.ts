@@ -46,11 +46,43 @@ export function parseHost(host: string, config: HostConfig): HostKind {
   }
 }
 
-export function hostConfig(): HostConfig {
+/**
+ * Runtime config written at deploy time to /config.js (apps/web/public/config.js
+ * sets an empty object; .github/scripts/deploy-web.sh overwrites it), so one
+ * build artifact serves every environment.
+ */
+declare global {
+  interface Window {
+    __SK_CONFIG__?: { platformDomain?: string; adminHost?: string; exampleShops?: string[] };
+  }
+}
+
+/** Precedence: runtime config, then build-time VITE_* (local builds), then localhost defaults. */
+export function resolveHostConfig(
+  runtime: { platformDomain?: string; adminHost?: string } | undefined,
+  buildEnv: { VITE_PLATFORM_DOMAIN?: string; VITE_ADMIN_HOST?: string },
+): HostConfig {
   return {
-    platformDomain: import.meta.env.VITE_PLATFORM_DOMAIN || 'localhost',
-    adminHost: import.meta.env.VITE_ADMIN_HOST || 'admin.localhost',
+    platformDomain: runtime?.platformDomain || buildEnv.VITE_PLATFORM_DOMAIN || 'localhost',
+    adminHost: runtime?.adminHost || buildEnv.VITE_ADMIN_HOST || 'admin.localhost',
   };
+}
+
+/**
+ * Shop slugs the platform page links to as examples. Runtime config first (`exampleShops` in
+ * /config.js), then the build-time VITE_EXAMPLE_SHOPS (comma separated), then, in local dev only,
+ * the shops the seed creates. In production nothing is listed unless it is configured, so the
+ * page never links to shops that do not exist.
+ */
+export function exampleShops(): string[] {
+  const runtime = typeof window === 'undefined' ? undefined : window.__SK_CONFIG__?.exampleShops;
+  const build = (import.meta.env.VITE_EXAMPLE_SHOPS as string | undefined)?.split(',');
+  const list = runtime?.length ? runtime : build ?? (import.meta.env.DEV ? ['alpha', 'beta', 'gamma'] : []);
+  return list.map(x => x.trim().toLowerCase()).filter(Boolean);
+}
+
+export function hostConfig(): HostConfig {
+  return resolveHostConfig(typeof window === 'undefined' ? undefined : window.__SK_CONFIG__, import.meta.env);
 }
 
 /** The current window's host, parsed once per page load. */

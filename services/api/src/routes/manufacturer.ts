@@ -39,9 +39,10 @@ async function getReseller(db: Db, manufacturerId: string, id: string): Promise<
 }
 
 async function summaries(c: Ctx, db: Db, manufacturerId: string, onlyId?: string): Promise<ResellerSummary[]> {
-  const { rows } = await db.query<ResellerRow & { saunas: string; customers: string | null; requests_open: string | null }>(
+  const { rows } = await db.query<ResellerRow & { saunas: string; saunas_visible: string; customers: string | null; requests_open: string | null }>(
     // reseller_overview() computes only the two counts shown (reseller_stats() computes nine).
     `select r.*, (select count(*) from reseller_saunas rs where rs.reseller_id = r.id) as saunas,
+            (select count(*) from reseller_saunas rs where rs.reseller_id = r.id and rs.is_visible) as saunas_visible,
             st.customers, st.requests_open
        from resellers r
        left join reseller_overview($1, $2) st on st.reseller_id = r.id
@@ -49,7 +50,7 @@ async function summaries(c: Ctx, db: Db, manufacturerId: string, onlyId?: string
       order by r.name, r.slug`, [manufacturerId, onlyId ?? null]);
   return rows.map(r => ({
     id: r.id, slug: r.slug, name: r.name, currency: r.currency_code.trim(), status: r.status, storefrontUrl: storefrontUrl(c, r.slug),
-    saunasAssigned: Number(r.saunas), customers: Number(r.customers ?? 0), openRequests: Number(r.requests_open ?? 0), createdAt: iso(r.created_at),
+    saunasAssigned: Number(r.saunas), saunasVisible: Number(r.saunas_visible), customers: Number(r.customers ?? 0), openRequests: Number(r.requests_open ?? 0), createdAt: iso(r.created_at),
   }));
 }
 

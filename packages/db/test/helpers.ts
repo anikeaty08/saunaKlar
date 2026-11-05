@@ -1,6 +1,7 @@
 import { expect } from 'vitest';
 import type pg from 'pg';
-import { createPool, createTestDatabase, dbErrorCode, dbErrorInfo, SEED, withTx, type Queryable, type TestDatabase, type TxContext } from '../src/index.ts';
+import { createPool, dbErrorCode, dbErrorInfo, withTx, type Queryable, type TxContext } from '../src/index.ts';
+import { createTestDatabase, SEED, type TestDatabase } from '../src/dev.ts';
 
 export { SEED };
 export const ALPHA = SEED.resellers.alpha;

@@ -6,7 +6,7 @@ import { memo, useMemo } from 'react';
  * vanish) and shaded with three paper tones — the drawing stays inside the
  * single-colour palette and needs no image asset.
  */
-export type SaunaForm = 'box' | 'panorama' | 'corner' | 'barrel' | 'hex' | 'cabin';
+export type SaunaForm = 'box' | 'panorama' | 'corner' | 'glass-corner' | 'barrel' | 'hex' | 'cabin';
 
 type V3 = [number, number, number];
 interface Face {
@@ -194,6 +194,19 @@ function build(form: SaunaForm, W: number, D: number, H: number): Face[] {
       ];
       faces[1]!.decals = grooves(faces[1]!.pts[0]!, faces[1]!.pts[1]!, H, 0, 5);
       faces[3]!.decals = [...grooves(faces[3]!.pts[0]!, faces[3]!.pts[1]!, H, 0, 9), [[-w, H * 0.45, d], [w - c, H * 0.45, d]]];
+      return faces;
+    }
+    case 'glass-corner': {
+      // Box with a glass front (door and fixed pane) and a glass panel at the front of the right wall.
+      const faces = prism([[-w, -d], [w, -d], [w, d], [-w, d]], H);
+      const front = faces[2]!, side = faces[1]!;
+      front.glass = true;
+      front.decals = [
+        [[-w / 3, 0, d], [-w / 3, H, d]],
+        [[w / 6, 0, d], [w / 6, H, d]],
+        [[-w, H * 0.94, d], [w, H * 0.94, d]],
+      ];
+      side.decals = [...grooves(side.pts[0]!, side.pts[1]!, H, 0, 4), [lerp3(side.pts[0]!, side.pts[1]!, 0.55, 30), lerp3(side.pts[0]!, side.pts[1]!, 0.55, H * 0.94)]];
       return faces;
     }
     case 'panorama':

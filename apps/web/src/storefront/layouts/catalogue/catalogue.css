@@ -109,10 +109,10 @@ html[data-layout='catalogue'] .sh__title {
   position: relative;
   display: grid;
   place-items: center;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 3 / 2;
   overflow: hidden;
   border-radius: 8px;
-  background: var(--paper-3);
+  background: var(--frame);
 }
 
 .ct-card__media .lmedia img {
@@ -125,7 +125,7 @@ html[data-layout='catalogue'] .sh__title {
 
 .ct-card__media .lmedia__glyph {
   width: 74%;
-  color: var(--ink-4);
+  color: var(--ink-3);
 }
 
 .ct-card__save {
@@ -135,8 +135,8 @@ html[data-layout='catalogue'] .sh__title {
   z-index: 1;
   padding: 0.2rem 0.45rem;
   border-radius: 4px;
-  background: var(--accent);
-  color: var(--paper);
+  background: var(--primary);
+  color: var(--on-primary);
   font-size: 0.6875rem;
 }
 
@@ -180,7 +180,7 @@ html[data-layout='catalogue'] .sh__title {
 
 .ct-card__price s {
   font-size: 0.75rem;
-  color: var(--ink-4);
+  color: var(--ink-3);
 }
 
 .ct-card__amount {
@@ -302,5 +302,11 @@ html[data-layout='catalogue'] .sh__title {
 
   .ct-card__amount {
     margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ct-card__link:hover .ct-card__media .lmedia img {
+    transform: none;
   }
 }

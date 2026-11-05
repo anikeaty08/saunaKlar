@@ -14,8 +14,8 @@
 }
 
 .badge--solid {
-  background: var(--ink);
-  color: var(--on-ink);
+  background: var(--primary);
+  color: var(--on-primary);
 }
 
 .badge--outline {
@@ -24,7 +24,7 @@
 }
 
 .badge--soft {
-  background: var(--paper-3);
+  background: var(--highlight);
   color: var(--ink);
 }
 

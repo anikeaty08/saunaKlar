@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { SEED, SEED_PASSWORD, SEED_SHARE_TOKEN, seedId } from '@saunaklar/db';
+import { SEED, SEED_PASSWORD, SEED_SHARE_TOKEN, seedId } from '@saunaklar/db/seed';
 import { createHarness, type Harness } from './harness.ts';
 
 /** Regression tests for the API review (authz, races, caching, audit isolation). */

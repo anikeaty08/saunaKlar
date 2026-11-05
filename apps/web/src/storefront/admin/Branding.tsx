@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ImageUp } from 'lucide-react';
 import { UPLOAD_LIMITS, type ResponseOf } from '@saunaklar/shared';
 import { api, isApiError } from '../../api/client.ts';
-import { tenantQuery, useTenantData } from '../../api/queries.ts';
+import { tenantQuery, useSession, useTenantData } from '../../api/queries.ts';
 import { useT, type TKey } from '../../i18n/i18n.ts';
 import { errorText } from '../../i18n/errorText.ts';
 import { applyTheme, deriveTheme } from '../../design/theme.ts';
@@ -16,6 +16,7 @@ import { Icon } from '../../design/components/Icon.tsx';
 import { useDocumentTitle } from '../../app/useDocumentTitle.ts';
 import { PageHead, Panel } from '../../staff/PageHead.tsx';
 import { useAdminMutation } from './helpers.ts';
+import { OwnerOnlyNote, useCanManageShop } from './permissions.tsx';
 import { LayoutPicker } from './LayoutPicker.tsx';
 import { isLayoutId } from '../layouts/registry.ts';
 
@@ -36,6 +37,7 @@ function BrandingForm({ branding }: { branding: Branding }) {
   const { t } = useT();
   const qc = useQueryClient();
   const tenant = useTenantData();
+  const canEdit = useCanManageShop();
   const [draft, setDraft] = useState(branding);
   const [errors, setErrors] = useState<Record<string, string>>({});
   useEffect(() => setDraft(branding), [branding]);
@@ -93,14 +95,17 @@ function BrandingForm({ branding }: { branding: Branding }) {
         title={t('admin.nav.branding')}
         lede={t('admin.branding.lede')}
         actions={
-          <Button type="submit" form="branding-form" loading={save.isPending} disabled={!dirty}>
-            {t('staff.save')}
-          </Button>
+          canEdit && (
+            <Button type="submit" form="branding-form" loading={save.isPending} disabled={!dirty}>
+              {t('staff.save')}
+            </Button>
+          )
         }
-        meta={dirty ? <span className="mono">{t('staff.unsaved')}</span> : undefined}
+        meta={!canEdit ? <OwnerOnlyNote /> : dirty ? <span className="mono">{t('staff.unsaved')}</span> : undefined}
       />
       <div className="staff-grid staff-grid--main-side">
         <form id="branding-form" onSubmit={submit} noValidate>
+          <fieldset className="admin-fieldset" disabled={!canEdit}>
           <Panel title={t('admin.branding.identity')}>
             <div className="staff-form">
               <Input label={t('admin.branding.displayName')} value={draft.displayName} onChange={e => set('displayName', e.target.value)} maxLength={120} required error={errors.displayName} />
@@ -130,6 +135,7 @@ function BrandingForm({ branding }: { branding: Branding }) {
               />
             </div>
           </Panel>
+          </fieldset>
         </form>
         <div className="admin-side">
           <Panel title={t('admin.branding.preview')}>
@@ -148,8 +154,10 @@ function BrandingForm({ branding }: { branding: Branding }) {
               <span className="brand-preview__button">{t('detail.configure')}</span>
             </div>
           </Panel>
-          <Upload kind="LOGO" current={branding.logoUrl} onDone={settle} />
-          <Upload kind="FAVICON" current={branding.faviconUrl} onDone={settle} />
+          <Upload kind="LOGO" current={branding.logoUrl} onDone={settle} disabled={!canEdit} />
+          <Upload kind="FAVICON" current={branding.faviconUrl} onDone={settle} disabled={!canEdit} />
+          <ShareLinkSettings canEdit={canEdit} />
+          <AccountPanel />
         </div>
       </div>
     </>
@@ -157,7 +165,7 @@ function BrandingForm({ branding }: { branding: Branding }) {
 }
 
 /** Presigned upload: create → PUT straight to storage → complete. */
-function Upload({ kind, current, onDone }: { kind: Kind; current: string | null; onDone: (b: Branding) => void }) {
+function Upload({ kind, current, onDone, disabled }: { kind: Kind; current: string | null; onDone: (b: Branding) => void; disabled?: boolean }) {
   const { t } = useT();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -188,10 +196,72 @@ function Upload({ kind, current, onDone }: { kind: Kind; current: string | null;
       <div className={`upload upload--${kind.toLowerCase()}`}>
         <span className="upload__preview">{current ? <img src={current} alt={label} /> : <Icon icon={ImageUp} size="lg" />}</span>
         <input ref={input} type="file" accept={limits.contentTypes.join(',')} className="sr-only" tabIndex={-1} onChange={e => void pick(e.target.files?.[0])} />
-        <Button variant="ghost" size="sm" icon={ImageUp} loading={busy} onClick={() => input.current?.click()}>
+        <Button variant="ghost" size="sm" icon={ImageUp} loading={busy} disabled={disabled} onClick={() => input.current?.click()}>
           {busy ? t('admin.branding.uploading') : current ? t('admin.branding.replace') : t('admin.branding.upload')}
         </Button>
       </div>
+    </Panel>
+  );
+}
+
+/** Default validity of new share links (was the separate Settings page). */
+function ShareLinkSettings({ canEdit }: { canEdit: boolean }) {
+  const { t } = useT();
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['admin', 'settings'], queryFn: () => api('adminSettings') });
+  const [days, setDays] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (q.data) setDays(String(q.data.defaultShareExpiryDays));
+  }, [q.data]);
+  const save = useAdminMutation((n: number) => api('adminPatchSettings', { body: { defaultShareExpiryDays: n } }), {
+    success: 'admin.settings.saved',
+    onSuccess: d => qc.setQueryData(['admin', 'settings'], d),
+  });
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const n = Number(days);
+    if (!Number.isInteger(n) || n < 1 || n > 90) return setError(t('admin.settings.shareExpiryHint'));
+    setError(null);
+    save.mutate(n);
+  };
+  return (
+    <Panel title={t('admin.configurations.shareLinks')}>
+      {q.isPending ? (
+        <Skeleton lines={2} />
+      ) : q.error ? (
+        <p className="staff-muted">{errorText(t, q.error)}</p>
+      ) : (
+        <form className="staff-form" onSubmit={submit} noValidate>
+          <Input label={t('admin.settings.shareExpiry')} hint={t('admin.settings.shareExpiryHint')} type="number" min={1} max={90} inputMode="numeric" value={days} onChange={e => setDays(e.target.value)} error={error} disabled={!canEdit} style={{ maxWidth: '10rem' }} />
+          {canEdit && (
+            <div className="staff-form__actions">
+              <Button type="submit" size="sm" loading={save.isPending} disabled={days === String(q.data.defaultShareExpiryDays)}>
+                {t('staff.save')}
+              </Button>
+            </div>
+          )}
+        </form>
+      )}
+    </Panel>
+  );
+}
+
+/** The signed-in staff user and their role. */
+function AccountPanel() {
+  const { t } = useT();
+  const session = useSession().data;
+  if (session?.kind !== 'staff') return null;
+  return (
+    <Panel title={t('admin.settings.account')}>
+      <dl className="kv">
+        <dt>{t('staff.name')}</dt>
+        <dd>{session.staff.displayName}</dd>
+        <dt>{t('staff.email')}</dt>
+        <dd>{session.staff.email}</dd>
+        <dt>{t('manufacturer.role')}</dt>
+        <dd>{t(`staff.roles.${session.staff.role}` as TKey)}</dd>
+      </dl>
     </Panel>
   );
 }

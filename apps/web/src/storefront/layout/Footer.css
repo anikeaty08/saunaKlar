@@ -1,6 +1,9 @@
 /* Footer: an ink band under the page sheet (.main--sheet in layout.css).
    .sfoot--reveal (set in JS when it fits the viewport) makes it sticky at the
-   bottom, so the sheet slides off and uncovers it in place. */
+   bottom, so the sheet slides off and uncovers it in place. The vertical
+   rhythm and the big name are capped by the viewport height (svh), so on
+   laptop screens (1280x720, 1366x768) the whole footer still fits one screen
+   and keeps the reveal instead of turning into a tall scrolling band. */
 
 .sfoot {
   position: relative;
@@ -27,17 +30,6 @@
   will-change: transform;
 }
 
-/* Paper veil: fades out as the footer is uncovered, so the colour shifts from
-   paper to ink across the sheet's edge. Hidden unless the scrub drives it. */
-.sfoot__veil {
-  position: absolute;
-  inset: 0;
-  background: var(--paper);
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-
 .sfoot__cap {
   font-family: var(--font-mono);
   font-size: 0.6875rem;
@@ -54,14 +46,14 @@
   grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
   gap: var(--space-6) var(--gutter);
   align-items: end;
-  padding-top: clamp(2.5rem, 1.5rem + 3vw, 4.5rem);
+  padding-top: min(clamp(2.5rem, 1.5rem + 3vw, 4.5rem), max(1.5rem, 8svh - 1.75rem));
 }
 
 .sfoot__title {
   margin-top: var(--space-4);
   max-width: 16ch;
   font-family: var(--font-serif);
-  font-size: clamp(2.3rem, 1.3rem + 3.6vw, 4.6rem);
+  font-size: max(2.1rem, min(clamp(2.3rem, 1.3rem + 3.6vw, 4.6rem), 8svh));
   font-weight: 400;
   line-height: 1.02;
   letter-spacing: -0.025em;
@@ -73,7 +65,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3) var(--space-5);
-  margin-top: var(--space-6);
+  margin-top: min(var(--space-6), 3.5svh);
 }
 
 .sfoot__ghost {
@@ -144,15 +136,15 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-6) var(--gutter);
-  margin-top: clamp(2rem, 1.5rem + 2vw, 3.25rem);
-  padding-top: var(--space-5);
+  margin-top: min(clamp(2rem, 1.5rem + 2vw, 3.25rem), 4.5svh);
+  padding-top: min(var(--space-5), 3svh);
   border-top: var(--hair) solid var(--night-line);
 }
 
 .sfoot__cols ul {
   display: grid;
-  gap: 0.55rem;
-  margin-top: var(--space-4);
+  gap: min(0.55rem, 0.9svh);
+  margin-top: min(var(--space-4), 2.5svh);
   font-size: var(--step--1);
 }
 
@@ -198,7 +190,9 @@
 
 /* The big name, cut by the bottom bar; rises out of it while uncovered. */
 .sfoot__name {
-  margin-top: clamp(1.5rem, 1rem + 2vw, 3rem);
+  /* Same left edge as the container content above it on wide screens. */
+  max-width: var(--max);
+  margin: min(clamp(1.5rem, 1rem + 2vw, 3rem), 3svh) auto 0;
   overflow: hidden;
   padding-inline: var(--gutter);
   line-height: 0.8;
@@ -208,11 +202,14 @@
 .sfoot__name-in {
   display: block;
   font-family: var(--font-serif);
-  font-size: min(15vw, 19svh);
+  font-size: min(15vw, 15svh);
   font-weight: 400;
   letter-spacing: -0.045em;
   white-space: nowrap;
   overflow: hidden;
+  /* Room above the caps: the line box is 0.8 and clips, which shaved the
+     tops off capitals such as S and F. The bottom stays cut by the bar. */
+  padding-top: 0.14em;
   text-overflow: clip;
   transform-origin: 50% 100%;
 }

@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
 import { calculatePrice, type Discount } from '@saunaklar/pricing';
-import { UPLOAD_LIMITS, routes, type AdminSauna, type Analytics, type StorefrontLayout } from '@saunaklar/shared';
+import { UPLOAD_LIMITS, routes, type AdminSauna, type AdminSaunaOptions, type Analytics, type StorefrontLayout } from '@saunaklar/shared';
 import { processBrandingUpload } from '../adapters/images.ts';
 import { originFor } from '../config.ts';
 import type { AppEnv, Ctx, Db, TenantInfo } from '../context.ts';
@@ -10,7 +10,7 @@ import { tenantTx } from '../lib/db.ts';
 import { requestLocale } from '../lib/locale.ts';
 import { ApiError } from '../lib/problem.ts';
 import { asStaff, mount } from '../lib/route.ts';
-import { assetUrl } from '../domain/catalog.ts';
+import { assetUrl, effectiveOptionPrice } from '../domain/catalog.ts';
 import {
   createConfiguration, getConfigRow, listConfigurationSummaries, lockConfiguration, replacePlacement, replaceSelections, toConfigurationDto,
 } from '../domain/configurations.ts';
@@ -130,6 +130,92 @@ async function oneSauna(db: Db, tenant: TenantInfo, locale: string, id: string):
   const { items } = await adminSaunas(db, tenant, locale, id);
   if (!items[0]) throw new ApiError('NOT_FOUND', 'This sauna is not assigned to you.');
   return items[0];
+}
+
+// ---- per-sauna option settings (0015) -------------------------------------------
+
+/** Every option of an assigned sauna with the reseller's setting and the effective values. */
+async function saunaOptions(db: Db, tenant: TenantInfo, locale: string, saunaId: string): Promise<AdminSaunaOptions> {
+  const assigned = await db.query('select 1 from reseller_saunas where reseller_id = $1 and sauna_model_id = $2', [tenant.id, saunaId]);
+  if (!assigned.rowCount) throw new ApiError('NOT_FOUND', 'This sauna is not assigned to you.');
+  const [{ rows }, requires] = await Promise.all([
+    db.query<{
+      group_id: string; group_code: string; group_name: string; selection_type: 'SINGLE' | 'MULTI'; is_required: boolean;
+      option_id: string; option_code: string; option_name: string; option_description: string | null; is_default: boolean;
+      price_delta_minor: string | null; is_enabled: boolean | null; price_override_minor: string | null; description_override: string | null;
+    }>(
+      `select g.id as group_id, g.code as group_code, coalesce(gt.name, g.name) as group_name, g.selection_type, smg.is_required,
+              o.id as option_id, o.code as option_code, coalesce(ot.name, o.name) as option_name,
+              coalesce(ot.description, o.description) as option_description, smo.is_default, op.price_delta_minor,
+              rso.is_enabled, rso.price_override_minor, rso.description_override
+         from sauna_model_option_groups smg
+         join option_groups g on g.id = smg.option_group_id
+         left join option_group_translations gt on gt.option_group_id = g.id and gt.locale = $3
+         join sauna_model_options smo on smo.sauna_model_id = smg.sauna_model_id and smo.option_group_id = g.id
+         join options o on o.id = smo.option_id
+         left join option_translations ot on ot.option_id = o.id and ot.locale = $3
+         left join sauna_model_option_prices op on op.sauna_model_id = smo.sauna_model_id and op.option_id = o.id and op.currency_code = $4
+         left join reseller_sauna_options rso on rso.reseller_id = $2 and rso.sauna_model_id = smo.sauna_model_id and rso.option_id = o.id
+        where smg.sauna_model_id = $1
+        order by smg.sort_order, g.sort_order, g.code, o.sort_order, o.code`,
+      [saunaId, tenant.id, locale, tenant.currency]),
+    db.query<{ option_id: string; required_option_id: string }>('select option_id, required_option_id from option_requires where sauna_model_id = $1', [saunaId]),
+  ]);
+  const groups = new Map<string, AdminSaunaOptions['groups'][number]>();
+  for (const r of rows) {
+    let g = groups.get(r.group_id);
+    if (!g) groups.set(r.group_id, (g = { id: r.group_id, code: r.group_code, name: r.group_name, selectionType: r.selection_type, required: r.is_required, options: [] }));
+    const base = Number(r.price_delta_minor ?? 0);
+    const override = r.price_override_minor === null ? null : Number(r.price_override_minor);
+    g.options.push({
+      id: r.option_id, code: r.option_code, name: r.option_name, description: r.option_description, isDefault: r.is_default,
+      enabled: r.is_enabled ?? true, basePriceMinor: base, priceOverrideMinor: override,
+      effectivePriceMinor: effectiveOptionPrice(base, override), descriptionOverride: r.description_override,
+    });
+  }
+  return {
+    saunaModelId: saunaId,
+    currency: tenant.currency,
+    groups: [...groups.values()],
+    requires: requires.rows.map(r => ({ optionId: r.option_id, requiredOptionId: r.required_option_id })),
+  };
+}
+
+type OptionSettingInput = { optionId: string; enabled: boolean; priceOverrideMinor: number | null; descriptionOverride: string | null };
+
+/**
+ * Checks the end state of a settings change before writing it (the database trigger repeats the
+ * two option rules): every option belongs to the sauna, a required group keeps an enabled option,
+ * and no enabled option requires a disabled one.
+ */
+export function checkOptionSettings(current: AdminSaunaOptions, changes: readonly OptionSettingInput[]): void {
+  const errors: Record<string, string[]> = {};
+  const all = new Map(current.groups.flatMap(g => g.options.map(o => [o.id, o] as const)));
+  const enabled = new Map([...all.values()].map(o => [o.id, o.enabled]));
+  const seen = new Set<string>();
+  changes.forEach((c, i) => {
+    if (!all.has(c.optionId)) errors[`options.${i}.optionId`] = ['This option is not offered with this sauna.'];
+    if (seen.has(c.optionId)) errors[`options.${i}.optionId`] = ['Each option may appear once.'];
+    seen.add(c.optionId);
+    enabled.set(c.optionId, c.enabled);
+  });
+  if (Object.keys(errors).length) throw new ApiError('VALIDATION_FAILED', 'Some options are not offered with this sauna.', { errors });
+  const index = (id: string) => changes.findIndex(c => c.optionId === id);
+  for (const g of current.groups) {
+    if (g.required && g.options.every(o => enabled.get(o.id) === false)) {
+      const i = changes.findIndex(c => g.options.some(o => o.id === c.optionId));
+      errors[`options.${i}.enabled`] = [`${g.name} is required: keep at least one option enabled.`];
+    }
+  }
+  for (const r of current.requires) {
+    if (enabled.get(r.optionId) !== false && enabled.get(r.requiredOptionId) === false) {
+      const i = Math.max(index(r.requiredOptionId), index(r.optionId));
+      errors[`options.${i}.enabled`] = [`${all.get(r.optionId)?.name ?? r.optionId} requires ${all.get(r.requiredOptionId)?.name ?? r.requiredOptionId}: disable both or neither.`];
+    }
+  }
+  if (Object.keys(errors).length) {
+    throw new ApiError('OPTION_RULES_VIOLATED', Object.values(errors).flat().join(' '), { errors });
+  }
 }
 
 function checkDiscount(d: Discount): void {
@@ -331,6 +417,39 @@ export function registerAdmin(app: Hono<AppEnv>): void {
          on conflict (reseller_id, sauna_model_id) do update set discount_type = excluded.discount_type, discount_value = excluded.discount_value, updated_at = now()`,
         [tenant.id, params.id, body.type, body.value]);
       return oneSauna(db, tenant, locale, params.id!);
+    });
+  });
+
+  // per-sauna option availability, price and description (0015)
+  mount(app, routes.adminSaunaOptions, async ({ c, params }) => {
+    const { tenant, locale } = ctx(c);
+    return tenantTx(c, db => saunaOptions(db, tenant, locale, params.id!));
+  });
+
+  mount(app, routes.adminPutSaunaOptions, async ({ c, params, body }) => {
+    const { tenant, locale } = ctx(c);
+    return tenantTx(c, async db => {
+      // Serialises concurrent edits of one sauna's settings (the row lock is on our own assignment).
+      await db.query('select 1 from reseller_saunas where reseller_id = $1 and sauna_model_id = $2 for update', [tenant.id, params.id]);
+      checkOptionSettings(await saunaOptions(db, tenant, locale, params.id!), body.options);
+      const isDefault = (o: OptionSettingInput) => o.enabled && o.priceOverrideMinor === null && o.descriptionOverride === null;
+      const reset = body.options.filter(isDefault).map(o => o.optionId);
+      const keep = body.options.filter(o => !isDefault(o));
+      if (reset.length) {
+        await db.query('delete from reseller_sauna_options where reseller_id = $1 and sauna_model_id = $2 and option_id = any($3::uuid[])', [tenant.id, params.id, reset]);
+      }
+      if (keep.length) {
+        // One statement, so the database's option-rule trigger judges the end state.
+        await db.query(
+          `insert into reseller_sauna_options (reseller_id, sauna_model_id, option_id, is_enabled, price_override_minor, description_override)
+           select $1, $2, x.option_id, x.enabled, x.price, x.description
+             from unnest($3::uuid[], $4::boolean[], $5::bigint[], $6::text[]) as x(option_id, enabled, price, description)
+           on conflict (reseller_id, sauna_model_id, option_id) do update
+             set is_enabled = excluded.is_enabled, price_override_minor = excluded.price_override_minor,
+                 description_override = excluded.description_override, updated_at = now()`,
+          [tenant.id, params.id, keep.map(o => o.optionId), keep.map(o => o.enabled), keep.map(o => o.priceOverrideMinor), keep.map(o => o.descriptionOverride)]);
+      }
+      return saunaOptions(db, tenant, locale, params.id!);
     });
   });
 

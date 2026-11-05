@@ -1,0 +1,180 @@
+.pgal {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.pgal__stage {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--frame, var(--paper-2));
+  /* Horizontal swipes are ours; vertical ones still scroll the page. */
+  touch-action: pan-y;
+}
+
+.pgal__main {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.pgal__main:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -4px;
+}
+
+.pgal__main .lazy-img {
+  width: 100%;
+}
+
+.pgal__zoom {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface, var(--paper)) 88%, transparent);
+  color: var(--ink);
+  box-shadow: var(--shadow-1);
+  opacity: 0;
+  transition: opacity var(--dur-2, 0.2s) var(--ease-out);
+}
+
+.pgal__main:hover .pgal__zoom,
+.pgal__main:focus-visible .pgal__zoom {
+  opacity: 1;
+}
+
+.pgal__overlay {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  display: flex;
+  gap: var(--space-2);
+}
+
+.pgal__arrow.btn {
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface, var(--paper)) 88%, transparent);
+  box-shadow: var(--shadow-1);
+}
+
+.pgal__arrow--prev.btn {
+  left: var(--space-3);
+}
+
+.pgal__arrow--next.btn {
+  right: var(--space-3);
+}
+
+.pgal__dots {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-3);
+  translate: -50% 0;
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--ink) 35%, transparent);
+  pointer-events: none;
+}
+
+.pgal__dots span {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--on-ink, #fff) 55%, transparent);
+  transition: background var(--dur-2, 0.2s) var(--ease-out), width var(--dur-2, 0.2s) var(--ease-out);
+}
+
+.pgal__dots span.is-on {
+  width: 1.1rem;
+  background: var(--on-ink, #fff);
+}
+
+.pgal__count {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-3);
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface, var(--paper)) 88%, transparent);
+  font-size: var(--step--2);
+  color: var(--ink-2);
+  pointer-events: none;
+}
+
+.pgal__thumbs {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.pgal__thumbs li {
+  flex: 0 0 auto;
+}
+
+.pgal__thumb {
+  display: block;
+  width: 7.5rem;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: none;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity var(--dur-2, 0.2s) var(--ease-out), border-color var(--dur-2, 0.2s) var(--ease-out);
+}
+
+.pgal__thumb:hover,
+.pgal__thumb.is-on {
+  opacity: 1;
+}
+
+.pgal__thumb.is-on {
+  border-color: var(--primary);
+}
+
+.pgal__lightbox {
+  display: grid;
+  gap: var(--space-3);
+  touch-action: pan-y;
+}
+
+.pgal__lightbox .lazy-img {
+  border-radius: var(--radius);
+  --photo-pos: 50% 50%;
+}
+
+.pgal__lbnav {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+@media (max-width: 640px) {
+  .pgal__thumb {
+    width: 5.5rem;
+  }
+
+  .pgal__arrow.btn {
+    --btn-h: 2.25rem;
+  }
+
+  .pgal__count {
+    display: none;
+  }
+}

@@ -7,7 +7,7 @@ import { Reveal } from '../../../motion/Reveal.tsx';
 import { NumberTicker } from '../../../motion/NumberTicker.tsx';
 import { ButtonLink } from '../../../design/components/Button.tsx';
 import { Icon } from '../../../design/components/Icon.tsx';
-import { LazyImage } from '../../../design/components/LazyImage.tsx';
+import { LazyImage, PHOTO_H, PHOTO_W, photoSource } from '../../../design/components/LazyImage.tsx';
 import { TextLink } from '../../../design/components/TextLink.tsx';
 import { useFormat } from '../../../i18n/format.ts';
 import { SaunaCard, SaunaCardSkeleton, SaunaGrid } from '../../components/SaunaCard.tsx';
@@ -68,7 +68,7 @@ export function Home() {
         <figure className="at-frame">
           <div className="at-frame__media">
             {hero?.assets.thumbnailUrl ? (
-              <LazyImage src={hero.assets.thumbnailUrl} alt="" width={2100} height={900} />
+              <LazyImage {...photoSource(hero.assets.thumbnailUrl)} alt={hero.name} width={PHOTO_W} height={PHOTO_H} sizes="(min-width: 1440px) 1360px, 100vw" priority />
             ) : (
               hs && <SaunaGlyph form={hs.form} widthMm={hs.widthMm} depthMm={hs.depthMm} heightMm={hs.heightMm} className="at-frame__glyph" strokeWidth={0.6} />
             )}

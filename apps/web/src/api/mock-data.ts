@@ -140,7 +140,7 @@ const GROUPS: GroupSeed[] = [
     code: 'control', name: 'Control', selectionType: 'SINGLE', required: false, options: [
       { code: 'dial', name: 'Integrated dial', description: 'Mechanical thermostat and timer on the heater.', price: 0, isDefault: true },
       { code: 'digital', name: 'Digital panel', description: 'Wall panel with temperature, timer and lighting control.', price: 35000 },
-      { code: 'app', name: 'App control', description: 'Wi-Fi module: pre-heat from your phone. Includes the digital panel.', price: 69000 },
+      { code: 'app', name: 'App control', description: 'Wi-Fi module: pre-heat from your phone. The fibre-optic ceiling needs the digital panel.', price: 69000 },
     ],
   },
   {
@@ -229,7 +229,7 @@ interface ModelSeed {
   sku: string;
   name: string;
   description: string;
-  form: 'box' | 'panorama' | 'corner' | 'barrel' | 'hex' | 'cabin';
+  form: 'box' | 'panorama' | 'corner' | 'glass-corner' | 'barrel' | 'hex' | 'cabin';
   widthMm: number;
   depthMm: number;
   heightMm: number;
@@ -307,6 +307,7 @@ function groups(m: ModelSeed): OptionGroupDto[] {
     id: groupId(g.code),
     code: g.code,
     name: g.name,
+    description: null,
     selectionType: g.selectionType,
     required: g.required,
     options: g.options

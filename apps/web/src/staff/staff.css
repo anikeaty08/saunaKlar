@@ -289,33 +289,69 @@
 }
 
 .staff-login__art {
+  position: relative;
   align-self: stretch;
   justify-self: stretch;
   display: grid;
-  place-content: center;
-  justify-items: center;
-  gap: var(--space-5);
+  align-content: end;
+  min-height: 30rem;
+  padding: var(--space-6);
   border-radius: clamp(16px, 2vw, 28px);
-  background:
-    radial-gradient(90% 70% at 50% 110%, color-mix(in oklab, var(--accent) 45%, transparent), transparent 70%),
-    var(--night);
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--night);
   color: var(--on-night);
+}
+
+/* The platform mark sits bottom left on the photo's scrim. */
+.staff-login__art-brand {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
 }
 
 .staff-login__art-word {
   font-family: var(--font-serif);
   font-size: var(--step-4);
   letter-spacing: -0.02em;
+  line-height: 1;
 }
 
 @media (max-width: 900px) {
   .staff-login {
     grid-template-columns: 1fr;
-    padding: var(--space-7) 16px;
+    align-content: start;
+    gap: var(--space-6);
+    padding: 12px 16px var(--space-7);
   }
 
+  /* A short banner above the form, not a second screen. */
   .staff-login__art {
-    display: none;
+    order: -1;
+    min-height: 0;
+    height: 6.5rem;
+    padding: var(--space-4);
+    border-radius: 16px;
+  }
+
+  .staff-login__art .photo-panel {
+    --photo-cap-top: var(--space-3);
+    --photo-cap-right: var(--space-3);
+  }
+
+  .staff-login__art-brand {
+    gap: var(--space-3);
+  }
+
+  .staff-login__mark {
+    width: 32px;
+    height: 32px;
+  }
+
+  .staff-login__art-word {
+    font-size: var(--step-2);
   }
 }
 

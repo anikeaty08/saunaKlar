@@ -1,14 +1,13 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { gsap, ScrollTrigger, useGSAP } from '../../motion/gsap.ts';
 import { prefersReducedMotion } from '../../motion/preferences.ts';
 import { TextNavLink } from '../../design/components/TextLink.tsx';
-import { FlipText } from '../../motion/FlipText.tsx';
 import { useT } from '../../i18n/i18n.ts';
 import type { Tenant } from '../../api/types.ts';
 import { Brand } from './Brand.tsx';
 import { LanguageSwitcher } from './LanguageSwitcher.tsx';
 import { AccountMenu } from './AccountMenu.tsx';
-import { MobileMenu } from './MobileMenu.tsx';
+import { BottomNav } from './BottomNav.tsx';
 import { PRIMARY_NAV } from './nav.ts';
 import './Header.css';
 
@@ -19,7 +18,6 @@ import './Header.css';
  */
 export function Header({ tenant }: { tenant: Tenant }) {
   const { t } = useT();
-  const [menuOpen, setMenuOpen] = useState(false);
   const ref = useRef<HTMLElement>(null);
 
   useGSAP(
@@ -71,21 +69,10 @@ export function Header({ tenant }: { tenant: Tenant }) {
             <div className="header__account">
               <AccountMenu />
             </div>
-            <button type="button" className="header__burger" aria-label={t('nav.openMenu')} aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}>
-              <FlipText text={t('nav.menu')} />
-              <span className="sixdots" aria-hidden="true">
-                <i />
-                <i />
-                <i />
-                <i />
-                <i />
-                <i />
-              </span>
-            </button>
           </div>
         </div>
       </header>
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} tenant={tenant} />
+      <BottomNav />
     </>
   );
 }

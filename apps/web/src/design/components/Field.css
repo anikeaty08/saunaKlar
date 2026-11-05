@@ -20,7 +20,7 @@
 }
 
 .field__opt {
-  color: var(--ink-4);
+  color: var(--ink-3);
   letter-spacing: 0.06em;
   text-transform: none;
 }
@@ -65,7 +65,7 @@
 }
 
 .control__input::placeholder {
-  color: var(--ink-4);
+  color: var(--ink-3);
 }
 
 .control__input:hover {
@@ -167,14 +167,14 @@
 }
 
 .check__input:checked + .check__label .check__box {
-  background: var(--ink);
-  border-color: var(--ink);
-  color: var(--on-ink);
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
 }
 
 .check--radio .check__input:checked + .check__label .check__box {
   background: var(--paper);
-  box-shadow: inset 0 0 0 4px var(--ink);
+  box-shadow: inset 0 0 0 4px var(--primary);
 }
 
 .check__input:focus-visible + .check__label .check__box {

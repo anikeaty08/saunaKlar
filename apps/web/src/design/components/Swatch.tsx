@@ -16,7 +16,8 @@ interface Props {
 /** Material swatch. The only place a non-brand colour appears: it is the product's own colour. */
 export function Swatch({ color, label, selected, disabled, onSelect, size = 'md', as = 'radio' }: Props) {
   if (as === 'chip') {
-    return <span className={`swatch swatch--${size}`} style={{ ['--swatch' as string]: color }} title={label} role="img" aria-label={label} />;
+    // Shown next to its name, so no tooltip; the label still names the colour for assistive tech.
+    return <span className={`swatch swatch--${size}`} style={{ ['--swatch' as string]: color }} role="img" aria-label={label} />;
   }
   return (
     <button

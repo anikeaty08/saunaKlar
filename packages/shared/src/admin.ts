@@ -56,6 +56,58 @@ export const adminSaunaPatch = z.object({ isVisible: z.boolean().optional(), sor
 /** PUT /api/admin/saunas/order — whole ordering at once, for drag-and-drop. */
 export const adminSaunaOrder = z.object({ saunaModelIds: z.array(uuid).max(1000) });
 
+// ---- Per-sauna option settings (reseller_sauna_options) -------------------
+// No stored setting = the manufacturer's values. Prices are minor units of the reseller currency.
+
+export const adminSaunaOptionSchema = z.object({
+  id: uuid,
+  code: z.string(),
+  name: z.string(),
+  /** Manufacturer's description in the request locale (English fallback). */
+  description: z.string().nullable(),
+  isDefault: z.boolean(),
+  enabled: z.boolean(),
+  /** Manufacturer's option price. */
+  basePriceMinor: minorUnits,
+  priceOverrideMinor: minorUnits.nullable(),
+  /** What customers pay: the override, else the base price. */
+  effectivePriceMinor: minorUnits,
+  descriptionOverride: z.string().nullable(),
+});
+export type AdminSaunaOption = z.infer<typeof adminSaunaOptionSchema>;
+
+export const adminSaunaOptionGroupSchema = z.object({
+  id: uuid,
+  code: z.string(),
+  name: z.string(),
+  selectionType: z.enum(['SINGLE', 'MULTI']),
+  /** A required group keeps at least one enabled option. */
+  required: z.boolean(),
+  options: z.array(adminSaunaOptionSchema),
+});
+
+export const adminSaunaOptionsSchema = z.object({
+  saunaModelId: uuid,
+  currency: z.string(),
+  groups: z.array(adminSaunaOptionGroupSchema),
+  /** "option requires option" pairs: an enabled option cannot require a disabled one. */
+  requires: z.array(z.object({ optionId: uuid, requiredOptionId: uuid })),
+});
+export type AdminSaunaOptions = z.infer<typeof adminSaunaOptionsSchema>;
+
+/**
+ * PUT /api/admin/saunas/:id/options — the listed options get exactly these settings (enabled,
+ * no override and no description = back to the manufacturer's values); unlisted ones keep theirs.
+ */
+export const adminSaunaOptionsPut = z.object({
+  options: z.array(z.object({
+    optionId: uuid,
+    enabled: z.boolean(),
+    priceOverrideMinor: minorUnits.nullable().default(null),
+    descriptionOverride: z.string().trim().max(2000).nullable().default(null).transform(v => (v ? v : null)),
+  })).max(500),
+});
+
 export const adminCustomerSummarySchema = z.object({
   id: uuid,
   email: z.string(),

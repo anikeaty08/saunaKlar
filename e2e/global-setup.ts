@@ -14,7 +14,7 @@ import { request } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createTestDatabase } from '@saunaklar/db';
+import { createTestDatabase } from '@saunaklar/db/seed';
 import { seedMedia } from '../scripts/seed-media.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));

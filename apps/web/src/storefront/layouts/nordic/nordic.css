@@ -12,7 +12,7 @@ html[data-layout='nordic'] .header {
 
 html[data-layout='nordic'] .scard__media {
   border-radius: var(--radius-soft);
-  background: var(--paper-3);
+  background: var(--frame);
 }
 
 html[data-layout='nordic'] .scard__name,
@@ -41,10 +41,13 @@ html[data-layout='nordic'] .btn {
 
 .nd-hero__photo {
   position: relative;
-  align-self: stretch;
-  min-height: 26rem;
+  align-self: center;
+  /* A fixed frame: the 3:2 photo crops only slightly at the sides. */
+  aspect-ratio: 4 / 3;
+  max-height: calc(100svh - var(--header-h) - var(--space-7));
+  width: 100%;
   border-radius: 28px;
-  background: var(--paper-3);
+  background: var(--frame);
   overflow: hidden;
 }
 
@@ -193,7 +196,7 @@ html[data-layout='nordic'] .btn {
   height: 4.5rem;
   margin-bottom: var(--space-2);
   border-radius: 14px;
-  background-image: repeating-linear-gradient(90deg, rgb(0 0 0 / 0.05) 0 2px, transparent 2px 9px);
+  background-image: repeating-linear-gradient(90deg, color-mix(in oklab, var(--ink) 6%, transparent) 0 2px, transparent 2px 9px);
 }
 
 .nd-wood__list h3,
@@ -254,17 +257,24 @@ html[data-layout='nordic'] .btn {
   gap: var(--space-4);
   padding: var(--space-7);
   border-radius: 28px;
-  background: var(--ink);
-  color: var(--on-ink);
+  /* A brand-coloured card: --on-primary clears 4.5:1 on --primary by construction. */
+  background: var(--primary);
+  color: var(--on-primary);
+  --focus: var(--on-primary);
 }
 
 .nd-visit__card .eyebrow {
-  color: color-mix(in oklab, var(--on-ink) 70%, transparent);
+  color: var(--on-primary);
 }
 
 .nd-visit__card .btn--ghost {
-  color: var(--on-ink);
-  border-color: var(--on-ink);
+  color: var(--on-primary);
+  border-color: var(--on-primary);
+}
+
+.nd-visit__card .btn--ghost:hover {
+  background: var(--on-primary);
+  color: var(--primary);
 }
 
 .nd-visit__trust {
@@ -291,8 +301,7 @@ html[data-layout='nordic'] .btn {
   }
 
   .nd-hero__photo {
-    min-height: 0;
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 3 / 2;
   }
 
   .nd-steps {

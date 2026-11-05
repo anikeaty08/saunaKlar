@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { Navigate, Outlet } from 'react-router';
-import { Activity, Boxes, ScrollText, SearchX, Store } from 'lucide-react';
+import { Navigate, Outlet, useLocation } from 'react-router';
+import { Boxes, LayoutDashboard, ScrollText, SearchX, Store } from 'lucide-react';
 import { EmptyState } from '../design/components/EmptyState.tsx';
 import { ButtonLink } from '../design/components/Button.tsx';
 import { useT } from '../i18n/i18n.ts';
@@ -33,9 +33,9 @@ export function ManufacturerLayout() {
           area={t('manufacturer.title')}
           session={session}
           nav={[
+            { to: '/', label: t('manufacturer.overview'), icon: LayoutDashboard, end: true },
             { to: '/resellers', label: t('manufacturer.resellers'), icon: Store },
             { to: '/saunas', label: t('manufacturer.saunas'), icon: Boxes },
-            { to: '/analytics', label: t('manufacturer.analytics'), icon: Activity },
             { to: '/audit', label: t('manufacturer.audit'), icon: ScrollText },
           ]}
         >
@@ -46,9 +46,15 @@ export function ManufacturerLayout() {
   );
 }
 
-/** `/login` once signed in (and `/`): straight to the resellers. */
+/** `/login` once signed in: to the overview. */
 export function Home() {
-  return <Navigate to="/resellers" replace />;
+  return <Navigate to="/" replace />;
+}
+
+/** The old analytics page is part of the overview now; its `?days=` carries over. */
+export function AnalyticsRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={{ pathname: '/', search }} replace />;
 }
 
 export function NotFound() {

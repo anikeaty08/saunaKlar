@@ -37,6 +37,8 @@ export const SEED = {
   staff: {
     admin: seedId('staff:admin@nordlicht.test'),
     alphaOwner: seedId('staff:owner@alpha.test'),
+    /** Alpha's second staff user, role ADMIN: works requests, cannot change shop settings. */
+    alphaAdmin: seedId('staff:admin@alpha.test'),
     betaOwner: seedId('staff:owner@beta.test'),
     gammaOwner: seedId('staff:owner@gamma.test'),
   },
@@ -64,7 +66,9 @@ export const SEED = {
 // ---------------------------------------------------------------------------------------------
 // Catalog data
 // ---------------------------------------------------------------------------------------------
+/** Per-locale names; TrText adds the description: [name, description]. English is the base text and the fallback. */
 type Tr = { de: string; fr: string; it: string };
+type TrText = { de: readonly [string, string]; fr: readonly [string, string]; it: readonly [string, string] };
 const CURRENCIES = ['EUR', 'CHF', 'SEK'] as const;
 type Cur = (typeof CURRENCIES)[number];
 
@@ -75,68 +79,196 @@ function convert(eurMinor: number, cur: Cur): number {
   return Math.round((eurMinor * 11.5) / 10000) * 10000;
 }
 
-interface GroupDef { code: string; name: string; tr: Tr; type: 'SINGLE' | 'MULTI'; required: boolean }
+interface GroupDef { code: string; name: string; description: string; tr: TrText; type: 'SINGLE' | 'MULTI'; required: boolean }
 const GROUPS: GroupDef[] = [
-  { code: 'wood', name: 'Wood', tr: { de: 'Holzart', fr: 'Essence de bois', it: 'Tipo di legno' }, type: 'SINGLE', required: true },
-  { code: 'heater', name: 'Heater', tr: { de: 'Ofen', fr: 'Poêle', it: 'Stufa' }, type: 'SINGLE', required: true },
-  { code: 'control', name: 'Control unit', tr: { de: 'Steuerung', fr: 'Commande', it: 'Centralina' }, type: 'SINGLE', required: false },
-  { code: 'door', name: 'Door', tr: { de: 'Tür', fr: 'Porte', it: 'Porta' }, type: 'SINGLE', required: true },
-  { code: 'bench-layout', name: 'Bench layout', tr: { de: 'Bankanordnung', fr: 'Disposition des bancs', it: 'Disposizione delle panche' }, type: 'SINGLE', required: false },
-  { code: 'bench-wood', name: 'Bench wood', tr: { de: 'Bankholz', fr: 'Bois des bancs', it: 'Legno delle panche' }, type: 'SINGLE', required: false },
-  { code: 'bench-front', name: 'Bench front', tr: { de: 'Bankfront', fr: 'Façade des bancs', it: 'Frontale delle panche' }, type: 'SINGLE', required: false },
-  { code: 'bench-end', name: 'Bench ends', tr: { de: 'Bankabschluss', fr: 'Extrémités des bancs', it: 'Testate delle panche' }, type: 'SINGLE', required: false },
-  { code: 'bench-edge', name: 'Bench edge', tr: { de: 'Bankkante', fr: 'Chant des bancs', it: 'Bordo delle panche' }, type: 'SINGLE', required: false },
-  { code: 'backrest', name: 'Backrest', tr: { de: 'Rückenlehne', fr: 'Dossier', it: 'Schienale' }, type: 'SINGLE', required: false },
-  { code: 'exterior', name: 'Exterior cladding', tr: { de: 'Außenverkleidung', fr: 'Bardage extérieur', it: 'Rivestimento esterno' }, type: 'SINGLE', required: false },
-  { code: 'lighting', name: 'Lighting', tr: { de: 'Beleuchtung', fr: 'Éclairage', it: 'Illuminazione' }, type: 'MULTI', required: false },
-  { code: 'extras', name: 'Extras', tr: { de: 'Extras', fr: 'Options supplémentaires', it: 'Extra' }, type: 'MULTI', required: false },
+  { code: 'wood', name: 'Wood', description: 'The timber for walls and ceiling inside the cabin.', type: 'SINGLE', required: true,
+    tr: { de: ['Holzart', 'Das Holz für Wände und Decke im Inneren der Kabine.'], fr: ['Essence de bois', 'Le bois des parois et du plafond à l’intérieur de la cabine.'], it: ['Tipo di legno', 'Il legno di pareti e soffitto all’interno della cabina.'] } },
+  { code: 'heater', name: 'Heater', description: 'What heats the sauna and the stones.', type: 'SINGLE', required: true,
+    tr: { de: ['Ofen', 'Was die Sauna und die Steine erhitzt.'], fr: ['Poêle', 'Ce qui chauffe le sauna et les pierres.'], it: ['Stufa', 'Ciò che riscalda la sauna e le pietre.'] } },
+  { code: 'control', name: 'Control unit', description: 'How you set temperature and timer.', type: 'SINGLE', required: false,
+    tr: { de: ['Steuerung', 'Wie Sie Temperatur und Zeitschaltung einstellen.'], fr: ['Commande', 'Le réglage de la température et de la minuterie.'], it: ['Centralina', 'Come impostare temperatura e timer.'] } },
+  { code: 'door', name: 'Door', description: 'The glass or timber door of the cabin.', type: 'SINGLE', required: true,
+    tr: { de: ['Tür', 'Die Glas- oder Holztür der Kabine.'], fr: ['Porte', 'La porte en verre ou en bois de la cabine.'], it: ['Porta', 'La porta in vetro o in legno della cabina.'] } },
+  { code: 'bench-layout', name: 'Bench layout', description: 'How the benches run along the walls.', type: 'SINGLE', required: false,
+    tr: { de: ['Bankanordnung', 'Wie die Bänke an den Wänden entlang verlaufen.'], fr: ['Disposition des bancs', 'La disposition des bancs le long des parois.'], it: ['Disposizione delle panche', 'Come corrono le panche lungo le pareti.'] } },
+  { code: 'bench-wood', name: 'Bench wood', description: 'The timber you sit on.', type: 'SINGLE', required: false,
+    tr: { de: ['Bankholz', 'Das Holz, auf dem Sie sitzen.'], fr: ['Bois des bancs', 'Le bois sur lequel vous vous asseyez.'], it: ['Legno delle panche', 'Il legno su cui ci si siede.'] } },
+  { code: 'bench-front', name: 'Bench front', description: 'The face under the benches.', type: 'SINGLE', required: false,
+    tr: { de: ['Bankfront', 'Die Front unter den Bänken.'], fr: ['Façade des bancs', 'La façade sous les bancs.'], it: ['Frontale delle panche', 'Il frontale sotto le panche.'] } },
+  { code: 'bench-end', name: 'Bench ends', description: 'How the open ends of the benches are finished.', type: 'SINGLE', required: false,
+    tr: { de: ['Bankabschluss', 'Wie die offenen Enden der Bänke abschließen.'], fr: ['Extrémités des bancs', 'La finition des extrémités ouvertes des bancs.'], it: ['Testate delle panche', 'La finitura delle estremità aperte delle panche.'] } },
+  { code: 'bench-edge', name: 'Bench edge', description: 'The profile of the front edge of each seat.', type: 'SINGLE', required: false,
+    tr: { de: ['Bankkante', 'Das Profil der Vorderkante jeder Sitzfläche.'], fr: ['Chant des bancs', 'Le profil du chant avant de chaque assise.'], it: ['Bordo delle panche', 'Il profilo del bordo anteriore di ogni seduta.'] } },
+  { code: 'backrest', name: 'Backrest', description: 'Support for your back on the upper bench.', type: 'SINGLE', required: false,
+    tr: { de: ['Rückenlehne', 'Halt für den Rücken auf der oberen Bank.'], fr: ['Dossier', 'Un appui pour le dos sur le banc supérieur.'], it: ['Schienale', 'Un sostegno per la schiena sulla panca superiore.'] } },
+  { code: 'exterior', name: 'Exterior cladding', description: 'The outer skin of a free-standing sauna.', type: 'SINGLE', required: false,
+    tr: { de: ['Außenverkleidung', 'Die Außenhaut einer frei stehenden Sauna.'], fr: ['Bardage extérieur', 'L’enveloppe extérieure d’un sauna autonome.'], it: ['Rivestimento esterno', 'Il rivestimento esterno di una sauna indipendente.'] } },
+  { code: 'lighting', name: 'Lighting', description: 'Light inside the cabin; combine as you like.', type: 'MULTI', required: false,
+    tr: { de: ['Beleuchtung', 'Licht in der Kabine, frei kombinierbar.'], fr: ['Éclairage', 'L’éclairage de la cabine, à combiner librement.'], it: ['Illuminazione', 'Luce nella cabina, combinabile a piacere.'] } },
+  { code: 'extras', name: 'Extras', description: 'Comfort and wellness additions.', type: 'MULTI', required: false,
+    tr: { de: ['Extras', 'Zusätze für Komfort und Wohlbefinden.'], fr: ['Options supplémentaires', 'Compléments de confort et de bien-être.'], it: ['Extra', 'Accessori per comfort e benessere.'] } },
+  // Size groups of parametric (model_source = reference) saunas; option codes carry millimetres.
+  { code: 'width', name: 'Width', description: 'Outer width of the cabin along the long bench wall.', type: 'SINGLE', required: true,
+    tr: { de: ['Breite', 'Außenbreite der Kabine entlang der langen Bankwand.'], fr: ['Largeur', 'Largeur extérieure de la cabine le long de la paroi du grand banc.'], it: ['Larghezza', 'Larghezza esterna della cabina lungo la parete della panca lunga.'] } },
+  { code: 'depth', name: 'Depth', description: 'Outer depth from the back wall to the glass front.', type: 'SINGLE', required: true,
+    tr: { de: ['Tiefe', 'Außentiefe von der Rückwand bis zur Glasfront.'], fr: ['Profondeur', 'Profondeur extérieure de la paroi du fond à la façade vitrée.'], it: ['Profondità', 'Profondità esterna dalla parete di fondo alla vetrata.'] } },
+  { code: 'height', name: 'Height', description: 'Outer height; both bench levels follow it.', type: 'SINGLE', required: true,
+    tr: { de: ['Höhe', 'Außenhöhe; beide Bankebenen passen sich an.'], fr: ['Hauteur', 'Hauteur extérieure ; les deux niveaux de bancs suivent.'], it: ['Altezza', 'Altezza esterna; entrambi i livelli delle panche si adeguano.'] } },
 ];
 
-interface OptionDef { code: string; group: string; name: string; tr: Tr; eur: number; scales?: boolean; swatch?: string; description?: string }
+/** Option codes use the words the 3D construction kit reads (apps/web/src/three/kit/spec.ts). */
+interface OptionDef {
+  code: string; group: string; name: string; description: string; tr: TrText; eur: number; scales?: boolean; swatch?: string;
+  /** Offered only by these model slugs (default: every model that does not list it in `without`). */
+  only?: string[];
+  /** Default of its group (default: the group's first offered option). */
+  isDefault?: boolean;
+}
+
+/** The parametric six-sided glass-front sauna rebuilt from the reference PDF and SketchUp model. */
+const REFERENCE_SLUG = 'kide-glass-six';
+/**
+ * Offered sizes in mm with EUR price deltas over the smallest; `ref` marks the measured
+ * 3060 × 3013 × 2292 mm source. Keep in step with apps/web/src/three/reference/layout.ts.
+ */
+const REFERENCE_SIZES = {
+  width: [[2400, 0], [2700, 90000], [3060, 190000, 'ref'], [3300, 260000], [3600, 350000]],
+  depth: [[2400, 0], [2700, 80000], [3013, 170000, 'ref'], [3300, 240000], [3600, 320000]],
+  height: [[2100, 0], [2292, 60000, 'ref'], [2400, 95000], [2700, 190000]],
+} as const;
+/** layout.ts REFERENCE_ASPECT_RANGE: width/depth pairs outside it stretch the measured facets. */
+const REFERENCE_ASPECT_RANGE = [0.78, 1.30] as const;
+
+function sizeOptions(): OptionDef[] {
+  const words = {
+    width: { en: 'width', de: 'Außenbreite', fr: 'Largeur', it: 'Larghezza' },
+    depth: { en: 'depth', de: 'Außentiefe', fr: 'Profondeur', it: 'Profondità' },
+    height: { en: 'height', de: 'Außenhöhe', fr: 'Hauteur', it: 'Altezza' },
+  };
+  return (Object.keys(REFERENCE_SIZES) as (keyof typeof REFERENCE_SIZES)[]).flatMap(group =>
+    REFERENCE_SIZES[group].map((size): OptionDef => {
+      const [mm, eur] = size;
+      const ref = size.length > 2;
+      const w = words[group];
+      const name = `${mm} mm`;
+      return {
+        code: `${group}-${mm}`, group, name, eur, only: [REFERENCE_SLUG], isDefault: ref,
+        description: `Outer ${w.en} ${mm} mm${ref ? ', the measured reference size' : ''}.`,
+        tr: {
+          de: [name, `${w.de} ${mm} mm${ref ? ', gemessene Referenzgröße' : ''}.`],
+          fr: [name, `${w.fr} extérieure ${mm} mm${ref ? ', taille de référence mesurée' : ''}.`],
+          it: [name, `${w.it} esterna ${mm} mm${ref ? ', misura di riferimento rilevata' : ''}.`],
+        },
+      };
+    }));
+}
+
+/** Width/depth option pairs the reference sauna cannot be built in (same rule as layout.ts). */
+function referenceSizeExcludes(): [string, string][] {
+  const pairs: [string, string][] = [];
+  for (const [w] of REFERENCE_SIZES.width) for (const [d] of REFERENCE_SIZES.depth) {
+    const aspect = w / d;
+    if (aspect < REFERENCE_ASPECT_RANGE[0] || aspect > REFERENCE_ASPECT_RANGE[1]) pairs.push([`width-${w}`, `depth-${d}`]);
+  }
+  return pairs;
+}
+
 const OPTIONS: OptionDef[] = [
-  { code: 'spruce', group: 'wood', name: 'Nordic spruce', tr: { de: 'Nordische Fichte', fr: 'Épicéa nordique', it: 'Abete nordico' }, eur: 0, scales: true, swatch: '#e8d4a8', description: 'Light, resinous and fragrant; the classic Finnish sauna wood.' },
-  { code: 'aspen', group: 'wood', name: 'Aspen', tr: { de: 'Espe', fr: 'Tremble', it: 'Pioppo tremulo' }, eur: 45000, scales: true, swatch: '#efe3c8', description: 'Pale, resin-free and cool to the touch.' },
-  { code: 'thermo-aspen', group: 'wood', name: 'Thermo-aspen', tr: { de: 'Thermo-Espe', fr: 'Tremble thermotraité', it: 'Pioppo tremulo termotrattato' }, eur: 89000, scales: true, swatch: '#8a5a3b', description: 'Heat-treated aspen with a deep caramel tone and high dimensional stability.' },
-  { code: 'red-cedar', group: 'wood', name: 'Western red cedar', tr: { de: 'Rote Zeder', fr: 'Cèdre rouge', it: 'Cedro rosso' }, eur: 129000, scales: true, swatch: '#a0522d', description: 'Aromatic, naturally durable and warm in colour.' },
-  { code: 'heater-6kw', group: 'heater', name: 'Electric heater 6 kW', tr: { de: 'Elektroofen 6 kW', fr: 'Poêle électrique 6 kW', it: 'Stufa elettrica 6 kW' }, eur: 0 },
-  { code: 'heater-9kw', group: 'heater', name: 'Electric heater 9 kW', tr: { de: 'Elektroofen 9 kW', fr: 'Poêle électrique 9 kW', it: 'Stufa elettrica 9 kW' }, eur: 39000 },
-  { code: 'heater-wood', group: 'heater', name: 'Wood-fired stove', tr: { de: 'Holzofen', fr: 'Poêle à bois', it: 'Stufa a legna' }, eur: 119000 },
-  { code: 'control-basic', group: 'control', name: 'Basic control panel', tr: { de: 'Basis-Steuerung', fr: 'Commande de base', it: 'Centralina base' }, eur: 29000 },
-  { code: 'control-wifi', group: 'control', name: 'Wi-Fi control with app', tr: { de: 'WLAN-Steuerung mit App', fr: 'Commande Wi-Fi avec application', it: 'Centralina Wi-Fi con app' }, eur: 59000 },
-  { code: 'door-clear', group: 'door', name: 'Clear glass door', tr: { de: 'Klarglastür', fr: 'Porte en verre clair', it: 'Porta in vetro trasparente' }, eur: 0 },
-  { code: 'door-bronze', group: 'door', name: 'Bronze glass door', tr: { de: 'Bronzeglastür', fr: 'Porte en verre bronze', it: 'Porta in vetro bronzato' }, eur: 19000 },
-  { code: 'door-wood', group: 'door', name: 'Solid wood door', tr: { de: 'Massivholztür', fr: 'Porte en bois massif', it: 'Porta in legno massiccio' }, eur: 24000 },
-  { code: 'bench-straight', group: 'bench-layout', name: 'Straight benches', tr: { de: 'Gerade Bänke', fr: 'Bancs droits', it: 'Panche dritte' }, eur: 0, description: 'Upper and lower bench along the back wall.' },
-  { code: 'bench-l', group: 'bench-layout', name: 'L-shaped benches', tr: { de: 'Bänke in L-Form', fr: 'Bancs en L', it: 'Panche a L' }, eur: 39000, scales: true, description: 'The upper bench turns the corner onto the side wall.' },
-  { code: 'bench-u', group: 'bench-layout', name: 'U-shaped benches', tr: { de: 'Bänke in U-Form', fr: 'Bancs en U', it: 'Panche a U' }, eur: 69000, scales: true, description: 'Upper benches on three walls; the heater moves to a corner.' },
-  { code: 'bench-aspen', group: 'bench-wood', name: 'Aspen benches', tr: { de: 'Bänke aus Espe', fr: 'Bancs en tremble', it: 'Panche in pioppo tremulo' }, eur: 29000, scales: true, swatch: '#efe3c8', description: 'Pale, splinter-free and cool to sit on.' },
-  { code: 'bench-alder', group: 'bench-wood', name: 'Alder benches', tr: { de: 'Bänke aus Erle', fr: 'Bancs en aulne', it: 'Panche in ontano' }, eur: 35000, scales: true, swatch: '#c48d5e', description: 'Warm red-brown tone that deepens with use.' },
-  { code: 'bench-thermo-aspen', group: 'bench-wood', name: 'Thermo-aspen benches', tr: { de: 'Bänke aus Thermo-Espe', fr: 'Bancs en tremble thermotraité', it: 'Panche in pioppo termotrattato' }, eur: 49000, scales: true, swatch: '#8a5a3b', description: 'Heat-treated aspen in a deep caramel tone.' },
-  { code: 'front-boards', group: 'bench-front', name: 'Closed board front', tr: { de: 'Geschlossene Bretterfront', fr: 'Façade en lames fermée', it: 'Frontale chiuso a doghe' }, eur: 0, description: 'Horizontal boards close the space under the benches.' },
-  { code: 'front-framed', group: 'bench-front', name: 'Framed panel front', tr: { de: 'Rahmenfront', fr: 'Façade à cadre', it: 'Frontale con cornice' }, eur: 19000, description: 'Vertical slats set in a mitred frame.' },
-  { code: 'front-open', group: 'bench-front', name: 'Open front', tr: { de: 'Offene Front', fr: 'Façade ouverte', it: 'Frontale aperto' }, eur: 0, description: 'Open frames: lighter look, easier to clean underneath.' },
-  { code: 'end-waterfall', group: 'bench-end', name: 'Waterfall ends', tr: { de: 'Wasserfall-Abschluss', fr: 'Extrémités en cascade', it: 'Testate a cascata' }, eur: 14000, description: 'Vertical slats run from the seat to the floor.' },
-  { code: 'end-framed', group: 'bench-end', name: 'Framed ends', tr: { de: 'Gerahmter Abschluss', fr: 'Extrémités encadrées', it: 'Testate con cornice' }, eur: 9000 },
-  { code: 'end-plain', group: 'bench-end', name: 'Plain ends', tr: { de: 'Einfacher Abschluss', fr: 'Extrémités simples', it: 'Testate semplici' }, eur: 0 },
-  { code: 'edge-rounded', group: 'bench-edge', name: 'Rounded front edge', tr: { de: 'Abgerundete Vorderkante', fr: 'Chant avant arrondi', it: 'Bordo anteriore arrotondato' }, eur: 0 },
-  { code: 'edge-square', group: 'bench-edge', name: 'Square front edge', tr: { de: 'Gerade Vorderkante', fr: 'Chant avant droit', it: 'Bordo anteriore dritto' }, eur: 0 },
-  { code: 'backrest-continuous', group: 'backrest', name: 'Continuous backrest', tr: { de: 'Durchgehende Rückenlehne', fr: 'Dossier continu', it: 'Schienale continuo' }, eur: 0 },
-  { code: 'backrest-panels', group: 'backrest', name: 'Backrest panels', tr: { de: 'Rückenlehnen-Elemente', fr: 'Dossiers individuels', it: 'Schienali a pannelli' }, eur: 18000, description: 'Separate panels with gaps between them.' },
-  { code: 'backrest-none', group: 'backrest', name: 'No backrest', tr: { de: 'Ohne Rückenlehne', fr: 'Sans dossier', it: 'Senza schienale' }, eur: 0 },
-  { code: 'exterior-wood', group: 'exterior', name: 'Wood cladding', tr: { de: 'Holzverkleidung', fr: 'Bardage bois', it: 'Rivestimento in legno' }, eur: 0 },
-  { code: 'exterior-thermo', group: 'exterior', name: 'Thermowood cladding', tr: { de: 'Thermoholz-Verkleidung', fr: 'Bardage bois thermotraité', it: 'Rivestimento in legno termotrattato' }, eur: 89000, scales: true },
-  { code: 'exterior-slate', group: 'exterior', name: 'Slate cladding', tr: { de: 'Schieferverkleidung', fr: 'Bardage en ardoise', it: 'Rivestimento in ardesia' }, eur: 149000, scales: true },
-  { code: 'led-backrest', group: 'lighting', name: 'LED backrest lighting', tr: { de: 'LED-Rückenlehnenbeleuchtung', fr: 'Éclairage LED du dossier', it: 'Illuminazione LED dello schienale' }, eur: 24000 },
-  { code: 'led-underbench', group: 'lighting', name: 'LED under-bench lighting', tr: { de: 'LED-Unterbankbeleuchtung', fr: 'Éclairage LED sous les bancs', it: 'Illuminazione LED sotto le panche' }, eur: 21000 },
-  { code: 'star-ceiling', group: 'lighting', name: 'Starry-sky ceiling', tr: { de: 'Sternenhimmel', fr: 'Plafond ciel étoilé', it: 'Cielo stellato' }, eur: 69000 },
-  { code: 'ceiling-panel', group: 'lighting', name: 'LED ceiling panel', tr: { de: 'LED-Deckenpaneel', fr: 'Panneau LED au plafond', it: 'Pannello LED a soffitto' }, eur: 26000 },
-  { code: 'audio', group: 'extras', name: 'Bluetooth audio system', tr: { de: 'Bluetooth-Audiosystem', fr: 'Système audio Bluetooth', it: 'Impianto audio Bluetooth' }, eur: 49000 },
-  { code: 'aroma', group: 'extras', name: 'Aroma dispenser', tr: { de: 'Aromaspender', fr: 'Diffuseur d’arômes', it: 'Diffusore di aromi' }, eur: 18000 },
-  { code: 'bucket-set', group: 'extras', name: 'Bucket and ladle set', tr: { de: 'Kübel- und Kellenset', fr: 'Seau et louche', it: 'Set secchio e mestolo' }, eur: 12000 },
-  { code: 'ir-panel', group: 'extras', name: 'Infrared back panel', tr: { de: 'Infrarot-Rückenstrahler', fr: 'Panneau infrarouge dorsal', it: 'Pannello infrarosso per la schiena' }, eur: 59000 },
-  { code: 'headrests', group: 'extras', name: 'Headrests', tr: { de: 'Kopfstützen', fr: 'Appuie-tête', it: 'Poggiatesta' }, eur: 9000 },
-  { code: 'thermometer', group: 'extras', name: 'Thermo-hygrometer', tr: { de: 'Thermo-Hygrometer', fr: 'Thermo-hygromètre', it: 'Termoigrometro' }, eur: 6000 },
-  { code: 'salt-wall', group: 'extras', name: 'Himalayan salt wall', tr: { de: 'Himalaya-Salzwand', fr: 'Mur de sel de l’Himalaya', it: 'Parete di sale himalayano' }, eur: 99000 },
+  { code: 'spruce', group: 'wood', name: 'Nordic spruce', eur: 0, scales: true, swatch: '#e8d4a8', description: 'Light, resinous and fragrant; the classic Finnish sauna wood.',
+    tr: { de: ['Nordische Fichte', 'Hell, harzig und duftend: das klassische finnische Saunaholz.'], fr: ['Épicéa nordique', 'Clair, résineux et parfumé : le bois de sauna finlandais classique.'], it: ['Abete nordico', 'Chiaro, resinoso e profumato: il classico legno della sauna finlandese.'] } },
+  { code: 'pine', group: 'wood', name: 'Knotty Nordic pine', eur: 0, scales: true, swatch: '#d3a877', only: [REFERENCE_SLUG, 'kide-glass-corner'], isDefault: true, description: 'Warm honey-toned boards with lively knots, as in the reference cabin.',
+    tr: { de: ['Astige nordische Kiefer', 'Warme, honigfarbene Bretter mit lebhaften Ästen, wie in der Referenzkabine.'], fr: ['Pin nordique noueux', 'Lames chaudes couleur miel aux nœuds vivants, comme dans la cabine de référence.'], it: ['Pino nordico nodoso', 'Doghe calde color miele con nodi vivaci, come nella cabina di riferimento.'] } },
+  { code: 'aspen', group: 'wood', name: 'Aspen', eur: 45000, scales: true, swatch: '#efe3c8', description: 'Pale, resin-free and cool to the touch.',
+    tr: { de: ['Espe', 'Hell, harzfrei und angenehm kühl bei Berührung.'], fr: ['Tremble', 'Pâle, sans résine et frais au toucher.'], it: ['Pioppo tremulo', 'Chiaro, privo di resina e fresco al tatto.'] } },
+  { code: 'thermo-aspen', group: 'wood', name: 'Thermo-aspen', eur: 89000, scales: true, swatch: '#8a5a3b', description: 'Heat-treated aspen with a deep caramel tone and high dimensional stability.',
+    tr: { de: ['Thermo-Espe', 'Hitzebehandelte Espe in tiefem Karamellton, sehr formstabil.'], fr: ['Tremble thermotraité', 'Tremble traité thermiquement, ton caramel profond et grande stabilité dimensionnelle.'], it: ['Pioppo tremulo termotrattato', 'Pioppo tremulo termotrattato dal tono caramello intenso e grande stabilità dimensionale.'] } },
+  { code: 'red-cedar', group: 'wood', name: 'Western red cedar', eur: 129000, scales: true, swatch: '#a0522d', description: 'Aromatic, naturally durable and warm in colour.',
+    tr: { de: ['Rote Zeder', 'Aromatisch, von Natur aus langlebig und warm im Farbton.'], fr: ['Cèdre rouge', 'Aromatique, naturellement durable et de teinte chaude.'], it: ['Cedro rosso', 'Aromatico, naturalmente durevole e dal colore caldo.'] } },
+  { code: 'heater-6kw', group: 'heater', name: 'Electric heater 6 kW', eur: 0, description: 'Compact electric heater for small cabins.',
+    tr: { de: ['Elektroofen 6 kW', 'Kompakter Elektroofen für kleine Kabinen.'], fr: ['Poêle électrique 6 kW', 'Poêle électrique compact pour petites cabines.'], it: ['Stufa elettrica 6 kW', 'Stufa elettrica compatta per cabine piccole.'] } },
+  { code: 'heater-9kw', group: 'heater', name: 'Electric heater 9 kW', eur: 39000, description: 'More output for larger cabins and a faster heat-up.',
+    tr: { de: ['Elektroofen 9 kW', 'Mehr Leistung für größere Kabinen und schnelleres Aufheizen.'], fr: ['Poêle électrique 9 kW', 'Plus de puissance pour les grandes cabines et une montée en température plus rapide.'], it: ['Stufa elettrica 9 kW', 'Più potenza per cabine grandi e un riscaldamento più rapido.'] } },
+  { code: 'heater-wood', group: 'heater', name: 'Wood-fired stove', eur: 119000, description: 'Traditional wood-burning stove with a soft, crackling heat.',
+    tr: { de: ['Holzofen', 'Traditioneller Holzofen mit weicher, knisternder Wärme.'], fr: ['Poêle à bois', 'Poêle à bois traditionnel à la chaleur douce et crépitante.'], it: ['Stufa a legna', 'Stufa a legna tradizionale dal calore morbido e scoppiettante.'] } },
+  { code: 'heater-storage', group: 'heater', name: 'Storage heater', eur: 99000, description: 'A tall tower of stones that holds an even, gentle heat.',
+    tr: { de: ['Speicherofen', 'Ein hoher Steinturm, der eine gleichmäßige, sanfte Wärme hält.'], fr: ['Poêle à accumulation', 'Une haute tour de pierres qui garde une chaleur douce et régulière.'], it: ['Stufa ad accumulo', 'Un’alta torre di pietre che mantiene un calore dolce e uniforme.'] } },
+  { code: 'control-basic', group: 'control', name: 'Basic control panel', eur: 29000, description: 'Wall panel for temperature and timer.',
+    tr: { de: ['Basis-Steuerung', 'Wandbedienteil für Temperatur und Zeitschaltung.'], fr: ['Commande de base', 'Panneau mural pour la température et la minuterie.'], it: ['Centralina base', 'Pannello a parete per temperatura e timer.'] } },
+  { code: 'control-wifi', group: 'control', name: 'Wi-Fi control with app', eur: 59000, description: 'Wall panel plus an app to preheat the sauna from anywhere.',
+    tr: { de: ['WLAN-Steuerung mit App', 'Wandbedienteil plus App, um die Sauna von überall vorzuheizen.'], fr: ['Commande Wi-Fi avec application', 'Panneau mural et application pour préchauffer le sauna à distance.'], it: ['Centralina Wi-Fi con app', 'Pannello a parete e app per preriscaldare la sauna ovunque.'] } },
+  { code: 'door-clear', group: 'door', name: 'Clear glass door', eur: 0, description: 'Clear tempered glass that keeps the cabin open and bright.',
+    tr: { de: ['Klarglastür', 'Klares Sicherheitsglas, das die Kabine offen und hell wirken lässt.'], fr: ['Porte en verre clair', 'Verre trempé clair qui garde la cabine ouverte et lumineuse.'], it: ['Porta in vetro trasparente', 'Vetro temperato trasparente che rende la cabina aperta e luminosa.'] } },
+  { code: 'door-bronze', group: 'door', name: 'Bronze glass door', eur: 19000, description: 'Bronze-tinted glass for a warmer light and more privacy.',
+    tr: { de: ['Bronzeglastür', 'Bronzefarben getöntes Glas für wärmeres Licht und mehr Privatsphäre.'], fr: ['Porte en verre bronze', 'Verre teinté bronze pour une lumière plus chaude et plus d’intimité.'], it: ['Porta in vetro bronzato', 'Vetro bronzato per una luce più calda e più riservatezza.'] } },
+  { code: 'door-satin', group: 'door', name: 'Satin glass door', eur: 21000, description: 'Frosted glass: lets the light in, keeps the view out.',
+    tr: { de: ['Satinierte Glastür', 'Mattiertes Glas: lässt Licht herein, hält Blicke draußen.'], fr: ['Porte en verre satiné', 'Verre dépoli : laisse passer la lumière, pas les regards.'], it: ['Porta in vetro satinato', 'Vetro satinato: lascia passare la luce, non gli sguardi.'] } },
+  { code: 'door-wood', group: 'door', name: 'Solid wood door', eur: 24000, description: 'A solid timber door that holds the heat best.',
+    tr: { de: ['Massivholztür', 'Eine Massivholztür, die die Wärme am besten hält.'], fr: ['Porte en bois massif', 'Une porte en bois massif qui retient le mieux la chaleur.'], it: ['Porta in legno massiccio', 'Una porta in legno massiccio che trattiene meglio il calore.'] } },
+  { code: 'bench-straight', group: 'bench-layout', name: 'Straight benches', eur: 0, description: 'Upper and lower bench along the back wall.',
+    tr: { de: ['Gerade Bänke', 'Obere und untere Bank entlang der Rückwand.'], fr: ['Bancs droits', 'Banc supérieur et inférieur le long de la paroi du fond.'], it: ['Panche dritte', 'Panca superiore e inferiore lungo la parete di fondo.'] } },
+  { code: 'bench-l', group: 'bench-layout', name: 'L-shaped benches', eur: 39000, scales: true, description: 'The upper bench turns the corner onto the side wall.',
+    tr: { de: ['Bänke in L-Form', 'Die obere Bank führt um die Ecke an die Seitenwand.'], fr: ['Bancs en L', 'Le banc supérieur tourne dans l’angle vers la paroi latérale.'], it: ['Panche a L', 'La panca superiore gira l’angolo sulla parete laterale.'] } },
+  { code: 'bench-u', group: 'bench-layout', name: 'U-shaped benches', eur: 69000, scales: true, description: 'Upper benches on three walls; the heater moves to a corner.',
+    tr: { de: ['Bänke in U-Form', 'Obere Bänke an drei Wänden; der Ofen rückt in eine Ecke.'], fr: ['Bancs en U', 'Bancs supérieurs sur trois parois ; le poêle passe dans un angle.'], it: ['Panche a U', 'Panche superiori su tre pareti; la stufa si sposta in un angolo.'] } },
+  { code: 'bench-aspen', group: 'bench-wood', name: 'Aspen benches', eur: 29000, scales: true, swatch: '#efe3c8', description: 'Pale, splinter-free and cool to sit on.',
+    tr: { de: ['Bänke aus Espe', 'Hell, splitterfrei und angenehm kühl zum Sitzen.'], fr: ['Bancs en tremble', 'Pâle, sans échardes et frais à l’assise.'], it: ['Panche in pioppo tremulo', 'Chiaro, senza schegge e fresco da sedere.'] } },
+  { code: 'bench-alder', group: 'bench-wood', name: 'Alder benches', eur: 35000, scales: true, swatch: '#c48d5e', description: 'Warm red-brown tone that deepens with use.',
+    tr: { de: ['Bänke aus Erle', 'Warmer rotbrauner Ton, der mit der Zeit kräftiger wird.'], fr: ['Bancs en aulne', 'Teinte brun-rouge chaude qui s’intensifie avec l’usage.'], it: ['Panche in ontano', 'Tono bruno-rossiccio caldo che si intensifica con l’uso.'] } },
+  { code: 'bench-thermo-aspen', group: 'bench-wood', name: 'Thermo-aspen benches', eur: 49000, scales: true, swatch: '#8a5a3b', description: 'Heat-treated aspen in a deep caramel tone.',
+    tr: { de: ['Bänke aus Thermo-Espe', 'Hitzebehandelte Espe in tiefem Karamellton.'], fr: ['Bancs en tremble thermotraité', 'Tremble traité thermiquement, d’un ton caramel profond.'], it: ['Panche in pioppo termotrattato', 'Pioppo tremulo termotrattato dal tono caramello intenso.'] } },
+  { code: 'front-boards', group: 'bench-front', name: 'Closed board front', eur: 0, description: 'Horizontal boards close the space under the benches.',
+    tr: { de: ['Geschlossene Bretterfront', 'Waagrechte Bretter schließen den Raum unter den Bänken.'], fr: ['Façade en lames fermée', 'Des lames horizontales ferment l’espace sous les bancs.'], it: ['Frontale chiuso a doghe', 'Doghe orizzontali chiudono lo spazio sotto le panche.'] } },
+  { code: 'front-framed', group: 'bench-front', name: 'Framed panel front', eur: 19000, description: 'Vertical slats set in a mitred frame.',
+    tr: { de: ['Rahmenfront', 'Senkrechte Leisten in einem auf Gehrung gefügten Rahmen.'], fr: ['Façade à cadre', 'Lattes verticales dans un cadre assemblé d’onglet.'], it: ['Frontale con cornice', 'Listelli verticali in una cornice tagliata a 45°.'] } },
+  { code: 'front-open', group: 'bench-front', name: 'Open front', eur: 0, description: 'Open frames: lighter look, easier to clean underneath.',
+    tr: { de: ['Offene Front', 'Offene Rahmen: leichtere Optik, darunter leichter zu reinigen.'], fr: ['Façade ouverte', 'Cadres ouverts : aspect plus léger, nettoyage facilité dessous.'], it: ['Frontale aperto', 'Telai aperti: aspetto più leggero, pulizia più facile sotto.'] } },
+  { code: 'end-waterfall', group: 'bench-end', name: 'Waterfall ends', eur: 14000, description: 'Vertical slats run from the seat to the floor.',
+    tr: { de: ['Wasserfall-Abschluss', 'Senkrechte Leisten laufen von der Sitzfläche bis zum Boden.'], fr: ['Extrémités en cascade', 'Des lattes verticales descendent de l’assise jusqu’au sol.'], it: ['Testate a cascata', 'Listelli verticali scendono dalla seduta fino al pavimento.'] } },
+  { code: 'end-framed', group: 'bench-end', name: 'Framed ends', eur: 9000, description: 'A framed panel closes each bench end.',
+    tr: { de: ['Gerahmter Abschluss', 'Ein gerahmtes Paneel schließt jedes Bankende ab.'], fr: ['Extrémités encadrées', 'Un panneau encadré ferme chaque extrémité de banc.'], it: ['Testate con cornice', 'Un pannello con cornice chiude ogni estremità della panca.'] } },
+  { code: 'end-plain', group: 'bench-end', name: 'Plain ends', eur: 0, description: 'A simple board finishes each bench end.',
+    tr: { de: ['Einfacher Abschluss', 'Ein schlichtes Brett schließt jedes Bankende ab.'], fr: ['Extrémités simples', 'Une simple planche termine chaque extrémité de banc.'], it: ['Testate semplici', 'Una semplice tavola rifinisce ogni estremità della panca.'] } },
+  { code: 'edge-rounded', group: 'bench-edge', name: 'Rounded front edge', eur: 0, description: 'A softly rounded front edge, comfortable behind the knees.',
+    tr: { de: ['Abgerundete Vorderkante', 'Sanft gerundete Vorderkante, angenehm in der Kniekehle.'], fr: ['Chant avant arrondi', 'Chant avant légèrement arrondi, confortable sous les genoux.'], it: ['Bordo anteriore arrotondato', 'Bordo anteriore leggermente arrotondato, comodo sotto le ginocchia.'] } },
+  { code: 'edge-square', group: 'bench-edge', name: 'Square front edge', eur: 0, description: 'A crisp square front edge for a clean, modern line.',
+    tr: { de: ['Gerade Vorderkante', 'Klare, gerade Vorderkante für eine schlichte, moderne Linie.'], fr: ['Chant avant droit', 'Chant avant droit et net pour une ligne sobre et moderne.'], it: ['Bordo anteriore dritto', 'Bordo anteriore dritto e netto per una linea pulita e moderna.'] } },
+  { code: 'backrest-continuous', group: 'backrest', name: 'Continuous backrest', eur: 0, description: 'One backrest along the full length of the upper bench.',
+    tr: { de: ['Durchgehende Rückenlehne', 'Eine Rückenlehne über die ganze Länge der oberen Bank.'], fr: ['Dossier continu', 'Un dossier sur toute la longueur du banc supérieur.'], it: ['Schienale continuo', 'Uno schienale per tutta la lunghezza della panca superiore.'] } },
+  { code: 'backrest-panels', group: 'backrest', name: 'Backrest panels', eur: 18000, description: 'Separate panels with gaps between them.',
+    tr: { de: ['Rückenlehnen-Elemente', 'Einzelne Elemente mit Abständen dazwischen.'], fr: ['Dossiers individuels', 'Panneaux séparés espacés les uns des autres.'], it: ['Schienali a pannelli', 'Pannelli separati con spazi tra l’uno e l’altro.'] } },
+  { code: 'backrest-none', group: 'backrest', name: 'No backrest', eur: 0, description: 'Bare wall behind the upper bench.',
+    tr: { de: ['Ohne Rückenlehne', 'Freie Wand hinter der oberen Bank.'], fr: ['Sans dossier', 'Paroi nue derrière le banc supérieur.'], it: ['Senza schienale', 'Parete libera dietro la panca superiore.'] } },
+  { code: 'exterior-wood', group: 'exterior', name: 'Wood cladding', eur: 0, description: 'Natural timber cladding that weathers to silver-grey.',
+    tr: { de: ['Holzverkleidung', 'Naturholzverkleidung, die mit der Zeit silbergrau wird.'], fr: ['Bardage bois', 'Bardage en bois naturel qui grisaille en vieillissant.'], it: ['Rivestimento in legno', 'Rivestimento in legno naturale che invecchia in grigio argento.'] } },
+  { code: 'exterior-thermo', group: 'exterior', name: 'Thermowood cladding', eur: 89000, scales: true, description: 'Dark heat-treated timber, stable and weather-resistant.',
+    tr: { de: ['Thermoholz-Verkleidung', 'Dunkles, hitzebehandeltes Holz, formstabil und wetterfest.'], fr: ['Bardage bois thermotraité', 'Bois sombre traité thermiquement, stable et résistant aux intempéries.'], it: ['Rivestimento in legno termotrattato', 'Legno scuro termotrattato, stabile e resistente alle intemperie.'] } },
+  { code: 'exterior-slate', group: 'exterior', name: 'Slate cladding', eur: 149000, scales: true, description: 'Natural slate tiles for a stone look outside.',
+    tr: { de: ['Schieferverkleidung', 'Natürliche Schieferplatten für eine Steinoptik außen.'], fr: ['Bardage en ardoise', 'Ardoises naturelles pour un aspect pierre à l’extérieur.'], it: ['Rivestimento in ardesia', 'Lastre di ardesia naturale per un aspetto in pietra all’esterno.'] } },
+  { code: 'led-backrest', group: 'lighting', name: 'LED backrest lighting', eur: 24000, description: 'A warm LED strip behind the backrest.',
+    tr: { de: ['LED-Rückenlehnenbeleuchtung', 'Warmweißes LED-Band hinter der Rückenlehne.'], fr: ['Éclairage LED du dossier', 'Bande LED chaude derrière le dossier.'], it: ['Illuminazione LED dello schienale', 'Striscia LED calda dietro lo schienale.'] } },
+  { code: 'led-underbench', group: 'lighting', name: 'LED under-bench lighting', eur: 21000, description: 'Indirect LED light under the benches.',
+    tr: { de: ['LED-Unterbankbeleuchtung', 'Indirektes LED-Licht unter den Bänken.'], fr: ['Éclairage LED sous les bancs', 'Éclairage LED indirect sous les bancs.'], it: ['Illuminazione LED sotto le panche', 'Luce LED indiretta sotto le panche.'] } },
+  { code: 'star-ceiling', group: 'lighting', name: 'Starry-sky ceiling', eur: 69000, description: 'Fibre-optic points of light across the ceiling.',
+    tr: { de: ['Sternenhimmel', 'Lichtpunkte aus Glasfaser an der ganzen Decke.'], fr: ['Plafond ciel étoilé', 'Points lumineux en fibre optique sur tout le plafond.'], it: ['Cielo stellato', 'Punti luce in fibra ottica su tutto il soffitto.'] } },
+  { code: 'ceiling-panel', group: 'lighting', name: 'LED ceiling panel', eur: 26000, description: 'A flat LED panel for even light from above.',
+    tr: { de: ['LED-Deckenpaneel', 'Ein flaches LED-Paneel für gleichmäßiges Licht von oben.'], fr: ['Panneau LED au plafond', 'Un panneau LED plat pour une lumière homogène venue d’en haut.'], it: ['Pannello LED a soffitto', 'Un pannello LED piatto per una luce uniforme dall’alto.'] } },
+  { code: 'audio', group: 'extras', name: 'Bluetooth audio system', eur: 49000, description: 'Heat-proof Bluetooth speakers; needs the backrest lighting.',
+    tr: { de: ['Bluetooth-Audiosystem', 'Hitzefeste Bluetooth-Lautsprecher; setzt die Rückenlehnenbeleuchtung voraus.'], fr: ['Système audio Bluetooth', 'Haut-parleurs Bluetooth résistants à la chaleur ; nécessite l’éclairage du dossier.'], it: ['Impianto audio Bluetooth', 'Altoparlanti Bluetooth resistenti al calore; richiede l’illuminazione dello schienale.'] } },
+  { code: 'aroma', group: 'extras', name: 'Aroma dispenser', eur: 18000, description: 'Releases essential oils into the steam.',
+    tr: { de: ['Aromaspender', 'Gibt ätherische Öle an den Dampf ab.'], fr: ['Diffuseur d’arômes', 'Diffuse des huiles essentielles dans la vapeur.'], it: ['Diffusore di aromi', 'Rilascia oli essenziali nel vapore.'] } },
+  { code: 'bucket-set', group: 'extras', name: 'Bucket and ladle set', eur: 12000, description: 'A wooden bucket and ladle for pouring water on the stones.',
+    tr: { de: ['Kübel- und Kellenset', 'Holzkübel und Kelle für den Aufguss auf die Steine.'], fr: ['Seau et louche', 'Seau et louche en bois pour verser l’eau sur les pierres.'], it: ['Set secchio e mestolo', 'Secchio e mestolo in legno per versare l’acqua sulle pietre.'] } },
+  { code: 'ir-panel', group: 'extras', name: 'Infrared back panel', eur: 59000, description: 'An infrared panel that warms the back directly.',
+    tr: { de: ['Infrarot-Rückenstrahler', 'Infrarotstrahler, der den Rücken direkt wärmt.'], fr: ['Panneau infrarouge dorsal', 'Panneau infrarouge qui réchauffe directement le dos.'], it: ['Pannello infrarosso per la schiena', 'Pannello a infrarossi che scalda direttamente la schiena.'] } },
+  { code: 'headrests', group: 'extras', name: 'Headrests', eur: 9000, description: 'Shaped wooden headrests for the upper bench.',
+    tr: { de: ['Kopfstützen', 'Geformte Holzkopfstützen für die obere Bank.'], fr: ['Appuie-tête', 'Appuie-tête en bois galbé pour le banc supérieur.'], it: ['Poggiatesta', 'Poggiatesta sagomati in legno per la panca superiore.'] } },
+  { code: 'thermometer', group: 'extras', name: 'Thermo-hygrometer', eur: 6000, description: 'Shows temperature and humidity at a glance.',
+    tr: { de: ['Thermo-Hygrometer', 'Zeigt Temperatur und Luftfeuchtigkeit auf einen Blick.'], fr: ['Thermo-hygromètre', 'Affiche la température et l’humidité d’un coup d’œil.'], it: ['Termoigrometro', 'Mostra temperatura e umidità a colpo d’occhio.'] } },
+  { code: 'salt-wall', group: 'extras', name: 'Himalayan salt wall', eur: 99000, description: 'A backlit wall of Himalayan salt bricks.',
+    tr: { de: ['Himalaya-Salzwand', 'Hinterleuchtete Wand aus Himalaya-Salzsteinen.'], fr: ['Mur de sel de l’Himalaya', 'Mur rétroéclairé en briques de sel de l’Himalaya.'], it: ['Parete di sale himalayano', 'Parete retroilluminata in mattoni di sale himalayano.'] } },
+  { code: 'stone-floor', group: 'extras', name: 'Stone floor', eur: 49000, scales: true, description: 'Natural stone tiles instead of duckboards on the cabin floor.',
+    tr: { de: ['Steinboden', 'Natursteinplatten statt Holzrost auf dem Kabinenboden.'], fr: ['Sol en pierre', 'Dalles en pierre naturelle à la place du caillebotis au sol.'], it: ['Pavimento in pietra', 'Lastre in pietra naturale al posto della pedana in legno sul pavimento.'] } },
+  ...sizeOptions(),
 ];
 
 /** [option, required option] and [option, option] pairs, applied when the model offers both. */
@@ -153,30 +285,43 @@ interface ModelDef {
   w: number; d: number; h: number; persons: number; kw: number; kg: number;
   eur: number; capBps: number; size: number; without: string[];
   /** Construction-kit form for the 3D view (see apps/web/src/three/kit). */
-  form: 'box' | 'panorama' | 'corner' | 'barrel' | 'hex' | 'cabin';
+  form: 'box' | 'panorama' | 'corner' | 'glass-corner' | 'barrel' | 'hex' | 'cabin';
+  /** `reference`: the parametric renderer in apps/web/src/three/reference (model_source attribute). */
+  source?: 'reference';
+  /** Groups this model requires although they are optional elsewhere. */
+  requires?: string[];
+  /** Extra model-specific [option, option] exclusions. */
+  excludes?: [string, string][];
 }
 const MODELS: ModelDef[] = [
   { slug: 'espoo-compact', sku: 'NL-ESP-140', name: 'Espoo Compact', description: 'A two-person indoor sauna that fits where a shower cubicle would, with a full-height glass front.',
     tr: { de: ['Espoo Compact', 'Innensauna für zwei Personen, passt dorthin, wo sonst die Dusche steht, mit raumhoher Glasfront.'], fr: ['Espoo Compact', 'Sauna d’intérieur pour deux personnes, à la place d’une cabine de douche, avec façade entièrement vitrée.'], it: ['Espoo Compact', 'Sauna da interno per due persone, al posto di un box doccia, con vetrata a tutta altezza.'] },
-    w: 1400, d: 1200, h: 2000, persons: 2, kw: 4.5, kg: 240, eur: 699000, capBps: 1500, size: 0.8, form: 'box', without: ['heater-9kw', 'salt-wall', 'star-ceiling', 'bench-u', 'exterior-wood', 'exterior-thermo', 'exterior-slate'] },
+    w: 1400, d: 1200, h: 2000, persons: 2, kw: 4.5, kg: 240, eur: 699000, capBps: 1500, size: 0.8, form: 'box', without: ['heater-9kw', 'salt-wall', 'star-ceiling', 'bench-u', 'end-waterfall', 'end-framed', 'end-plain', 'exterior-wood', 'exterior-thermo', 'exterior-slate'] },
   { slug: 'kelo-barrel', sku: 'NL-KEL-240', name: 'Kelo Barrel', description: 'The classic outdoor barrel: thick pine staves held by stainless bands, warm even in January.',
     tr: { de: ['Kelo Barrel', 'Die klassische Fasssauna: dicke Kieferndauben mit Edelstahlbändern, warm selbst im Januar.'], fr: ['Kelo Barrel', 'Le sauna tonneau classique : douelles de pin épaisses cerclées d’inox, chaud même en janvier.'], it: ['Kelo Barrel', 'La classica sauna a botte: doghe di pino spesse con fasce in acciaio, calda anche a gennaio.'] },
-    w: 2000, d: 2400, h: 2050, persons: 6, kw: 9, kg: 780, eur: 949000, capBps: 1200, size: 1.0, form: 'barrel', without: ['bench-straight', 'bench-l', 'bench-u', 'front-boards', 'front-framed', 'front-open', 'end-waterfall', 'end-framed', 'end-plain', 'backrest-continuous', 'backrest-panels', 'backrest-none', 'ir-panel', 'headrests', 'exterior-wood', 'exterior-thermo', 'exterior-slate'] },
+    w: 2000, d: 2400, h: 2050, persons: 6, kw: 9, kg: 780, eur: 949000, capBps: 1200, size: 1.0, form: 'barrel', without: ['bench-straight', 'bench-l', 'bench-u', 'front-boards', 'front-framed', 'front-open', 'end-waterfall', 'end-framed', 'end-plain', 'backrest-continuous', 'backrest-panels', 'backrest-none', 'ir-panel', 'headrests', 'stone-floor', 'exterior-wood', 'exterior-thermo', 'exterior-slate'] },
   { slug: 'fjord-panorama', sku: 'NL-FJD-220', name: 'Fjord Panorama', description: 'Floor-to-ceiling glass on the long side and two bench levels in an L for four or five.',
     tr: { de: ['Fjord Panorama', 'Raumhohe Glasfront an der Längsseite und zwei Bankebenen in L-Form für vier bis fünf Personen.'], fr: ['Fjord Panorama', 'Vitrage du sol au plafond sur le grand côté et deux niveaux de bancs en L pour quatre ou cinq.'], it: ['Fjord Panorama', 'Vetrata a tutta altezza sul lato lungo e due livelli di panche a L per quattro o cinque persone.'] },
     w: 2200, d: 1800, h: 2100, persons: 5, kw: 9, kg: 520, eur: 1499000, capBps: 1000, size: 1.2, form: 'panorama', without: [] },
   { slug: 'lappi-corner', sku: 'NL-LAP-160', name: 'Lappi Corner', description: 'A corner sauna for three with a chamfered glass door that opens on the diagonal.',
     tr: { de: ['Lappi Corner', 'Ecksauna für drei Personen mit abgeschrägter Glastür, die diagonal öffnet.'], fr: ['Lappi Corner', 'Sauna d’angle pour trois personnes avec porte vitrée en biais qui s’ouvre en diagonale.'], it: ['Lappi Corner', 'Sauna angolare per tre persone con porta in vetro smussata che si apre in diagonale.'] },
-    w: 1600, d: 1600, h: 2050, persons: 3, kw: 6, kg: 330, eur: 829000, capBps: 2000, size: 0.9, form: 'corner', without: ['heater-wood', 'bench-u', 'exterior-wood', 'exterior-thermo', 'exterior-slate'] },
+    w: 1600, d: 1600, h: 2050, persons: 3, kw: 6, kg: 330, eur: 829000, capBps: 2000, size: 0.9, form: 'corner', without: ['heater-wood', 'bench-u', 'salt-wall', 'exterior-wood', 'exterior-thermo', 'exterior-slate'] },
   { slug: 'aurora-hex', sku: 'NL-AUR-240', name: 'Aurora Hex', description: 'A six-sided outdoor pavilion with a lantern roof and a ring of benches for eight.',
     tr: { de: ['Aurora Hex', 'Sechseckiger Außenpavillon mit Laternendach und einem Bankring für acht Personen.'], fr: ['Aurora Hex', 'Pavillon d’extérieur hexagonal avec toit lanterne et bancs en anneau pour huit personnes.'], it: ['Aurora Hex', 'Padiglione esagonale da esterno con tetto a lanterna e panche ad anello per otto persone.'] },
     w: 2400, d: 2100, h: 2600, persons: 8, kw: 9, kg: 1100, eur: 1199000, capBps: 1500, size: 1.1, form: 'hex', without: [] },
   { slug: 'saimaa-garden-house', sku: 'NL-SAI-300', name: 'Saimaa Garden House', description: 'A garden sauna house for six with a covered porch, a changing room and a pitched roof.',
     tr: { de: ['Saimaa Garden House', 'Gartensaunahaus für sechs Personen mit überdachter Veranda, Umkleide und Satteldach.'], fr: ['Saimaa Garden House', 'Maison-sauna de jardin pour six personnes avec porche couvert, vestiaire et toit à deux pans.'], it: ['Saimaa Garden House', 'Casetta sauna da giardino per sei persone con portico coperto, spogliatoio e tetto a due falde.'] },
     w: 3000, d: 2400, h: 2600, persons: 6, kw: 9, kg: 1650, eur: 1899000, capBps: 800, size: 1.4, form: 'cabin', without: ['heater-6kw'] },
+  // Parked: the six-sided reference model (REFERENCE_SLUG, renderer in apps/web/src/three/reference) is not seeded; the shop shows seven models.
+  { slug: 'kide-glass-corner', sku: 'NL-KID-240', name: 'Kide Glass Corner', description: 'An indoor glass-corner sauna for four: a frameless glass front and side panel, solid knotty pine walls, an L of pale aspen benches with a lit backrest and room for an infrared panel.',
+    tr: { de: ['Kide Glass Corner', 'Innensauna mit Glasecke für vier Personen: rahmenlose Glasfront und Seitenscheibe, massive Wände aus astiger Kiefer, L-förmige Bank aus heller Espe mit beleuchteter Rückenlehne und Platz für ein Infrarotpaneel.'],
+      fr: ['Kide Glass Corner', 'Sauna d’intérieur à angle vitré pour quatre personnes : façade et panneau latéral en verre sans cadre, parois en pin noueux massif, bancs en L en tremble clair avec dossier éclairé et place pour un panneau infrarouge.'],
+      it: ['Kide Glass Corner', 'Sauna da interno con angolo in vetro per quattro persone: vetrata frontale e laterale senza telaio, pareti in pino nodoso massiccio, panche a L in pioppo tremulo chiaro con schienale illuminato e spazio per un pannello a infrarossi.'] },
+    w: 2400, d: 2000, h: 2100, persons: 4, kw: 6, kg: 620, eur: 1290000, capBps: 1200, size: 1.2, form: 'glass-corner',
+    without: ['spruce', 'red-cedar', 'heater-wood', 'bench-u', 'door-wood', 'salt-wall', 'stone-floor', 'exterior-wood', 'exterior-thermo', 'exterior-slate'] },
 ];
 
-const ATTRIBUTES: { code: string; label: string; unit: string | null; tr: Tr; get: (m: ModelDef) => number | string }[] = [
+const ATTRIBUTES: { code: string; label: string; unit: string | null; tr: Tr; get: (m: ModelDef) => number | string | undefined; text?: boolean }[] = [
   { code: 'width_mm', label: 'Width', unit: 'mm', tr: { de: 'Breite', fr: 'Largeur', it: 'Larghezza' }, get: m => m.w },
   { code: 'depth_mm', label: 'Depth', unit: 'mm', tr: { de: 'Tiefe', fr: 'Profondeur', it: 'Profondità' }, get: m => m.d },
   { code: 'height_mm', label: 'Height', unit: 'mm', tr: { de: 'Höhe', fr: 'Hauteur', it: 'Altezza' }, get: m => m.h },
@@ -185,6 +330,8 @@ const ATTRIBUTES: { code: string; label: string; unit: string | null; tr: Tr; ge
   { code: 'weight_kg', label: 'Weight', unit: 'kg', tr: { de: 'Gewicht', fr: 'Poids', it: 'Peso' }, get: m => m.kg },
   { code: 'bench_levels', label: 'Bench levels', unit: null, tr: { de: 'Bankebenen', fr: 'Niveaux de bancs', it: 'Livelli di panche' }, get: m => (m.d < 1600 ? 1 : 2) },
   { code: 'form', label: 'Form', unit: null, tr: { de: 'Bauform', fr: 'Forme', it: 'Forma' }, get: m => m.form },
+  // Only parametric models carry it; the others use the construction kit.
+  { code: 'model_source', label: '3D model', unit: null, tr: { de: '3D-Modell', fr: 'Modèle 3D', it: 'Modello 3D' }, get: m => m.source, text: true },
 ];
 
 const ROOMS = [
@@ -215,6 +362,7 @@ const RESELLERS: ResellerDef[] = [
       { slug: 'fjord-panorama' },
       { slug: 'lappi-corner', visible: false },
       { slug: 'aurora-hex' },
+      { slug: 'kide-glass-corner' },
     ],
     defaultDiscount: { type: 'PERCENT', value: 1000 }, rooms: ['garden-deck', 'basement-spa', 'lakeside-terrace'],
     owner: { key: 'alphaOwner', email: 'owner@alpha.test', name: 'Anton Albrecht' } },
@@ -223,6 +371,7 @@ const RESELLERS: ResellerDef[] = [
     saunas: [
       { slug: 'espoo-compact' }, { slug: 'fjord-panorama' }, { slug: 'aurora-hex' },
       { slug: 'saimaa-garden-house', discount: { type: 'PERCENT', value: 500 } },
+      { slug: 'kide-glass-corner' },
     ],
     rooms: ['garden-deck', 'lakeside-terrace'],
     owner: { key: 'betaOwner', email: 'owner@beta.test', name: 'Beatrice Brunner' } },
@@ -237,6 +386,8 @@ const modelBySlug = new Map(MODELS.map(m => [m.slug, m]));
 const optionByCode = new Map(OPTIONS.map(o => [o.code, o]));
 
 function offers(m: ModelDef, code: string): boolean {
+  const only = optionByCode.get(code)?.only;
+  if (only && !only.includes(m.slug)) return false;
   return !m.without.includes(code);
 }
 function optionDeltaEur(m: ModelDef, o: OptionDef): number {
@@ -261,7 +412,7 @@ async function seedCatalog(db: Db): Promise<void> {
   await q(db, `INSERT INTO manufacturers (id, name) VALUES ($1, 'Nordlicht Saunabau')`, [SEED.manufacturerId]);
 
   for (const [i, a] of ATTRIBUTES.entries()) {
-    const type = typeof a.get(MODELS[0]!) === 'string' ? 'TEXT' : 'NUMBER';
+    const type = a.text || typeof a.get(MODELS[0]!) === 'string' ? 'TEXT' : 'NUMBER';
     await q(db, `INSERT INTO attribute_definitions (code, label, unit, value_type, sort_order) VALUES ($1, $2, $3, $4, $5)
                  ON CONFLICT (code) DO NOTHING`, [a.code, a.label, a.unit, type, i]);
     for (const [loc, label] of Object.entries(a.tr)) {
@@ -271,17 +422,19 @@ async function seedCatalog(db: Db): Promise<void> {
   }
 
   for (const [i, g] of GROUPS.entries()) {
-    await q(db, `INSERT INTO option_groups (id, code, name, selection_type, sort_order) VALUES ($1, $2, $3, $4, $5)`,
-      [SEED.groups(g.code), g.code, g.name, g.type, i]);
-    for (const [loc, name] of Object.entries(g.tr)) {
-      await q(db, `INSERT INTO option_group_translations (option_group_id, locale, name) VALUES ($1, $2, $3)`, [SEED.groups(g.code), loc, name]);
+    await q(db, `INSERT INTO option_groups (id, code, name, description, selection_type, sort_order) VALUES ($1, $2, $3, $4, $5, $6)`,
+      [SEED.groups(g.code), g.code, g.name, g.description, g.type, i]);
+    for (const [loc, [name, description]] of Object.entries(g.tr)) {
+      await q(db, `INSERT INTO option_group_translations (option_group_id, locale, name, description) VALUES ($1, $2, $3, $4)`,
+        [SEED.groups(g.code), loc, name, description]);
     }
   }
   for (const [i, o] of OPTIONS.entries()) {
     await q(db, `INSERT INTO options (id, option_group_id, code, name, description, swatch_color, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [SEED.options(o.code), SEED.groups(o.group), o.code, o.name, o.description ?? null, o.swatch ?? null, i]);
-    for (const [loc, name] of Object.entries(o.tr)) {
-      await q(db, `INSERT INTO option_translations (option_id, locale, name) VALUES ($1, $2, $3)`, [SEED.options(o.code), loc, name]);
+      [SEED.options(o.code), SEED.groups(o.group), o.code, o.name, o.description, o.swatch ?? null, i]);
+    for (const [loc, [name, description]] of Object.entries(o.tr)) {
+      await q(db, `INSERT INTO option_translations (option_id, locale, name, description) VALUES ($1, $2, $3, $4)`,
+        [SEED.options(o.code), loc, name, description]);
     }
   }
 
@@ -294,6 +447,7 @@ async function seedCatalog(db: Db): Promise<void> {
     }
     for (const a of ATTRIBUTES) {
       const v = a.get(m);
+      if (v === undefined) continue;
       await q(db, `INSERT INTO sauna_model_attributes (sauna_model_id, attribute_code, value_number, value_text) VALUES ($1, $2, $3, $4)`,
         [id, a.code, typeof v === 'number' ? v : null, typeof v === 'string' ? v : null]);
     }
@@ -304,13 +458,17 @@ async function seedCatalog(db: Db): Promise<void> {
     for (const [gi, g] of GROUPS.entries()) {
       // A group is offered only when the model offers at least one of its options.
       if (!OPTIONS.some(o => o.group === g.code && offers(m, o.code))) continue;
+      const required = g.required || (m.requires ?? []).includes(g.code);
+      // Sizes lead the cabin step of parametric models.
+      const sizeAt = ['width', 'depth', 'height'].indexOf(g.code);
       await q(db, `INSERT INTO sauna_model_option_groups (sauna_model_id, option_group_id, is_required, sort_order) VALUES ($1, $2, $3, $4)`,
-        [id, SEED.groups(g.code), g.required, gi]);
+        [id, SEED.groups(g.code), required, m.source && sizeAt >= 0 ? sizeAt : m.source ? gi + 3 : gi]);
       const groupOptions = OPTIONS.filter(o => o.group === g.code && offers(m, o.code));
-      for (const [oi, o] of groupOptions.entries()) {
-        // The first option of each required group is its default.
+      // A required group's default is its marked option, else its first.
+      const fallback = groupOptions.find(o => o.isDefault) ?? groupOptions[0];
+      for (const o of groupOptions) {
         await q(db, `INSERT INTO sauna_model_options (sauna_model_id, option_id, option_group_id, is_default) VALUES ($1, $2, $3, $4)`,
-          [id, SEED.options(o.code), SEED.groups(g.code), g.required && oi === 0]);
+          [id, SEED.options(o.code), SEED.groups(g.code), required && o === fallback]);
         for (const cur of CURRENCIES) {
           await q(db, `INSERT INTO sauna_model_option_prices (sauna_model_id, option_id, currency_code, price_delta_minor) VALUES ($1, $2, $3, $4)`,
             [id, SEED.options(o.code), cur, convert(optionDeltaEur(m, o), cur)]);
@@ -322,7 +480,7 @@ async function seedCatalog(db: Db): Promise<void> {
         await q(db, `INSERT INTO option_requires (sauna_model_id, option_id, required_option_id) VALUES ($1, $2, $3)`, [id, SEED.options(a), SEED.options(b)]);
       }
     }
-    for (const [a, b] of EXCLUDES) {
+    for (const [a, b] of [...EXCLUDES, ...(m.excludes ?? [])]) {
       if (offers(m, a) && offers(m, b)) {
         const [x, y] = [SEED.options(a), SEED.options(b)].sort();
         await q(db, `INSERT INTO option_excludes (sauna_model_id, option_a_id, option_b_id) VALUES ($1, $2, $3)`, [id, x, y]);
@@ -366,8 +524,11 @@ async function seedCatalog(db: Db): Promise<void> {
       ['MODEL_GALLERY', 1, `media/catalog/${m.slug}/gallery-2-${tag(`${m.slug}:g2`)}.webp`, 'image/webp'],
     ];
     if (m.slug !== 'espoo-compact') {
+      roles.push(['MODEL_THUMBNAIL', 0, `media/catalog/${m.slug}/thumb-${tag(`${m.slug}:thumb`)}.webp`, 'image/webp']);
+    }
+    // Parametric models rebuild in the browser: no fixed GLB or AR file to point at.
+    if (m.slug !== 'espoo-compact' && !m.source) {
       roles.push(
-        ['MODEL_THUMBNAIL', 0, `media/catalog/${m.slug}/thumb-${tag(`${m.slug}:thumb`)}.webp`, 'image/webp'],
         ['MODEL_GLB_LOW', 0, `assets/lo/catalog/${m.slug}/low-${tag(`${m.slug}:low`)}.glb`, 'model/gltf-binary'],
         ['MODEL_GLB_HIGH', 0, `assets/hi/catalog/${m.slug}/high-${tag(`${m.slug}:high`)}.glb`, 'model/gltf-binary'],
         ['MODEL_AR_GLB', 0, `assets/hi/catalog/${m.slug}/ar-${tag(`${m.slug}:ar`)}.glb`, 'model/gltf-binary'],
@@ -406,6 +567,11 @@ async function seedTenants(db: Db): Promise<void> {
     await q(db, `INSERT INTO staff_users (id, email, display_name, idp_subject, status) VALUES ($1, $2, $3, $4, 'ACTIVE')`,
       [sid, r.owner.email, r.owner.name, seedId(`idp:${r.owner.email}`)]);
     await q(db, `INSERT INTO reseller_admins (reseller_id, staff_user_id, role) VALUES ($1, $2, 'OWNER')`, [rid, sid]);
+    if (r.key === 'alpha') {
+      await q(db, `INSERT INTO staff_users (id, email, display_name, idp_subject, status) VALUES ($1, 'admin@alpha.test', 'Alma Arnold', $2, 'ACTIVE')`,
+        [SEED.staff.alphaAdmin, seedId('idp:admin@alpha.test')]);
+      await q(db, `INSERT INTO reseller_admins (reseller_id, staff_user_id, role) VALUES ($1, $2, 'ADMIN')`, [rid, SEED.staff.alphaAdmin]);
+    }
 
     for (const [i, s] of r.saunas.entries()) {
       await q(db, `INSERT INTO reseller_saunas (reseller_id, sauna_model_id, is_visible, sort_order) VALUES ($1, $2, $3, $4)`,
@@ -575,6 +741,23 @@ async function seedConfigurations(db: Db): Promise<void> {
   await setActor(db, {});
 }
 
+/**
+ * Reseller option settings (0015): alpha does not sell the salt wall on the Aurora Hex and sells
+ * the aroma dispenser there for less. Written after the configurations, which were locked at the
+ * manufacturer's prices.
+ */
+const OPTION_SETTINGS: { reseller: 'alpha' | 'beta'; model: string; option: string; enabled: boolean; priceMinor?: number }[] = [
+  { reseller: 'alpha', model: 'aurora-hex', option: 'salt-wall', enabled: false },
+  { reseller: 'alpha', model: 'aurora-hex', option: 'aroma', enabled: true, priceMinor: 15000 },
+];
+
+async function seedOptionSettings(db: Db): Promise<void> {
+  for (const s of OPTION_SETTINGS) {
+    await q(db, `INSERT INTO reseller_sauna_options (reseller_id, sauna_model_id, option_id, is_enabled, price_override_minor) VALUES ($1, $2, $3, $4, $5)`,
+      [SEED.resellers[s.reseller], SEED.models(s.model), SEED.options(s.option), s.enabled, s.priceMinor ?? null]);
+  }
+}
+
 async function seedIdpUsers(db: Db): Promise<number> {
   const users: { sub: string; pool: 'CUSTOMER' | 'STAFF'; username: string; email: string; attributes: Record<string, unknown> }[] = [
     ...CUSTOMERS.map(c => ({ sub: c.id, pool: 'CUSTOMER' as const, username: c.id, email: c.email,
@@ -582,6 +765,7 @@ async function seedIdpUsers(db: Db): Promise<number> {
     { sub: seedId('idp:admin@nordlicht.test'), pool: 'STAFF', username: 'admin@nordlicht.test', email: 'admin@nordlicht.test', attributes: { name: 'Nora Lindqvist' } },
     ...RESELLERS.map(r => ({ sub: seedId(`idp:${r.owner.email}`), pool: 'STAFF' as const, username: r.owner.email.toLowerCase(), email: r.owner.email,
       attributes: { name: r.owner.name } })),
+    { sub: seedId('idp:admin@alpha.test'), pool: 'STAFF', username: 'admin@alpha.test', email: 'admin@alpha.test', attributes: { name: 'Alma Arnold' } },
   ];
   const { rows } = await q(db, `SELECT sub::text FROM idp.users WHERE sub = ANY($1::uuid[])`, [users.map(u => u.sub)]);
   const existing = new Set(rows.map(r => (r as { sub: string }).sub));
@@ -617,6 +801,7 @@ export async function seed(url: string, options: SeedOptions = {}): Promise<{ se
       await seedTenants(db);
       await seedCustomers(db);
       await seedConfigurations(db);
+      await seedOptionSettings(db);
       log('seeded catalog, resellers alpha/beta/gamma, staff, customers, configurations and requests');
     } else {
       log('seed data already present');

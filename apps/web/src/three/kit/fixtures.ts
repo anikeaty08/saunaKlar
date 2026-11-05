@@ -125,7 +125,7 @@ function headrest(P: Parts, M: KitMaterials, at: Vec2, facing: Vec2, y: number) 
 }
 
 /** Wooden bucket with steel bands and a ladle. */
-function bucket(P: Parts, M: KitMaterials, at: Vec2, y: number) {
+export function bucket(P: Parts, M: KitMaterials, at: Vec2, y: number) {
   const m = facingMatrix(at, [0, 1], y);
   if (P.part('bucket', m)) return;
   const body = new THREE.CylinderGeometry(0.13, 0.11, 0.2, 18, 1, true);
@@ -172,36 +172,18 @@ export function buildFixtures(P: Parts, M: KitMaterials, L: KitLayout, spec: Kit
     }
   }
   const free = L.freeWall ? byId.get(L.freeWall)! : null;
-  if (spec.extras.thermometer && free) {
-    const m = segMatrix(free, free.length * 0.5, L.wall, L.floorY);
-    const y = L.wallHeight - 0.5;
-    if (!P.part('thermometer', m.clone().multiply(new THREE.Matrix4().makeTranslation(0, y, 0)))) {
-      P.box(M.benchPanel, -0.15, 0.15, y, y + 0.18, 0, 0.022, m);
-      for (const x of [-0.07, 0.07]) {
-        const face = new THREE.CircleGeometry(0.052, 24);
-        face.translate(x, y + 0.09, 0.024);
-        P.add(M.white, face, m);
-      }
-    }
+  if (spec.extras.thermometer) {
+    // On the free wall, or high on the longest solid wall when every wall has a bench or the heater.
+    const wall = free ?? [...L.segments].filter(s => s.kind === 'solid').sort((a, b) => b.length - a.length)[0];
+    if (wall) thermometer(P, M, segMatrix(wall, wall.length * 0.5, L.wall, L.floorY), free ? L.wallHeight - 0.5 : L.wallHeight - 0.3);
   }
   if (spec.extras.saltWall && free) {
-    const m = segMatrix(free, 0, L.wall, L.floorY);
-    const u0 = free.length * 0.5 - 0.42, y0 = 1.0;
-    const r = rng(41);
-    for (let row = 0; row < 7; row++) {
-      for (let col = 0; col < 4; col++) {
-        const u = u0 + col * 0.21 + (row % 2 ? 0.1 : 0);
-        if (u + 0.2 > u0 + 0.86) continue;
-        P.box(M.salt, u, u + 0.2, y0 + row * 0.105, y0 + row * 0.105 + 0.1, 0.004, 0.03 + r() * 0.004, m);
-      }
-    }
+    saltPanels(P, M, segMatrix(free, free.length * 0.5, L.wall, L.floorY), 1.0);
     P.lights.push({ position: [...(() => { const e = segMatrix(free, free.length * 0.5, L.wall + 0.3, L.floorY + 1.35).elements; return [e[12]!, e[13]!, e[14]!] as [number, number, number]; })()], color: '#ff9a55', intensity: 0.35, distance: 1.4 });
   }
   if (spec.extras.aroma && L.heater.segment) {
     const s = byId.get(L.heater.segment)!;
-    const m = segMatrix(s, (L.heater.u ?? 0) + 0.45, L.wall, L.floorY);
-    P.box(M.black, -0.05, 0.05, 1.3, 1.46, 0, 0.06, m);
-    P.box(M.steel, -0.03, 0.03, 1.46, 1.5, 0.01, 0.05, m);
+    aromaUnit(P, M, segMatrix(s, (L.heater.u ?? 0) + 0.45, L.wall, L.floorY), 1.3);
   }
   const inner = interiorPolygon(L);
   const ceilY = L.floorY + L.wallHeight - 0.004;
@@ -234,20 +216,56 @@ export function buildFixtures(P: Parts, M: KitMaterials, L: KitLayout, spec: Kit
   P.lights.push({ position: [cx, L.floorY + L.wallHeight * 0.8, cz], color: '#fff6ec', intensity: 1.0, distance: 4.5 });
 }
 
-/** Digital control on the outside, beside the door. */
+/** Digital control on the outside, beside the door (or on the nearest solid wall). */
 function controlPanel(P: Parts, M: KitMaterials, L: KitLayout) {
   const door = L.segments.find(s => s.door)!;
   let target = door, u = door.door!.hingeAtStart ? door.door!.u1 + 0.18 : door.door!.u0 - 0.18;
   if (door.kind !== 'solid' || u < 0.1 || u > door.length - 0.1) {
     const { prev, next } = neighbours(L, door);
-    const solid = [next, prev].find(s => s.kind === 'solid');
+    // A glass front (corner sauna): the nearest solid wall, at its end towards the door.
+    const solid = [next, prev].find(s => s.kind === 'solid') ?? L.segments.find(s => s.kind === 'solid');
     if (!solid) return;
     target = solid;
-    u = solid === next ? 0.25 : solid.length - 0.25;
+    const i = L.segments.indexOf(solid), d = L.segments.indexOf(door), n = L.segments.length;
+    u = (i - d + n) % n <= n / 2 ? 0.25 : solid.length - 0.25;
   }
-  const m = segMatrix(target, u, 0, L.floorY);
+  controlUnit(P, M, segMatrix(target, u, 0, L.floorY), 1.3);
+}
+
+/** A control unit on the outside of a wall whose frame `m` has +z pointing into the room. */
+export function controlUnit(P: Parts, M: KitMaterials, m: THREE.Matrix4, y: number) {
   // Outside the wall: the modelled unit faces -z here, so turn it round.
-  if (P.part('control', m.clone().multiply(new THREE.Matrix4().makeTranslation(0, 1.3, 0)).multiply(new THREE.Matrix4().makeRotationY(Math.PI)))) return;
-  P.box(M.black, -0.05, 0.05, 1.3, 1.46, -0.016, 0, m);
-  P.box(M.led, -0.03, 0.03, 1.4, 1.43, -0.0175, -0.016, m);
+  if (P.part('control', m.clone().multiply(new THREE.Matrix4().makeTranslation(0, y, 0)).multiply(new THREE.Matrix4().makeRotationY(Math.PI)))) return;
+  P.box(M.black, -0.05, 0.05, y, y + 0.16, -0.016, 0, m);
+  P.box(M.led, -0.03, 0.03, y + 0.1, y + 0.13, -0.0175, -0.016, m);
+}
+
+/** Thermo-hygrometer on a wall (frame `m`, +z into the room), its bottom at y. */
+export function thermometer(P: Parts, M: KitMaterials, m: THREE.Matrix4, y: number) {
+  if (P.part('thermometer', m.clone().multiply(new THREE.Matrix4().makeTranslation(0, y, 0)))) return;
+  P.box(M.benchPanel, -0.15, 0.15, y, y + 0.18, 0, 0.022, m);
+  for (const x of [-0.07, 0.07]) {
+    const face = new THREE.CircleGeometry(0.052, 24);
+    face.translate(x, y + 0.09, 0.024);
+    P.add(M.white, face, m);
+  }
+}
+
+/** Himalayan salt bricks, 0.86 m wide and centred on the frame's origin, from y0 up (frame +z into the room). */
+export function saltPanels(P: Parts, M: KitMaterials, m: THREE.Matrix4, y0: number, rows = 7) {
+  const u0 = -0.42;
+  const r = rng(41);
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < 4; col++) {
+      const u = u0 + col * 0.21 + (row % 2 ? 0.1 : 0);
+      if (u + 0.2 > u0 + 0.86) continue;
+      P.box(M.salt, u, u + 0.2, y0 + row * 0.105, y0 + row * 0.105 + 0.1, 0.004, 0.03 + r() * 0.004, m);
+    }
+  }
+}
+
+/** Wall-mounted aroma dispenser (frame +z into the room), its bottom at y. */
+export function aromaUnit(P: Parts, M: KitMaterials, m: THREE.Matrix4, y: number) {
+  P.box(M.black, -0.05, 0.05, y, y + 0.16, 0, 0.06, m);
+  P.box(M.steel, -0.03, 0.03, y + 0.16, y + 0.2, 0.01, 0.05, m);
 }

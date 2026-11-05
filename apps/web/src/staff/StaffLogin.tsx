@@ -13,6 +13,7 @@ import { Icon } from '../design/components/Icon.tsx';
 import { useDocumentTitle } from '../app/useDocumentTitle.ts';
 import { Credit } from '../design/components/Credit.tsx';
 import { LogoMark } from '../design/brand/Logo.tsx';
+import { PhotoPanel, type PanelShot } from '../design/components/PhotoPanel.tsx';
 import { gsap, useGSAP } from '../motion/gsap.ts';
 import { prefersReducedMotion } from '../motion/preferences.ts';
 import { qrMatrix } from './qr.ts';
@@ -31,6 +32,15 @@ function QrCode({ text, label }: { text: string; label: string }) {
     </svg>
   );
 }
+
+/**
+ * The sign-in panel shows two static renders from public/catalogue: before
+ * sign-in the admin knows no tenant, so nothing here may come from the API.
+ */
+const STATIC_SHOTS = [
+  { src: `${import.meta.env.BASE_URL}catalogue/kelo-barrel-interior.jpg`, name: 'Kelo Barrel', view: 'inside', position: '50% 55%' },
+  { src: `${import.meta.env.BASE_URL}catalogue/kelo-barrel-exterior.jpg`, name: 'Kelo Barrel', view: 'outside', position: '32% 62%' },
+] as const;
 
 type Step =
   | { kind: 'password' }
@@ -102,6 +112,11 @@ export function StaffLogin({ title, brand, notice, onSignedIn }: { title: string
     step.kind === 'password' ? title : step.kind === 'mfa' ? t('staff.mfaTitle') : step.kind === 'setup' ? t('staff.mfaSetupTitle') : t('staff.newPasswordTitle');
   const lede =
     step.kind === 'password' ? t('staff.loginLede') : step.kind === 'mfa' ? t('staff.mfaLede') : step.kind === 'setup' ? t('staff.mfaSetupLede') : t('staff.newPasswordLede');
+
+  const shots: PanelShot[] = STATIC_SHOTS.map(s => {
+    const view = s.view === 'inside' ? t('detail.photoInside') : t('detail.photoOutside');
+    return { src: s.src, position: s.position, alt: t('detail.photoAlt', { name: s.name, view }), caption: `${s.name} · ${view}` };
+  });
 
   const root = useRef<HTMLDivElement>(null);
   useGSAP(
@@ -191,9 +206,12 @@ export function StaffLogin({ title, brand, notice, onSignedIn }: { title: string
         </form>
         <Credit quiet copyright={false} className="staff-login__credit" />
       </div>
-      <aside className="staff-login__art" aria-hidden="true">
-        <LogoMark size={88} draw delay={0.6} className="staff-login__mark" />
-        <p className="staff-login__art-word">SaunaKlar</p>
+      <aside className="staff-login__art">
+        <PhotoPanel shots={shots} sizes="(min-width: 901px) min(150vh, 1200px), 100vw" />
+        <div className="staff-login__art-brand" aria-hidden="true">
+          <LogoMark size={56} draw delay={0.6} className="staff-login__mark" />
+          <p className="staff-login__art-word">SaunaKlar</p>
+        </div>
       </aside>
     </div>
   );

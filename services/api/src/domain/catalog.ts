@@ -152,47 +152,155 @@ function itemOf(row: ModelRow, attributes: Attribute[], assets: CatalogItem['ass
 const fromOptions = (rules: ModelRules, optionPrices: ReadonlyMap<string, number>) =>
   fromSelection(rules, optionPrices).map(optionId => ({ optionId, priceDeltaMinor: optionPrices.get(optionId) ?? 0 }));
 
-/** Rules and option prices of several models at once, for the catalog's "from" prices. */
-async function loadRulesAndPrices(db: Db, modelIds: string[], currency: string): Promise<Map<string, { rules: ModelRules; optionPrices: Map<string, number> }>> {
+/** One option of a model as the catalog query returns it, with the reseller's setting (0015). */
+export interface OfferRow {
+  group_id: string;
+  group_code: string;
+  group_name: string;
+  group_description: string | null;
+  selection_type: 'SINGLE' | 'MULTI';
+  is_required: boolean;
+  option_id: string;
+  option_code: string;
+  option_name: string;
+  option_description: string | null;
+  swatch_color: string | null;
+  is_default: boolean;
+  /** Manufacturer's price in the reseller currency. */
+  price_delta_minor: string | number | null;
+  enabled: boolean;
+  price_override_minor: string | number | null;
+  description_override: string | null;
+  thumb_key: string | null;
+  glb_key: string | null;
+}
+
+export interface Offer {
+  /** Enabled options only, with effective price and description. */
+  groups: OptionGroupDto[];
+  rules: ModelRules;
+  /**
+   * Effective price of every option of the model, disabled ones included, so a draft saved
+   * before the reseller switched an option off still prices (validation rejects it on save).
+   */
+  optionPrices: Map<string, number>;
+}
+
+/** The reseller's override, else the manufacturer's price. */
+export const effectiveOptionPrice = (basePriceMinor: number, overrideMinor: number | null | undefined): number =>
+  overrideMinor ?? basePriceMinor;
+
+/**
+ * Applies a reseller's option settings to a model's options. Disabled options leave the groups
+ * and the rules, so the rules engine reports them as unknown (server-side rejection). Two
+ * safety nets for catalog changes made after the reseller saved its settings: a required group
+ * whose options are all disabled is offered in full, and an option that requires a disabled
+ * option is disabled too.
+ */
+export function buildOffer(
+  rows: readonly OfferRow[],
+  requires: ModelRules['requires'],
+  excludes: ModelRules['excludes'],
+  label: string,
+  currency: string,
+): Offer {
+  const disabled = new Set(rows.filter(r => !r.enabled).map(r => r.option_id));
+  for (const groupId of new Set(rows.filter(r => r.is_required).map(r => r.group_id))) {
+    const options = rows.filter(r => r.group_id === groupId);
+    if (options.every(r => disabled.has(r.option_id))) for (const r of options) disabled.delete(r.option_id);
+  }
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const r of requires) {
+      if (!disabled.has(r.optionId) && disabled.has(r.requiredOptionId)) {
+        disabled.add(r.optionId);
+        changed = true;
+      }
+    }
+  }
+
+  const groupMap = new Map<string, OptionGroupDto>();
+  const optionPrices = new Map<string, number>();
+  for (const g of rows) {
+    // The assignment trigger guarantees a price per currency (review C4); a missing one would
+    // be a data bug, so it is surfaced rather than priced at 0.
+    if (g.price_delta_minor === null) throw new Error(`option ${g.option_code} of ${label} has no ${currency} price`);
+    const delta = effectiveOptionPrice(num(g.price_delta_minor), g.price_override_minor === null ? null : num(g.price_override_minor));
+    optionPrices.set(g.option_id, delta);
+    if (disabled.has(g.option_id)) continue;
+    let group = groupMap.get(g.group_id);
+    if (!group) {
+      group = { id: g.group_id, code: g.group_code, name: g.group_name, description: g.group_description, selectionType: g.selection_type, required: g.is_required, options: [] };
+      groupMap.set(g.group_id, group);
+    }
+    group.options.push({
+      id: g.option_id,
+      code: g.option_code,
+      name: g.option_name,
+      description: g.description_override ?? g.option_description,
+      swatchColor: g.swatch_color?.trim() ?? null,
+      thumbnailUrl: assetUrl(g.thumb_key),
+      glbUrl: assetUrl(g.glb_key),
+      priceDeltaMinor: delta,
+      isDefault: g.is_default,
+    });
+  }
+  const groups = [...groupMap.values()];
+  const on = (id: string) => !disabled.has(id) && optionPrices.has(id);
+  return {
+    groups,
+    rules: {
+      groups: groups.map(g => ({ id: g.id, code: g.code, selectionType: g.selectionType, required: g.required, options: g.options.map(o => ({ id: o.id, code: o.code, isDefault: o.isDefault })) })),
+      requires: requires.filter(r => on(r.optionId) && on(r.requiredOptionId)),
+      excludes: excludes.filter(x => on(x.optionAId) && on(x.optionBId)),
+    },
+    optionPrices,
+  };
+}
+
+/** Rules and effective option prices of several models at once, for the catalog's "from" prices. */
+async function loadRulesAndPrices(db: Db, modelIds: string[], tenant: TenantInfo): Promise<Map<string, { rules: ModelRules; optionPrices: Map<string, number> }>> {
   const out = new Map<string, { rules: ModelRules; optionPrices: Map<string, number> }>();
   if (!modelIds.length) return out;
   const [opts, requires, excludes] = await Promise.all([
-    db.query<{ sauna_model_id: string; group_id: string; group_code: string; selection_type: 'SINGLE' | 'MULTI'; is_required: boolean; option_id: string; option_code: string; is_default: boolean; price_delta_minor: string | null }>(
-      `select smg.sauna_model_id, g.id as group_id, g.code as group_code, g.selection_type, smg.is_required,
-              o.id as option_id, o.code as option_code, smo.is_default, op.price_delta_minor
+    db.query<OfferRow & { sauna_model_id: string }>(
+      `select smg.sauna_model_id, g.id as group_id, g.code as group_code, g.name as group_name, null as group_description,
+              g.selection_type, smg.is_required, o.id as option_id, o.code as option_code, o.name as option_name,
+              null as option_description, null as swatch_color, smo.is_default, op.price_delta_minor,
+              coalesce(rso.is_enabled, true) as enabled, rso.price_override_minor, null as description_override,
+              null as thumb_key, null as glb_key
          from sauna_model_option_groups smg
          join option_groups g on g.id = smg.option_group_id
          join sauna_model_options smo on smo.sauna_model_id = smg.sauna_model_id and smo.option_group_id = g.id
          join options o on o.id = smo.option_id
          left join sauna_model_option_prices op on op.sauna_model_id = smo.sauna_model_id and op.option_id = o.id and op.currency_code = $2
+         left join reseller_sauna_options rso on rso.reseller_id = $3 and rso.sauna_model_id = smo.sauna_model_id and rso.option_id = o.id
         where smg.sauna_model_id = any($1::uuid[])
         order by smg.sauna_model_id, smg.sort_order, g.sort_order, g.code, o.sort_order, o.code`,
-      [modelIds, currency]),
+      [modelIds, tenant.currency, tenant.id]),
     db.query<{ sauna_model_id: string; option_id: string; required_option_id: string }>('select sauna_model_id, option_id, required_option_id from option_requires where sauna_model_id = any($1::uuid[])', [modelIds]),
     db.query<{ sauna_model_id: string; option_a_id: string; option_b_id: string }>('select sauna_model_id, option_a_id, option_b_id from option_excludes where sauna_model_id = any($1::uuid[])', [modelIds]),
   ]);
-  const entry = (id: string) => {
-    let e = out.get(id);
-    if (!e) out.set(id, (e = { rules: { groups: [], requires: [], excludes: [] }, optionPrices: new Map() }));
-    return e;
+  const byModel = <T extends { sauna_model_id: string }>(rows: T[]) => {
+    const m = new Map<string, T[]>();
+    for (const r of rows) m.set(r.sauna_model_id, [...(m.get(r.sauna_model_id) ?? []), r]);
+    return m;
   };
-  for (const r of opts.rows) {
-    const e = entry(r.sauna_model_id);
-    let g = e.rules.groups.find(x => x.id === r.group_id);
-    if (!g) e.rules.groups.push((g = { id: r.group_id, code: r.group_code, selectionType: r.selection_type, required: r.is_required, options: [] }));
-    if (r.price_delta_minor === null) throw new Error(`option ${r.option_code} has no ${currency} price`);
-    g.options.push({ id: r.option_id, code: r.option_code, isDefault: r.is_default });
-    e.optionPrices.set(r.option_id, num(r.price_delta_minor));
+  const o = byModel(opts.rows), rq = byModel(requires.rows), ex = byModel(excludes.rows);
+  for (const id of modelIds) {
+    const offer = buildOffer(o.get(id) ?? [],
+      (rq.get(id) ?? []).map(r => ({ optionId: r.option_id, requiredOptionId: r.required_option_id })),
+      (ex.get(id) ?? []).map(r => ({ optionAId: r.option_a_id, optionBId: r.option_b_id })),
+      `model ${id}`, tenant.currency);
+    out.set(id, { rules: offer.rules, optionPrices: offer.optionPrices });
   }
-  for (const r of requires.rows) entry(r.sauna_model_id).rules.requires.push({ optionId: r.option_id, requiredOptionId: r.required_option_id });
-  for (const r of excludes.rows) entry(r.sauna_model_id).rules.excludes.push({ optionAId: r.option_a_id, optionBId: r.option_b_id });
   return out;
 }
 
 export async function listCatalog(db: Db, tenant: TenantInfo, locale: AppLocale): Promise<CatalogItem[]> {
   const { rows } = await db.query<ModelRow>(`${MODEL_SQL} and rs.is_visible order by rs.sort_order, name`, [tenant.id, tenant.currency, locale]);
   const ids = rows.map(r => r.id);
-  const [attrs, assets, pricing] = await Promise.all([loadAttributes(db, ids, locale), loadModelAssets(db, ids), loadRulesAndPrices(db, ids, tenant.currency)]);
+  const [attrs, assets, pricing] = await Promise.all([loadAttributes(db, ids, locale), loadModelAssets(db, ids), loadRulesAndPrices(db, ids, tenant)]);
   return rows.map(r => {
     const p = pricing.get(r.id);
     return itemOf(r, attrs.get(r.id) ?? [], assetsDto(assets.get(r.id)), p ? fromOptions(p.rules, p.optionPrices) : []);
@@ -228,11 +336,13 @@ export async function loadModel(db: Db, tenant: TenantInfo, locale: AppLocale, b
   const [attrs, assets, groups, rules] = await Promise.all([
     loadAttributes(db, [row.id], locale),
     loadModelAssets(db, [row.id]),
-    db.query<{ group_id: string; group_code: string; group_name: string; selection_type: 'SINGLE' | 'MULTI'; is_required: boolean; option_id: string; option_code: string; option_name: string; option_description: string | null; swatch_color: string | null; is_default: boolean; price_delta_minor: string | null; thumb_key: string | null; glb_key: string | null }>(
-      `select g.id as group_id, g.code as group_code, coalesce(gt.name, g.name) as group_name, g.selection_type, smg.is_required,
+    db.query<OfferRow>(
+      `select g.id as group_id, g.code as group_code, coalesce(gt.name, g.name) as group_name,
+              coalesce(gt.description, g.description) as group_description, g.selection_type, smg.is_required,
               o.id as option_id, o.code as option_code, coalesce(ot.name, o.name) as option_name,
               coalesce(ot.description, o.description) as option_description, o.swatch_color, smo.is_default,
               op.price_delta_minor,
+              coalesce(rso.is_enabled, true) as enabled, rso.price_override_minor, rso.description_override,
               (select a.storage_key from option_assets oa join assets a on a.id = oa.asset_id where oa.option_id = o.id and oa.asset_role = 'OPTION_THUMBNAIL') as thumb_key,
               (select a.storage_key from option_assets oa join assets a on a.id = oa.asset_id where oa.option_id = o.id and oa.asset_role = 'OPTION_GLB') as glb_key
          from sauna_model_option_groups smg
@@ -242,60 +352,32 @@ export async function loadModel(db: Db, tenant: TenantInfo, locale: AppLocale, b
          join options o on o.id = smo.option_id
          left join option_translations ot on ot.option_id = o.id and ot.locale = $3
          left join sauna_model_option_prices op on op.sauna_model_id = smo.sauna_model_id and op.option_id = o.id and op.currency_code = $2
+         left join reseller_sauna_options rso on rso.reseller_id = $4 and rso.sauna_model_id = smo.sauna_model_id and rso.option_id = o.id
         where smg.sauna_model_id = $1
         order by smg.sort_order, g.sort_order, g.code, o.sort_order, o.code`,
-      [row.id, tenant.currency, locale]),
+      [row.id, tenant.currency, locale, tenant.id]),
     Promise.all([
       db.query<{ option_id: string; required_option_id: string }>('select option_id, required_option_id from option_requires where sauna_model_id = $1', [row.id]),
       db.query<{ option_a_id: string; option_b_id: string }>('select option_a_id, option_b_id from option_excludes where sauna_model_id = $1', [row.id]),
     ]),
   ]);
 
-  const groupMap = new Map<string, OptionGroupDto>();
-  const optionPrices = new Map<string, number>();
-  for (const g of groups.rows) {
-    let group = groupMap.get(g.group_id);
-    if (!group) {
-      group = { id: g.group_id, code: g.group_code, name: g.group_name, selectionType: g.selection_type, required: g.is_required, options: [] };
-      groupMap.set(g.group_id, group);
-    }
-    // The assignment trigger guarantees a price per currency (review C4); a
-    // missing one would be a data bug, so it is surfaced rather than priced at 0.
-    if (g.price_delta_minor === null) throw new Error(`option ${g.option_code} of model ${row.slug} has no ${tenant.currency} price`);
-    const delta = num(g.price_delta_minor);
-    optionPrices.set(g.option_id, delta);
-    group.options.push({
-      id: g.option_id,
-      code: g.option_code,
-      name: g.option_name,
-      description: g.option_description,
-      swatchColor: g.swatch_color?.trim() ?? null,
-      thumbnailUrl: assetUrl(g.thumb_key),
-      glbUrl: assetUrl(g.glb_key),
-      priceDeltaMinor: delta,
-      isDefault: g.is_default,
-    });
-  }
-  const groupList = [...groupMap.values()];
   const [requires, excludes] = rules;
-  const ruleSet = {
-    requires: requires.rows.map(r => ({ optionId: r.option_id, requiredOptionId: r.required_option_id })),
-    excludes: excludes.rows.map(r => ({ optionAId: r.option_a_id, optionBId: r.option_b_id })),
-  };
-  const modelRules: ModelRules = {
-    groups: groupList.map(g => ({ id: g.id, code: g.code, selectionType: g.selectionType, required: g.required, options: g.options.map(o => ({ id: o.id, code: o.code, isDefault: o.isDefault })) })),
-    ...ruleSet,
-  };
-  const item = itemOf(row, attrs.get(row.id) ?? [], assetsDto(assets.get(row.id)), fromOptions(modelRules, optionPrices));
+  const offer = buildOffer(groups.rows,
+    requires.rows.map(r => ({ optionId: r.option_id, requiredOptionId: r.required_option_id })),
+    excludes.rows.map(r => ({ optionAId: r.option_a_id, optionBId: r.option_b_id })),
+    `model ${row.slug}`, tenant.currency);
+  const ruleSet = { requires: offer.rules.requires, excludes: offer.rules.excludes };
+  const item = itemOf(row, attrs.get(row.id) ?? [], assetsDto(assets.get(row.id)), fromOptions(offer.rules, offer.optionPrices));
   return {
-    detail: { ...item, groups: groupList, rules: ruleSet, maxDiscountBps: row.max_discount_bps },
-    rules: modelRules,
+    detail: { ...item, groups: offer.groups, rules: ruleSet, maxDiscountBps: row.max_discount_bps },
+    rules: offer.rules,
     pricing: {
       listPriceMinor: num(row.list_price_minor),
       maxDiscountBps: row.max_discount_bps,
       perSaunaDiscount: discountOf(row.sauna_type, row.sauna_value),
       defaultDiscount: discountOf(row.default_type, row.default_value),
-      optionPrices,
+      optionPrices: offer.optionPrices,
     },
     isVisible: row.is_visible,
   };

@@ -41,7 +41,7 @@ export function Home() {
     <div ref={root} className="nordic">
       <section className="nd-hero container">
         <div className="nd-hero__photo">
-          <Media item={hero} />
+          <Media item={hero} sizes="(min-width: 900px) 55vw, 100vw" priority />
         </div>
         <div className="nd-hero__text">
           <div className="nd-hero__in">

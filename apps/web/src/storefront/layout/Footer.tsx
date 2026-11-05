@@ -22,9 +22,9 @@ export function backToTop() {
  * The page-to-footer moment. The footer sits under the page sheet: where it
  * fits the viewport it is sticky at the bottom, so the sheet (rounded bottom,
  * lifting shadow) slides off it and uncovers it in place. While it is
- * uncovered a paper-coloured veil fades out (paper turns to ink across the
- * edge), the content settles from 94 % and the big name rises out of the
- * bottom edge. Everything animated is opacity or transform on the footer
+ * uncovered the content settles from 94 % and the big name rises out of the
+ * bottom edge. Nothing hides the footer: a short page, a stale trigger after a
+ * route change, print or a full-page capture all show it as it is. Everything animated is opacity or transform on the footer
  * alone, so it stays on the compositor. Taller than the viewport (phones),
  * the footer scrolls normally with a light parallax instead. Reduced motion:
  * no scrub, the footer is simply there.
@@ -44,7 +44,6 @@ export function FooterFrame({ children, name, bar }: { children: ReactNode; name
         window.addEventListener('resize', apply);
         return () => window.removeEventListener('resize', apply);
       }
-      const veil = el.querySelector('.sfoot__veil');
       const inner = el.querySelector('.sfoot__inner');
       const word = el.querySelector('.sfoot__name-in');
       // From the sheet's bottom edge touching the viewport bottom until the footer is fully uncovered.
@@ -57,8 +56,7 @@ export function FooterFrame({ children, name, bar }: { children: ReactNode; name
           invalidateOnRefresh: true,
         },
       });
-      tl.fromTo(veil, { autoAlpha: 1 }, { autoAlpha: 0, ease: 'power1.in', duration: 0.6 }, 0)
-        .fromTo(inner, { scale: 0.94, transformOrigin: '50% 100%' }, { scale: 1, ease: 'sk.outSoft', duration: 1 }, 0)
+      tl.fromTo(inner, { scale: 0.94, transformOrigin: '50% 100%' }, { scale: 1, ease: 'sk.outSoft', duration: 1 }, 0)
         .fromTo(word, { yPercent: 70 }, { yPercent: 0, ease: 'sk.outSoft', duration: 1 }, 0.1);
       const onResize = () => {
         apply();
@@ -93,7 +91,6 @@ export function FooterFrame({ children, name, bar }: { children: ReactNode; name
         </p>
         <div className="sfoot__bar container">{bar}</div>
       </div>
-      <div className="sfoot__veil" aria-hidden="true" />
     </footer>
   );
 }
