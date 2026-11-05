@@ -14,3 +14,8 @@ coverage/
 .DS_Store
 *.log
 /artifacts/
+
+/tools/perf/results/
+var/
+nohup.out
+output.log

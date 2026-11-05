@@ -7,7 +7,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import pg from 'pg';
-import { createTestDatabase } from '@saunaklar/db';
+import { createTestDatabase } from '@saunaklar/db/seed';
 import { LocalObjectFiles } from '@saunaklar/objects';
 import { seedMedia } from '../seed-media.mjs';
 

@@ -1,10 +1,11 @@
 # saunaKlar
 
-A multi-tenant sauna configurator. One manufacturer publishes a catalog of saunas, options and
-room scenes. Each reseller gets their own branded storefront on a subdomain
-(`{slug}.<platform-domain>`), with their own prices (within the manufacturer's discount caps),
-currency and logo. Customers configure saunas in 3D, place them in a room, view them in AR, save
-configurations and send a request. The reseller then reviews it, quotes and closes it.
+A white-label sauna shop with a 3D configurator. One manufacturer publishes a catalogue of
+saunas, options and room scenes. Each authorised reseller gets a branded storefront on its own
+subdomain (`{slug}.<platform-domain>`): their logo, brand colour and one of five storefront
+layouts, with their own prices (within the manufacturer's discount caps) and currency. Customers
+configure a sauna in 3D, place it in a room, view it in AR, save configurations and request a
+quote. The reseller reviews the request, sends a quote and closes it.
 
 - **Manufacturer admin** (own host, `ADMIN_HOST`): resellers, sauna and room assignment, list
   prices and maximum discounts per currency.
@@ -36,7 +37,7 @@ How the pieces fit together:
   policy is bound to the reseller's host, and there are two tiers: `/assets/lo/*` for
   anonymous visitors and `/assets/*` once signed in or holding a share link.
 - **E-mail.** Mails go through a transactional outbox, SQS and SES. Templates are branded
-  per reseller and translated into en, de, fr, it and rm.
+  per reseller and translated into en, de, fr and it.
 
 The full design is in [docs/design.md](docs/design.md). [docs/review-fixes.md](docs/review-fixes.md)
 lists fixes that take precedence over the design. [docs/implementation-plan.md](docs/implementation-plan.md)

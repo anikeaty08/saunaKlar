@@ -25,7 +25,8 @@
     "test:db": "vitest run --project db",
     "test:api": "vitest run --project api",
     "test:e2e": "playwright test",
-    "start": "node services/api/dist/local.js"
+    "start": "node services/api/dist/local.js",
+    "assets:optimize": "node scripts/optimize-kit-assets.mjs"
   },
   "engines": {
     "node": ">=22.18.0"

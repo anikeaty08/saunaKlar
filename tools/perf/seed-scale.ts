@@ -87,7 +87,7 @@ export async function seedScale(url: string, options: ScaleOptions = {}): Promis
       SELECT r.id,
              lower(f.first) || '.' || lower(f.last) || '.' || r.k || '.' || g || '@example.test',
              f.first, f.last,
-             (ARRAY['en', 'de', 'fr', 'it', 'rm'])[1 + g % 5],
+             (ARRAY['en', 'de', 'fr', 'it'])[1 + g % 4],
              CASE WHEN g % 50 = 0 THEN 'PENDING' ELSE 'ACTIVE' END,
              CASE WHEN g % 50 = 0 THEN NULL ELSE t.ts END, t.ts, t.ts
         FROM perf_res r
