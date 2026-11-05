@@ -15,7 +15,8 @@ import * as share from './sharing.ts';
  * `fn` is the Lambda function that serves the route (design 4.2).
  */
 export type LambdaFunction = 'public-catalog' | 'customer' | 'reseller-admin' | 'manufacturer-admin' | 'asset-signer';
-export type Access = 'public' | 'customer' | 'reseller-staff' | 'manufacturer-staff' | 'any-session';
+/** `reseller-owner`: reseller staff with role OWNER only (shop settings, discounts, option prices). */
+export type Access = 'public' | 'customer' | 'reseller-staff' | 'reseller-owner' | 'manufacturer-staff' | 'any-session';
 export type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 export interface RouteDef {
@@ -92,18 +93,20 @@ export const routes = {
 
   // ---- reseller admin -----------------------------------------------------
   adminBranding: r({ method: 'GET', path: '/api/admin/branding', fn: 'reseller-admin', access: 'reseller-staff', host: 'storefront', response: admin.brandingSchema }),
-  adminPatchBranding: r({ method: 'PATCH', path: '/api/admin/branding', fn: 'reseller-admin', access: 'reseller-staff', host: 'storefront', body: admin.brandingPatch, response: admin.brandingSchema }),
-  adminCreateUpload: r({ method: 'POST', path: '/api/admin/branding/uploads', fn: 'reseller-admin', access: 'reseller-staff', host: 'storefront', body: admin.createUploadRequest, response: admin.createUploadResponse, status: 201 }),
-  adminCompleteUpload: r({ method: 'POST', path: '/api/admin/branding/uploads/:uploadId/complete', fn: 'reseller-admin', access: 'reseller-staff', host: 'storefront', response: admin.brandingSchema }),
+  adminPatchBranding: r({ method: 'PATCH', path: '/api/admin/branding', fn: 'reseller-admin', access: 'reseller-owner', host: 'storefront', body: admin.brandingPatch, response: admin.brandingSchema }),
+  adminCreateUpload: r({ method: 'POST', path: '/api/admin/branding/uploads', fn: 'reseller-admin', access: 'reseller-owner', host: 'storefront', body: admin.createUploadRequest, response: admin.createUploadResponse, status: 201 }),
+  adminCompleteUpload: r({ method: 'POST', path: '/api/admin/branding/uploads/:uploadId/complete', fn: 'reseller-admin', access: 'reseller-owner', host: 'storefront', response: admin.brandingSchema }),
   adminSettings: r({ method: 'GET', path: '/api/admin/settings', fn: 'reseller-admin', access: 'reseller-staff', host: 'storefront', response: admin.settingsSchema }),
-  adminPatchSettings: r({ method: 'PATCH', path: '/api/admin/settings', fn: 'reseller-admin', access: 'reseller-staff', host: 'storefront', body: admin.settingsSchema, response: admin.settingsSchema }),
+  adminPatchSettings: r({ method: 'PATCH', path: '/api/admin/settings', fn: 'reseller-admin', access: 'reseller-owner', host: 'storefront', body: admin.settingsSchema, response: admin.settingsSchema }),
   adminSaunas: r({ method: 'GET', path: '/api/admin/saunas', fn: 'reseller-admin', access: 'reseller-staff', host: 'storefront', response: admin.adminSaunasSchema }),
-  adminPatchSauna: r({ method: 'PATCH', path: '/api/admin/saunas/:id', fn: 'reseller-admin', access: 'reseller-staff', host: 'storefront', body: admin.adminSaunaPatch, response: admin.adminSaunaSchema }),
-  adminSaunaOrder: r({ method: 'PUT', path: '/api/admin/saunas/order', fn: 'reseller-admin', access: 'reseller-staff', host: 'storefront', body: admin.adminSaunaOrder, response: admin.adminSaunasSchema }),
-  adminPutSaunaDiscount: r({ method: 'PUT', path: '/api/admin/saunas/:id/discount', fn: 'reseller-admin', access: 'reseller-staff', host: 'storefront', body: admin.adminSaunaSchema.shape.discount.unwrap(), response: admin.adminSaunaSchema }),
-  adminDeleteSaunaDiscount: r({ method: 'DELETE', path: '/api/admin/saunas/:id/discount', fn: 'reseller-admin', access: 'reseller-staff', host: 'storefront', response: admin.adminSaunaSchema }),
-  adminPutDefaultDiscount: r({ method: 'PUT', path: '/api/admin/discount', fn: 'reseller-admin', access: 'reseller-staff', host: 'storefront', body: admin.adminSaunaSchema.shape.discount.unwrap(), response: admin.adminSaunasSchema }),
-  adminDeleteDefaultDiscount: r({ method: 'DELETE', path: '/api/admin/discount', fn: 'reseller-admin', access: 'reseller-staff', host: 'storefront', response: admin.adminSaunasSchema }),
+  adminPatchSauna: r({ method: 'PATCH', path: '/api/admin/saunas/:id', fn: 'reseller-admin', access: 'reseller-owner', host: 'storefront', body: admin.adminSaunaPatch, response: admin.adminSaunaSchema }),
+  adminSaunaOrder: r({ method: 'PUT', path: '/api/admin/saunas/order', fn: 'reseller-admin', access: 'reseller-owner', host: 'storefront', body: admin.adminSaunaOrder, response: admin.adminSaunasSchema }),
+  adminPutSaunaDiscount: r({ method: 'PUT', path: '/api/admin/saunas/:id/discount', fn: 'reseller-admin', access: 'reseller-owner', host: 'storefront', body: admin.adminSaunaSchema.shape.discount.unwrap(), response: admin.adminSaunaSchema }),
+  adminSaunaOptions: r({ method: 'GET', path: '/api/admin/saunas/:id/options', fn: 'reseller-admin', access: 'reseller-staff', host: 'storefront', response: admin.adminSaunaOptionsSchema }),
+  adminPutSaunaOptions: r({ method: 'PUT', path: '/api/admin/saunas/:id/options', fn: 'reseller-admin', access: 'reseller-owner', host: 'storefront', body: admin.adminSaunaOptionsPut, response: admin.adminSaunaOptionsSchema }),
+  adminDeleteSaunaDiscount: r({ method: 'DELETE', path: '/api/admin/saunas/:id/discount', fn: 'reseller-admin', access: 'reseller-owner', host: 'storefront', response: admin.adminSaunaSchema }),
+  adminPutDefaultDiscount: r({ method: 'PUT', path: '/api/admin/discount', fn: 'reseller-admin', access: 'reseller-owner', host: 'storefront', body: admin.adminSaunaSchema.shape.discount.unwrap(), response: admin.adminSaunasSchema }),
+  adminDeleteDefaultDiscount: r({ method: 'DELETE', path: '/api/admin/discount', fn: 'reseller-admin', access: 'reseller-owner', host: 'storefront', response: admin.adminSaunasSchema }),
   adminConfigurations: r({ method: 'GET', path: '/api/admin/configurations', fn: 'reseller-admin', access: 'reseller-staff', host: 'storefront', query: pageQuery, response: page(cfg.configurationSummarySchema) }),
   adminCreateConfiguration: r({ method: 'POST', path: '/api/admin/configurations', fn: 'reseller-admin', access: 'reseller-staff', host: 'storefront', body: cfg.adminCreateConfigurationRequest, response: cfg.configurationSchema, status: 201 }),
   adminConfiguration: r({ method: 'GET', path: '/api/admin/configurations/:id', fn: 'reseller-admin', access: 'reseller-staff', host: 'storefront', response: cfg.configurationSchema }),

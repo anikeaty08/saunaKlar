@@ -45,7 +45,7 @@ const optionalQuote = (text?: string | null): Block[] => (text ? [{ kind: 'quote
 
 /**
  * Every template: `(brand, data, locale?)` → `{subject, html, text}`. `locale` is one of
- * en/de/fr/it/rm (region suffixes accepted); anything else falls back to English.
+ * en/de/fr/it (region suffixes accepted); anything else falls back to English.
  */
 export const templates = {
   signupCode(brand: MailBrand, data: { code: string; firstName?: string | null }, locale?: string | null): RenderedMail {

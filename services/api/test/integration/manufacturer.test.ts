@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { SEED, SEED_PASSWORD } from '@saunaklar/db';
+import { SEED, SEED_PASSWORD } from '@saunaklar/db/seed';
 import { createHarness, type Client, type Harness } from './harness.ts';
 
 let h: Harness;
@@ -16,6 +16,14 @@ const newReseller = (slug: string, currencyCode = 'EUR') => ({
 });
 
 describe('manufacturer: resellers', () => {
+  it('lists resellers with assigned and visible sauna counts (alpha hides one of five)', async () => {
+    const r = await m.get('/api/manufacturer/resellers');
+    expect(r.status).toBe(200);
+    const alpha = r.body.items.find((x: { slug: string }) => x.slug === 'alpha');
+    expect(alpha).toMatchObject({ saunasAssigned: 5, saunasVisible: 4 });
+    for (const x of r.body.items) expect(x.saunasVisible).toBeLessThanOrEqual(x.saunasAssigned);
+  });
+
   it('creates a reseller with an invited owner and the default rooms', async () => {
     const r = await m.post('/api/manufacturer/resellers', newReseller('delta'));
     expect(r.status, JSON.stringify(r.body)).toBe(201);

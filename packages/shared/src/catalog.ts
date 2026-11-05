@@ -76,6 +76,11 @@ export const catalogSchema = z.object({
 });
 export type Catalog = z.infer<typeof catalogSchema>;
 
+/**
+ * An option as this reseller's storefront offers it. Options the reseller switched off are not
+ * listed at all; price and description are the effective ones (the reseller's override, else
+ * the manufacturer's value; the description in the request locale with English fallback).
+ */
 export const optionSchema = z.object({
   id: uuid,
   code: z.string(),
@@ -93,6 +98,7 @@ export const optionGroupSchema = z.object({
   id: uuid,
   code: z.string(),
   name: z.string(),
+  description: z.string().nullable(),
   selectionType: z.enum(['SINGLE', 'MULTI']),
   required: z.boolean(),
   options: z.array(optionSchema),

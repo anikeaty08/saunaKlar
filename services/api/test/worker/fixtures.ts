@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
-import { createTestDatabase } from '@saunaklar/db';
+import { createTestDatabase } from '@saunaklar/db/seed';
 import type { EdgeTenantStatus, MailMessage } from '../../src/adapters/types.ts';
 import { silentLogger } from '../../src/lib/log.ts';
 import type { WorkerDeps } from '../../src/worker/handler.ts';

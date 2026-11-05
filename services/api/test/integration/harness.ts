@@ -1,5 +1,5 @@
 import pg from 'pg';
-import { createTestDatabase, type TestDatabase } from '@saunaklar/db';
+import { createTestDatabase, type TestDatabase } from '@saunaklar/db/seed';
 import { createApp } from '../../src/app.ts';
 import { createAdapters } from '../../src/adapters/index.ts';
 import { loadConfig } from '../../src/config.ts';

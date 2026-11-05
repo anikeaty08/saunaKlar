@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { SEED, SEED_PASSWORD } from '@saunaklar/db';
+import { SEED, SEED_PASSWORD } from '@saunaklar/db/seed';
 import { createHarness, type Client, type Harness } from './harness.ts';
 
 let h: Harness;
@@ -324,5 +324,92 @@ describe('reseller admin: requests and quotes', () => {
     expect(cookies.length).toBeGreaterThan(0);
     const r = await alpha.req('GET', '/api/admin/requests', undefined, { cookie: header });
     expect([401, 403]).toContain(r.status);
+  });
+});
+
+describe('reseller admin: OWNER vs ADMIN', () => {
+  async function alphaAdmin(): Promise<Client> {
+    const c = h.client('alpha.localhost');
+    await c.staffLogin('admin@alpha.test', SEED_PASSWORD);
+    return c;
+  }
+  const espoo = () => SEED.models('espoo-compact');
+  /** Every owner-only write, with a valid body (the role check runs before validation anyway). */
+  const ownerOnly = (): [string, string, unknown][] => [
+    ['PATCH', '/api/admin/branding', { tagline: 'Admin was here' }],
+    ['POST', '/api/admin/branding/uploads', { kind: 'LOGO', contentType: 'image/png', byteSize: 1000 }],
+    ['POST', '/api/admin/branding/uploads/x.y/complete', undefined],
+    ['PATCH', '/api/admin/settings', { defaultShareExpiryDays: 5 }],
+    ['PATCH', `/api/admin/saunas/${espoo()}`, { isVisible: false }],
+    ['PUT', '/api/admin/saunas/order', { saunaModelIds: [espoo()] }],
+    ['PUT', `/api/admin/saunas/${espoo()}/discount`, { type: 'PERCENT', value: 100 }],
+    ['DELETE', `/api/admin/saunas/${espoo()}/discount`, undefined],
+    ['PUT', '/api/admin/discount', { type: 'PERCENT', value: 100 }],
+    ['DELETE', '/api/admin/discount', undefined],
+    ['PUT', `/api/admin/saunas/${espoo()}/options`, { options: [] }],
+  ];
+
+  it('the session exposes the ADMIN role', async () => {
+    const c = await alphaAdmin();
+    const s = await c.session();
+    expect(s.body.staff).toEqual(expect.objectContaining({ email: 'admin@alpha.test', scope: 'RESELLER', role: 'ADMIN' }));
+  });
+
+  it('an ADMIN gets 403 on every owner-only write and nothing changes', async () => {
+    const c = await alphaAdmin();
+    const before = { branding: (await c.get('/api/admin/branding')).body, settings: (await c.get('/api/admin/settings')).body, saunas: (await c.get('/api/admin/saunas')).body };
+    for (const [method, path, body] of ownerOnly()) {
+      const r = await c.req(method, path, body);
+      expect(r.status, `${method} ${path}`).toBe(403);
+      expect(r.body.code, `${method} ${path}`).toBe('FORBIDDEN');
+    }
+    expect((await c.get('/api/admin/branding')).body).toEqual(before.branding);
+    expect((await c.get('/api/admin/settings')).body).toEqual(before.settings);
+    expect((await c.get('/api/admin/saunas')).body).toEqual(before.saunas);
+  });
+
+  it('an ADMIN can read the shop and work requests, customers and configurations', async () => {
+    const c = await alphaAdmin();
+    for (const path of ['/api/admin/branding', '/api/admin/settings', '/api/admin/saunas', `/api/admin/saunas/${espoo()}/options`, '/api/admin/customers', '/api/admin/requests', '/api/admin/analytics?days=30']) {
+      expect((await c.get(path)).status, path).toBe(200);
+    }
+    const { requestId } = await benSubmits('espoo-compact', 'Admin works this one');
+    expect((await c.post(`/api/admin/requests/${requestId}/transition`, { toStatus: 'IN_REVIEW' })).status).toBe(200);
+    expect((await c.post(`/api/admin/requests/${requestId}/notes`, { body: 'Called the customer' })).status).toBe(201);
+    const q = await c.put(`/api/admin/requests/${requestId}/quote`, { amountMinor: 500_000, validUntil: new Date(Date.now() + 7 * DAY).toISOString() });
+    expect(q.status, JSON.stringify(q.body)).toBe(200);
+    // The list carries the active quote's validity, for the "expiring soon" inbox.
+    const quoted = (await c.get('/api/admin/requests?status=QUOTED&limit=100')).body.items.find((r: { id: string }) => r.id === requestId);
+    expect(quoted.quoteValidUntil).toBe(q.body.activeQuote.validUntil);
+    const cfg = await c.post('/api/admin/configurations', { saunaModelId: espoo(), name: 'For Ben', customerId: SEED.customers.benAlpha });
+    expect(cfg.status, JSON.stringify(cfg.body)).toBe(201);
+  });
+
+  it('the OWNER can change settings, discounts and option prices', async () => {
+    const c = await alphaStaff();
+    const s = (await c.get('/api/admin/settings')).body.defaultShareExpiryDays;
+    expect((await c.patch('/api/admin/settings', { defaultShareExpiryDays: s })).status).toBe(200);
+    const b = (await c.get('/api/admin/branding')).body.tagline;
+    expect((await c.patch('/api/admin/branding', { tagline: b })).status).toBe(200);
+    const disc = await c.put(`/api/admin/saunas/${espoo()}/discount`, { type: 'FIXED', value: 50000 });
+    expect(disc.status, JSON.stringify(disc.body)).toBe(200);
+    const opts = (await c.get(`/api/admin/saunas/${espoo()}/options`)).body;
+    const o = opts.groups[0].options[0];
+    const put = await c.put(`/api/admin/saunas/${espoo()}/options`, { options: [{ optionId: o.id, enabled: o.enabled, priceOverrideMinor: o.priceOverrideMinor, descriptionOverride: o.descriptionOverride }] });
+    expect(put.status, JSON.stringify(put.body)).toBe(200);
+  });
+
+  it('a customer, an anonymous visitor and another tenant\'s owner are refused', async () => {
+    const ben = h.client('alpha.localhost');
+    await ben.login('ben@example.test', SEED_PASSWORD);
+    const anon = h.client('alpha.localhost');
+    const beta = h.client('beta.localhost');
+    await beta.staffLogin('owner@beta.test', SEED_PASSWORD);
+    const header = ['sk_at', 'sk_st', 'sk_staff'].flatMap(n => (beta.cookie(n) ? [`${n}=${beta.cookie(n)}`] : [])).join('; ');
+    for (const [method, path, body] of ownerOnly().slice(0, 4)) {
+      expect([401, 403], `customer ${method} ${path}`).toContain((await ben.req(method, path, body)).status);
+      expect([401, 403], `anonymous ${method} ${path}`).toContain((await anon.req(method, path, body)).status);
+      expect([401, 403], `beta ${method} ${path}`).toContain((await anon.req(method, path, body, { cookie: header })).status);
+    }
   });
 });

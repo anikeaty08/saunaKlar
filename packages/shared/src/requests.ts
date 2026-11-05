@@ -68,6 +68,8 @@ export const requestSummarySchema = z.object({
   currency: currencyCode,
   createdAt: isoDateTime,
   updatedAt: isoDateTime,
+  /** Valid-until of the active (not superseded) quote, if there is one; drives "expiring soon". */
+  quoteValidUntil: isoDateTime.nullable().optional(),
 });
 export type RequestSummary = z.infer<typeof requestSummarySchema>;
 

@@ -55,7 +55,7 @@ describe('mail templates', () => {
     expect(render('resetCode', brand, 'xx').subject).toBe(render('resetCode', brand, 'en').subject);
     expect(render('resetCode', brand, 'de-CH').subject).toBe(render('resetCode', brand, 'de').subject);
     expect(resolveMailLocale(undefined)).toBe('en');
-    expect(resolveMailLocale('RM_ch')).toBe('rm');
+    expect(resolveMailLocale('IT_ch')).toBe('it');
   });
 
   it('uses the single brand colour and only shades of it', () => {
@@ -101,8 +101,6 @@ describe('formatting', () => {
     expect(formatMoney(1234550, 'CHF', 'de')).toMatch(/^CHF\s12[\s'’]345\.50$/);
     expect(formatMoney(1234550, 'CHF', 'fr')).toMatch(/^12[\s'’]345\.50\sCHF$/);
     expect(formatMoney(1234550, 'EUR', 'it')).toMatch(/12[\s'’]345\.50/);
-    // Romansh data is missing from some ICU builds (falling back to Swiss German), so only the amount and currency are fixed.
-    expect(formatMoney(1234550, 'CHF', 'rm').replace(/[\s'’]/g, '')).toMatch(/^(CHF12345[.,]50|12345[.,]50CHF)$/);
     expect(formatMoney(12345, 'JPY', 'en')).toMatch(/12[\s'’]345$/); // zero-decimal currency: minor = major
   });
 
@@ -110,7 +108,6 @@ describe('formatting', () => {
     expect(formatDate('2026-03-05T12:00:00Z', 'de')).toBe('5. März 2026');
     expect(formatDate('2026-03-05T12:00:00Z', 'fr')).toBe('5 mars 2026');
     expect(formatDate('2026-03-05T12:00:00Z', 'it')).toBe('5 marzo 2026');
-    expect(formatDate('2026-03-05T12:00:00Z', 'rm')).toBe('5 da mars 2026');
   });
 });
 

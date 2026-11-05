@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import pg from 'pg';
 import {
-  dbErrorCode, dbErrorInfo, loadMigrations, migrate, seed, SEED, SEED_PASSWORD, sql, verifyPassword, withTx,
+  dbErrorCode, dbErrorInfo, loadMigrations, migrate, sql, verifyPassword, withTx,
 } from '../src/index.ts';
+import { seed, SEED, SEED_PASSWORD } from '../src/dev.ts';
 import { ALPHA, count, expectCode, one, setupEnv, tenant, type Env } from './helpers.ts';
 
 let env: Env;
@@ -57,7 +58,7 @@ describe('dev seed', () => {
   it('is idempotent', async () => {
     const again = await seed(env.db.url, { local: true });
     expect(again).toEqual({ seeded: false, idpUsers: 0 });
-    expect(await count(env.owner, 'SELECT 1 FROM sauna_models')).toBe(6);
+    expect(await count(env.owner, 'SELECT 1 FROM sauna_models')).toBe(7);
   });
 
   it('creates matching local IdP users with a verifiable scrypt hash', async () => {
@@ -70,7 +71,7 @@ describe('dev seed', () => {
     const staff = await count(env.owner,
       `SELECT 1 FROM staff_users s JOIN idp.users u ON u.sub::text = s.idp_subject AND u.username = lower(s.email) AND u.pool = 'STAFF'
        WHERE NOT u.mfa_enabled`);
-    expect(staff).toBe(4);
+    expect(staff).toBe(5);
   });
 
   it('keeps the same e-mail as two customer accounts at alpha and beta', async () => {
@@ -78,9 +79,17 @@ describe('dev seed', () => {
   });
 
   it('seeds translations (de, fr, it) for models, groups, options, rooms and attributes', async () => {
-    for (const [table, total] of [['sauna_model_translations', 6], ['option_group_translations', 13], ['option_translations', 43],
-      ['room_scene_translations', 3], ['attribute_definition_translations', 8]] as const) {
+    for (const [table, total] of [['sauna_model_translations', 7], ['option_group_translations', 16], ['option_translations', 61],
+      ['room_scene_translations', 3], ['attribute_definition_translations', 9]] as const) {
       expect(await count(env.owner, `SELECT 1 FROM ${table} WHERE locale IN ('de','fr','it')`), table).toBe(total * 3);
+    }
+    // Every description is translated too (and Romansh is not seeded).
+    for (const table of ['sauna_model_translations', 'option_group_translations', 'option_translations']) {
+      expect(await count(env.owner, `SELECT 1 FROM ${table} WHERE description IS NULL OR btrim(description) = ''`), table).toBe(0);
+      expect(await count(env.owner, `SELECT 1 FROM ${table} WHERE locale NOT IN ('de','fr','it')`), table).toBe(0);
+    }
+    for (const table of ['sauna_models', 'option_groups', 'options']) {
+      expect(await count(env.owner, `SELECT 1 FROM ${table} WHERE description IS NULL`), table).toBe(0);
     }
   });
 

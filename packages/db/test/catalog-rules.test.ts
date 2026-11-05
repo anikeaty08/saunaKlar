@@ -70,7 +70,7 @@ describe('rule 1: discounts within the cap', () => {
 describe('rule 2: assignment', () => {
   it('assigns an ACTIVE, fully priced sauna of the same manufacturer', async () => {
     await platform(env, c => c.query(`INSERT INTO reseller_saunas (reseller_id, sauna_model_id) VALUES ($1, $2)`, [ALPHA, M('saimaa-garden-house')]));
-    expect(await count(env.owner, 'SELECT 1 FROM reseller_saunas WHERE reseller_id = $1', [ALPHA])).toBe(6);
+    expect(await count(env.owner, 'SELECT 1 FROM reseller_saunas WHERE reseller_id = $1', [ALPHA])).toBe(7);
   });
 
   it('rejects a model that is not ACTIVE', async () => {
@@ -265,7 +265,7 @@ describe('rule 11: audit trail', () => {
 
 describe('catalog_admin', () => {
   it('writes catalog tables but cannot read tenant data', async () => {
-    await as(env, 'catalog_admin', {}, c => c.query(`INSERT INTO option_translations (option_id, locale, name) VALUES ($1, 'rm', 'Pign')`, [O('spruce')]));
+    await as(env, 'catalog_admin', {}, c => c.query(`INSERT INTO option_translations (option_id, locale, name) VALUES ($1, 'sv', 'Gran')`, [O('spruce')]));
     await expectCode(as(env, 'catalog_admin', {}, c => c.query('SELECT * FROM customers')), 'INSUFFICIENT_PRIVILEGE');
     await expectCode(as(env, 'catalog_admin', {}, c => c.query('SELECT * FROM configurations')), 'INSUFFICIENT_PRIVILEGE');
     await expectCode(as(env, 'catalog_admin', {}, c => c.query('SELECT * FROM resellers')), 'INSUFFICIENT_PRIVILEGE');

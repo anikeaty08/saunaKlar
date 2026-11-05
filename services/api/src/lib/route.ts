@@ -100,6 +100,12 @@ function authorize(c: Ctx, def: RouteDef, principal: Principal): void {
       if (principal.kind !== 'staff') throw principal.kind === 'anonymous' ? expired() : new ApiError('FORBIDDEN');
       if (principal.scope !== 'RESELLER') throw new ApiError('FORBIDDEN');
       return;
+    case 'reseller-owner':
+      // The role comes from the verified session (staff_principal_for_reseller), never from the request.
+      if (principal.kind !== 'staff') throw principal.kind === 'anonymous' ? expired() : new ApiError('FORBIDDEN');
+      if (principal.scope !== 'RESELLER') throw new ApiError('FORBIDDEN');
+      if (principal.role !== 'OWNER') throw new ApiError('FORBIDDEN', 'Only the shop owner can change this.');
+      return;
     case 'manufacturer-staff':
       if (principal.kind !== 'staff') throw principal.kind === 'anonymous' ? expired() : new ApiError('FORBIDDEN');
       if (principal.scope !== 'MANUFACTURER') throw new ApiError('FORBIDDEN');
