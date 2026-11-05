@@ -68,13 +68,15 @@ export function partsFrom(scene: THREE.Object3D): Map<string, PartPiece[]> {
   const parts = new Map<string, PartPiece[]>();
   scene.updateMatrixWorld(true);
   for (const node of scene.children) {
-    const inv = node.matrixWorld.clone().invert();
     const pieces: PartPiece[] = [];
     node.traverse(o => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
       const g = toFloat32(mesh.geometry.clone());
-      g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, mesh.matrixWorld));
+      // The part frame is the scene frame (every node is authored at identity); the
+      // node transform in the compressed GLB is the quantization scale/offset and
+      // must be kept, not inverted away.
+      g.applyMatrix4(mesh.matrixWorld);
       const mat = mesh.material as THREE.Material;
       pieces.push({ geometry: g, material: mat.name.startsWith('kit:') ? mat.name.slice(4) : mat });
     });
