@@ -12,7 +12,7 @@ import { readdirSync, existsSync, unlinkSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
-import { NodeIO } from '@gltf-transform/core';
+import { NodeIO, PropertyType } from '@gltf-transform/core';
 import { EXTMeshoptCompression, KHRMeshQuantization } from '@gltf-transform/extensions';
 import { dedup, prune, quantize, meshopt } from '@gltf-transform/functions';
 import { MeshoptDecoder, MeshoptEncoder } from 'meshoptimizer';
@@ -28,7 +28,10 @@ const glb = join(kit, 'kit-parts.glb');
 const before = kb(glb);
 const io = new NodeIO().registerExtensions([EXTMeshoptCompression, KHRMeshQuantization]).registerDependencies({ 'meshopt.decoder': MeshoptDecoder, 'meshopt.encoder': MeshoptEncoder });
 const doc = await io.read(glb);
-await doc.transform(dedup(), prune(), quantize({ quantizePosition: 14, quantizeNormal: 10, quantizeTexcoord: 12 }), meshopt({ encoder: MeshoptEncoder, level: 'high' }));
+// Keep materials out of dedup: every `kit:<slot>` material is an identical grey placeholder,
+// so merging them would put the heater, the control unit and the bench on one slot
+// (all of them would then follow the bench wood). Their names are what assets.ts reads.
+await doc.transform(dedup({ propertyTypes: [PropertyType.ACCESSOR, PropertyType.MESH, PropertyType.TEXTURE] }), prune(), quantize({ quantizePosition: 14, quantizeNormal: 10, quantizeTexcoord: 12 }), meshopt({ encoder: MeshoptEncoder, level: 'high' }));
 await io.write(glb, doc);
 console.log(`kit-parts.glb ${before} -> ${kb(glb)}`);
 

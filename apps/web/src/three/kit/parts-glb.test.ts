@@ -8,6 +8,7 @@ import { MeshoptDecoder } from 'meshoptimizer';
 // (heater ~0.4 x 0.8 m), not be scaled/offset by the quantization node transform.
 describe('kit-parts.glb', () => {
   it('keeps every part inside a plausible fixture envelope', async () => {
+    await MeshoptDecoder.ready;
     const io = new NodeIO()
       .registerExtensions([EXTMeshoptCompression, KHRMeshQuantization])
       .registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
@@ -36,6 +37,28 @@ describe('kit-parts.glb', () => {
       expect(hi[2]! - lo[2]!, n.getName()).toBeLessThan(0.7);
       expect(lo[1]!, n.getName()).toBeGreaterThan(-0.01);
       expect(Math.abs(lo[0]! + hi[0]!) / 2, n.getName()).toBeLessThan(0.15);
+    }
+  });
+
+  // Regression: dedup once merged every identical grey `kit:*` placeholder into
+  // `kit:benchPanel`, so the heater and the control unit took the bench wood colour.
+  it('keeps each part on its own kit material slots', async () => {
+    await MeshoptDecoder.ready;
+    const io = new NodeIO()
+      .registerExtensions([EXTMeshoptCompression, KHRMeshQuantization])
+      .registerDependencies({ 'meshopt.decoder': MeshoptDecoder });
+    const doc = await io.readBinary(new Uint8Array(readFileSync(new URL('./assets/kit-parts.glb', import.meta.url))));
+    const slots = (name: string) => {
+      const out = new Set<string>();
+      const node = doc.getRoot().listScenes()[0]!.listChildren().find(n => n.getName() === name);
+      expect(node, name).toBeTruthy();
+      node!.traverse(o => o.getMesh()?.listPrimitives().forEach(p => out.add(p.getMaterial()?.getName() ?? '')));
+      return out;
+    };
+    for (const h of ['heater-electric', 'heater-electric-large', 'heater-storage', 'heater-stove', 'control']) {
+      const s = slots(h);
+      expect(s.has('kit:black'), h).toBe(true);
+      expect(s.has('kit:bench') || s.has('kit:benchPanel'), h).toBe(false);
     }
   });
 });
