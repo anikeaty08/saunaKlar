@@ -16,7 +16,7 @@
     "sample-model": "tsx scripts/make-sample-sauna.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1156.0",
+    "@aws-sdk/client-s3": "^3.1163.0",
     "@saunaklar/db": "*",
     "@saunaklar/objects": "0.1.0",
     "@saunaklar/pricing": "*",
